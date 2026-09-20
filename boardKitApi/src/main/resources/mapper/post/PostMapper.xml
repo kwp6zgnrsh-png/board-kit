@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper">
+
+    <insert id="insertPost" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO post (
+            board_id,
+            author_id,
+            category_id,
+            title,
+            content,
+            is_secret,
+            secret_password_hash,
+            is_pinned,
+            comments_locked,
+            view_count,
+            version
+        )
+        VALUES (
+            #{boardId},
+            #{authorId},
+            #{categoryId},
+            #{title},
+            #{content},
+            #{isSecret},
+            #{secretPasswordHash},
+            #{isPinned},
+            #{commentsLocked},
+            #{viewCount},
+            #{version}
+        )
+    </insert>
+
+    <select id="existsActiveCategory" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM board_category
+            WHERE id = #{categoryId}
+                AND board_id = #{boardId}
+                AND active = TRUE
+        )
+    </select>
+</mapper>

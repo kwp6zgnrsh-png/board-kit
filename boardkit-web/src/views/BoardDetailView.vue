@@ -6,8 +6,8 @@ import { getBoardDetail } from '@/api/boardApi'
 import { ApiError } from '@/api/http'
 import BoardCategoryList from '@/features/board/components/BoardCategoryList.vue'
 import BoardHeader from '@/features/board/components/BoardHeader.vue'
+import { getAuthSession } from '@/features/auth/services/authSession'
 import type { BoardDetailResponse } from '@/features/board/types/board'
-
 const route = useRoute()
 
 const board = ref<BoardDetailResponse | null>(null)
@@ -15,6 +15,19 @@ const loading = ref(false)
 const errorMessage = ref('')
 
 const boardSlug = computed(() => String(route.params.boardSlug ?? ''))
+
+const session = getAuthSession()
+
+const canWrite = computed(() => {
+  if (!board.value || !session) {
+    return false
+  }
+
+  return (
+      board.value.policy.writePermission === 'MEMBER' ||
+      session.role === 'ADMIN'
+  )
+})
 
 let requestSequence = 0
 
@@ -84,7 +97,22 @@ watch(boardSlug, loadBoard, {
       />
 
       <section class="post-area">
-        <h2>게시글</h2>
+        <div class="post-area__header">
+          <h2>게시글</h2>
+
+          <RouterLink
+              v-if="canWrite"
+              :to="{
+                name: 'post-create',
+                params: {
+                  boardSlug: board.slug,
+                },
+              }"
+              class="write-link"
+          >
+            글쓰기
+          </RouterLink>
+        </div>
       </section>
     </template>
   </div>
@@ -121,5 +149,26 @@ watch(boardSlug, loadBoard, {
   margin: 0;
   color: #0f172a;
   font-size: 1.1rem;
+
+.post-area__header {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.write-link {
+  padding: 0.65rem 1rem;
+  border-radius: 0.65rem;
+  color: #fff;
+  background: #2563eb;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.write-link:hover {
+  background: #1d4ed8;
+}
 }
 </style>

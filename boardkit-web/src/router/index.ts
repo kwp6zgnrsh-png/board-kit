@@ -4,6 +4,7 @@ import { getAuthSession } from '@/features/auth/services/authSession'
 import AdminBoardCreateView from '@/views/AdminBoardCreateView.vue'
 import LoginView from '@/views/LoginView.vue'
 import BoardDetailView from '@/views/BoardDetailView.vue'
+import PostCreateView from '@/views/PostCreateView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -30,6 +31,14 @@ const router = createRouter({
       path: '/boards/:boardSlug',
       name: 'board-detail',
       component: BoardDetailView,
+    },
+    {
+      path: '/boards/:boardSlug/posts/new',
+      name: 'post-create',
+      component: PostCreateView,
+      meta: {
+        requiresAuth: true,
+      },
     },
   ],
 })

@@ -21,4 +21,26 @@
             AND deleted_at IS NULL
     </select>
 
+    <select id="existsActiveMemberById" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM member
+            WHERE id = #{memberId}
+                AND deleted_at IS NULL
+        )
+    </select>
+
+    <select id="existsActiveSanctionByMemberId" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM member_sanction
+            WHERE member_id = #{memberId}
+                AND revoked_at IS NULL
+                AND starts_at &lt;= CURRENT_TIMESTAMP(6)
+                AND (
+                    ends_at IS NULL
+                    OR ends_at &gt; CURRENT_TIMESTAMP(6)
+                )
+        )
+    </select>
 </mapper>

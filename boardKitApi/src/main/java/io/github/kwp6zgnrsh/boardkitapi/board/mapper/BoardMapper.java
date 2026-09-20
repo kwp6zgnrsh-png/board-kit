@@ -35,4 +35,9 @@ public interface BoardMapper {
 	List<BoardCategory> selectActiveCategoriesByBoardId(
 		@Param("boardId") Long boardId
 	);
+
+	boolean existsActiveCategory(
+		@Param("boardId") Long boardId,
+		@Param("categoryId") Long categoryId
+	);
 }

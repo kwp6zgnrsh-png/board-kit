@@ -9,5 +9,15 @@ import java.util.Optional;
 @Mapper
 public interface MemberMapper {
 
-	Optional<Member> selectByLoginId(@Param("loginId") String loginId);
+	Optional<Member> selectByLoginId(
+		@Param("loginId") String loginId
+	);
+
+	boolean existsActiveMemberById(
+		@Param("memberId") Long memberId
+	);
+
+	boolean existsActiveSanctionByMemberId(
+		@Param("memberId") Long memberId
+	);
 }
