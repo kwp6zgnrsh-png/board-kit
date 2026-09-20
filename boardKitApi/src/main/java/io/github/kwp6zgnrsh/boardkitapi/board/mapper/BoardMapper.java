@@ -1,6 +1,7 @@
 package io.github.kwp6zgnrsh.boardkitapi.board.mapper;
 
 import java.util.List;
+import java.util.Optional;
 
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardSummaryResponse;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
@@ -21,5 +22,17 @@ public interface BoardMapper {
 	List<BoardSummaryResponse> selectAccessibleBoards(
 		@Param("memberAccess") boolean memberAccess,
 		@Param("adminAccess") boolean adminAccess
+	);
+
+	Optional<Board> selectActiveBoardBySlug(
+		@Param("slug") String slug
+	);
+
+	Optional<BoardPolicy> selectPolicyByBoardId(
+		@Param("boardId") Long boardId
+	);
+
+	List<BoardCategory> selectActiveCategoriesByBoardId(
+		@Param("boardId") Long boardId
 	);
 }

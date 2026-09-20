@@ -1,6 +1,11 @@
 package io.github.kwp6zgnrsh.boardkitapi.board.api;
 
+import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardCategoryResponse;
+import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardDetailResponse;
+import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardPolicyResponse;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardSummaryResponse;
+import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardAccessDeniedException;
+import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.board.service.BoardService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -112,6 +117,72 @@ class BoardApiTest {
 			.getAccessibleBoards(false, false);
 	}
 
+	@Test
+	@DisplayName("비로그인 사용자는 공개 게시판 상세를 조회할 수 있다")
+	void getPublicBoardDetailWithoutAuthentication() throws Exception {
+		BoardDetailResponse response = boardDetail("PUBLIC");
+
+		when(boardService.getBoardDetail("free", false, false))
+			.thenReturn(response);
+
+		mockMvc.perform(get("/api/boards/free"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.id").value(1))
+			.andExpect(jsonPath("$.name").value("자유게시판"))
+			.andExpect(jsonPath("$.slug").value("free"))
+			.andExpect(jsonPath("$.policy.readPermission").value("PUBLIC"))
+			.andExpect(jsonPath("$.categories.length()").value(1))
+			.andExpect(jsonPath("$.categories[0].name").value("잡담"));
+
+		verify(boardService)
+			.getBoardDetail("free", false, false);
+	}
+
+	@Test
+	@DisplayName("관리자는 관리자 전용 게시판 상세를 조회할 수 있다")
+	void getAdminBoardDetailWithAdminRole() throws Exception {
+		BoardDetailResponse response = boardDetail("ADMIN");
+
+		when(boardService.getBoardDetail("free", true, true))
+			.thenReturn(response);
+
+		mockMvc.perform(get("/api/boards/free")
+				.with(authentication(
+					createAuthentication("ROLE_ADMIN")
+				)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.policy.readPermission").value("ADMIN"));
+
+		verify(boardService)
+			.getBoardDetail("free", true, true);
+	}
+
+	@Test
+	@DisplayName("조회 권한이 없는 게시판은 조회할 수 없다")
+	void rejectBoardDetailWhenAccessIsDenied() throws Exception {
+		when(boardService.getBoardDetail("admin", false, false))
+			.thenThrow(new BoardAccessDeniedException());
+
+		mockMvc.perform(get("/api/boards/admin"))
+			.andExpect(status().isForbidden());
+
+		verify(boardService)
+			.getBoardDetail("admin", false, false);
+	}
+
+	@Test
+	@DisplayName("존재하지 않는 게시판을 조회하면 404를 반환한다")
+	void returnNotFoundWhenBoardDoesNotExist() throws Exception {
+		when(boardService.getBoardDetail("unknown", false, false))
+			.thenThrow(new BoardNotFoundException());
+
+		mockMvc.perform(get("/api/boards/unknown"))
+			.andExpect(status().isNotFound());
+
+		verify(boardService)
+			.getBoardDetail("unknown", false, false);
+	}
+
 	private BoardSummaryResponse board(Long id, String name, String slug) {
 		return new BoardSummaryResponse(
 			id,
@@ -146,5 +217,39 @@ class BoardApiTest {
 
 			return http.build();
 		}
+	}
+
+	private BoardDetailResponse boardDetail(String readPermission) {
+		BoardPolicyResponse policy = new BoardPolicyResponse(
+			readPermission,
+			"MEMBER",
+			"MEMBER",
+			"OFF",
+			true,
+			false,
+			false,
+			"IMAGE",
+			0,
+			0L,
+			false,
+			false,
+			"FIRST_IMAGE",
+			true,
+			true,
+			true,
+			true,
+			false
+		);
+
+		return new BoardDetailResponse(
+			1L,
+			"자유게시판",
+			"free",
+			"자유롭게 이야기하는 공간입니다.",
+			"LIST",
+			0,
+			policy,
+			List.of(new BoardCategoryResponse(1L, "잡담", 0))
+		);
 	}
 }

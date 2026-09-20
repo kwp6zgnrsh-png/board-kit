@@ -2,11 +2,17 @@ package io.github.kwp6zgnrsh.boardkitapi.board.service;
 
 import java.util.List;
 
+import io.github.kwp6zgnrsh.boardkitapi.board.converter.BoardConverter;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.request.BoardCategoryCreateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.request.BoardCreateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.request.BoardPolicyCreateRequest;
+import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardCategoryResponse;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardCreateResponse;
+import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardDetailResponse;
+import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardPolicyResponse;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardSummaryResponse;
+import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardAccessDeniedException;
+import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardCategory;
@@ -25,6 +31,7 @@ import org.springframework.validation.annotation.Validated;
 public class BoardService {
 
 	private final BoardMapper boardMapper;
+	private final BoardConverter boardConverter;
 
 	@Transactional
 	public BoardCreateResponse createBoard(@NotNull @Valid BoardCreateRequest request,
@@ -33,15 +40,7 @@ public class BoardService {
 		BoardPolicyCreateRequest policyRequest = request.policy();
 		validatePolicy(policyRequest);
 
-		Board board = Board.builder()
-			.name(request.name())
-			.slug(request.slug())
-			.description(request.description())
-			.displayType(request.displayType())
-			.status("ACTIVE")
-			.sortOrder(request.sortOrder())
-			.createdBy(adminId)
-			.build();
+		Board board = boardConverter.toBoard(request, adminId);
 
 		int boardCount = boardMapper.insertBoard(board);
 
@@ -49,51 +48,27 @@ public class BoardService {
 			throw new IllegalStateException("게시판 저장에 실패했습니다.");
 		}
 
-		BoardPolicy policy = BoardPolicy.builder()
-			.boardId(board.getId())
-			.readPermission(policyRequest.readPermission())
-			.writePermission(policyRequest.writePermission())
-			.commentPermission(policyRequest.commentPermission())
-			.secretMode(policyRequest.secretMode())
-			.categoriesEnabled(policyRequest.categoriesEnabled())
-			.categoryRequired(policyRequest.categoryRequired())
-			.attachmentsEnabled(policyRequest.attachmentsEnabled())
-			.uploadProfile(policyRequest.uploadProfile())
-			.maxFileCount(policyRequest.maxFileCount())
-			.maxFileSizeBytes(policyRequest.maxFileSizeBytes())
-			.imageRequired(policyRequest.imageRequired())
-			.thumbnailEnabled(policyRequest.thumbnailEnabled())
-			.representativeImageMode(policyRequest.representativeImageMode())
-			.commentsEnabled(policyRequest.commentsEnabled())
-			.commentRepliesEnabled(policyRequest.commentRepliesEnabled())
-			.postLikesEnabled(policyRequest.postLikesEnabled())
-			.commentLikesEnabled(policyRequest.commentLikesEnabled())
-			.officialReplyEnabled(policyRequest.officialReplyEnabled())
-			.version(0)
-			.build();
+		BoardPolicy policy = boardConverter.toPolicy(
+			policyRequest,
+			board.getId()
+		);
 
 		if (boardMapper.insertPolicy(policy) != 1) {
 			throw new IllegalStateException("게시판 정책 저장에 실패했습니다.");
 		}
 
 		for (BoardCategoryCreateRequest categoryRequest : request.categories()) {
-			BoardCategory category = BoardCategory.builder()
-				.boardId(board.getId())
-				.name(categoryRequest.name())
-				.sortOrder(categoryRequest.sortOrder())
-				.active(true)
-				.build();
+			BoardCategory category = boardConverter.toCategory(
+				categoryRequest,
+				board.getId()
+			);
 
 			if (boardMapper.insertCategory(category) != 1) {
 				throw new IllegalStateException("카테고리 저장에 실패했습니다.");
 			}
 		}
 
-		return new BoardCreateResponse(
-			board.getId(),
-			board.getName(),
-			board.getSlug()
-		);
+		return boardConverter.toCreateResponse(board);
 	}
 
 	@Transactional(readOnly = true)
@@ -102,6 +77,46 @@ public class BoardService {
 			memberAccess,
 			adminAccess
 		);
+	}
+
+	@Transactional(readOnly = true)
+	public BoardDetailResponse getBoardDetail(String slug, boolean memberAccess, boolean adminAccess) {
+		Board board = boardMapper
+			.selectActiveBoardBySlug(slug)
+			.orElseThrow(BoardNotFoundException::new);
+
+		BoardPolicy policy = boardMapper
+			.selectPolicyByBoardId(board.getId())
+			.orElseThrow(() -> new IllegalStateException(
+				"게시판 정책을 찾을 수 없습니다. boardId=" + board.getId()
+			));
+
+		if (!canReadBoard(policy.getReadPermission(), memberAccess, adminAccess)) {
+			throw new BoardAccessDeniedException();
+		}
+
+		List<BoardCategory> categories;
+
+		if (policy.isCategoriesEnabled()) {
+			categories = boardMapper.selectActiveCategoriesByBoardId(board.getId());
+		} else {
+			categories = List.of();
+		}
+
+		return boardConverter.toDetailResponse(
+			board,
+			policy,
+			categories
+		);
+	}
+
+	private boolean canReadBoard(String readPermission, boolean memberAccess, boolean adminAccess) {
+		return switch (readPermission) {
+			case "PUBLIC" -> true;
+			case "MEMBER" -> memberAccess || adminAccess;
+			case "ADMIN" -> adminAccess;
+			default -> throw new IllegalStateException("지원하지 않는 읽기 권한입니다: " + readPermission);
+		};
 	}
 
 	private void validatePolicy(BoardPolicyCreateRequest policy) {

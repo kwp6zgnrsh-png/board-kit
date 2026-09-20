@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { getAuthSession } from '@/features/auth/services/authSession'
 import AdminBoardCreateView from '@/views/AdminBoardCreateView.vue'
 import LoginView from '@/views/LoginView.vue'
+import BoardDetailView from '@/views/BoardDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -24,6 +25,11 @@ const router = createRouter({
         requiresAuth: true,
         requiredRole: 'ADMIN',
       },
+    },
+    {
+      path: '/boards/:boardSlug',
+      name: 'board-detail',
+      component: BoardDetailView,
     },
   ],
 })

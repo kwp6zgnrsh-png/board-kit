@@ -113,4 +113,64 @@
         ORDER BY b.sort_order ASC, b.id ASC
     </select>
 
+    <select id="selectActiveBoardBySlug"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.board.model.Board">
+        SELECT
+            id,
+            name,
+            slug,
+            description,
+            display_type,
+            status,
+            sort_order,
+            created_by,
+            created_at,
+            updated_at
+        FROM board
+        WHERE slug = #{slug}
+            AND status = 'ACTIVE'
+    </select>
+
+    <select id="selectPolicyByBoardId"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy">
+        SELECT
+            board_id,
+            read_permission,
+            write_permission,
+            comment_permission,
+            secret_mode,
+            categories_enabled,
+            category_required,
+            attachments_enabled,
+            upload_profile,
+            max_file_count,
+            max_file_size_bytes,
+            image_required,
+            thumbnail_enabled,
+            representative_image_mode,
+            comments_enabled,
+            comment_replies_enabled,
+            post_likes_enabled,
+            comment_likes_enabled,
+            official_reply_enabled,
+            version,
+            updated_at
+        FROM board_policy
+        WHERE board_id = #{boardId}
+    </select>
+
+    <select id="selectActiveCategoriesByBoardId"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.board.model.BoardCategory">
+        SELECT
+            id,
+            board_id,
+            name,
+            sort_order,
+            active
+        FROM board_category
+        WHERE board_id = #{boardId}
+            AND active = TRUE
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
 </mapper>

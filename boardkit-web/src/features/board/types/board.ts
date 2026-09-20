@@ -4,6 +4,7 @@ export type WritePermission = 'MEMBER' | 'ADMIN'
 export type SecretMode = 'OFF' | 'OPTIONAL' | 'REQUIRED'
 export type UploadProfile = 'IMAGE' | 'IMAGE_AND_ZIP'
 export type RepresentativeImageMode = 'FIRST_IMAGE' | 'MANUAL'
+export type BoardPolicyResponse = BoardPolicyCreateRequest
 
 export interface BoardPolicyCreateRequest {
   readPermission: ReadPermission
@@ -45,4 +46,29 @@ export interface BoardCreateResponse {
   id: number
   name: string
   slug: string
+}
+
+export interface BoardCategoryResponse
+    extends BoardCategoryCreateRequest {
+  id: number
+}
+
+export interface BoardSummaryResponse {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+  displayType: BoardDisplayType
+  sortOrder: number
+}
+
+export interface BoardDetailResponse {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+  displayType: BoardDisplayType
+  sortOrder: number
+  policy: BoardPolicyResponse
+  categories: BoardCategoryResponse[]
 }
