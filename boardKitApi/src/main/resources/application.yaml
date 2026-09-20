@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: boardKitApi
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+mybatis:
+  mapper-locations: classpath:/mapper/board/*.xml
+  configuration:
+    map-underscore-to-camel-case: true

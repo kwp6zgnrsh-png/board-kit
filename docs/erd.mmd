@@ -1,0 +1,180 @@
+erDiagram
+    MEMBER {
+        bigint id PK
+        varchar(50) login_id UK
+        varchar(255) password_hash
+        varchar(50) display_name
+        varchar(16) role
+        datetime(6) created_at
+        datetime(6) updated_at
+        datetime(6) deleted_at "nullable"
+    }
+
+    BOARD {
+        bigint id PK
+        varchar(100) name
+        varchar(100) slug UK
+        text description "nullable"
+        varchar(16) display_type
+        varchar(16) status
+        int sort_order
+        bigint created_by FK
+        datetime(6) created_at
+        datetime(6) updated_at
+    }
+
+    BOARD_POLICY {
+        bigint board_id PK, FK
+        varchar(16) read_permission
+        varchar(16) write_permission
+        varchar(16) comment_permission
+        varchar(16) secret_mode
+        boolean categories_enabled
+        boolean category_required
+        boolean attachments_enabled
+        varchar(32) upload_profile
+        int max_file_count
+        bigint max_file_size_bytes
+        boolean image_required
+        boolean thumbnail_enabled
+        varchar(16) representative_image_mode
+        boolean comments_enabled
+        boolean comment_replies_enabled
+        boolean post_likes_enabled
+        boolean comment_likes_enabled
+        boolean official_reply_enabled
+        int version
+        datetime(6) updated_at
+    }
+
+    BOARD_CATEGORY {
+        bigint id PK
+        bigint board_id FK
+        varchar(50) name
+        int sort_order
+        boolean active
+    }
+
+    POST {
+        bigint id PK
+        bigint board_id FK
+        bigint author_id FK
+        bigint category_id FK "nullable"
+        varchar(200) title
+        mediumtext content
+        boolean is_secret
+        varchar(255) secret_password_hash "nullable"
+        boolean is_pinned
+        boolean comments_locked
+        bigint representative_file_id FK "nullable"
+        bigint view_count
+        int version
+        datetime(6) created_at
+        datetime(6) updated_at
+        datetime(6) deleted_at "nullable"
+    }
+
+    POST_FILE {
+        bigint id PK
+        bigint post_id FK
+        varchar(255) original_name
+        varchar(512) storage_key UK
+        varchar(100) content_type
+        bigint size_bytes
+        varchar(512) thumbnail_key UK "nullable"
+        int sort_order
+        datetime(6) created_at
+        datetime(6) deleted_at "nullable"
+    }
+
+    COMMENT {
+        bigint id PK
+        bigint post_id FK
+        bigint author_id FK
+        bigint parent_id FK "nullable"
+        text content
+        datetime(6) created_at
+        datetime(6) updated_at
+        datetime(6) deleted_at "nullable"
+    }
+
+    POST_LIKE {
+        bigint post_id PK, FK
+        bigint member_id PK, FK
+        datetime(6) created_at
+    }
+
+    COMMENT_LIKE {
+        bigint comment_id PK, FK
+        bigint member_id PK, FK
+        datetime(6) created_at
+    }
+
+    POST_REPLY {
+        bigint id PK
+        bigint post_id FK, UK
+        bigint author_id FK
+        text content
+        datetime(6) created_at
+        datetime(6) updated_at
+    }
+
+    REPORT {
+        bigint id PK
+        bigint reporter_id FK
+        bigint post_id FK "nullable"
+        bigint comment_id FK "nullable"
+        varchar(32) reason
+        text detail "nullable"
+        varchar(16) status
+        bigint reviewed_by FK "nullable"
+        text review_note "nullable"
+        datetime(6) created_at
+        datetime(6) reviewed_at "nullable"
+    }
+
+    MEMBER_SANCTION {
+        bigint id PK
+        bigint member_id FK
+        bigint admin_id FK
+        text reason
+        datetime(6) starts_at
+        datetime(6) ends_at "nullable"
+        datetime(6) revoked_at "nullable"
+        datetime(6) created_at
+    }
+
+    FILE_CLEANUP_TASK {
+        bigint id PK
+        varchar(16) task_type
+        varchar(1024) source_key
+        varchar(1024) destination_key "nullable"
+        int attempts
+        datetime(6) next_attempt_at
+        text last_error "nullable"
+        datetime(6) created_at
+    }
+
+    MEMBER ||--o{ BOARD : creates
+    BOARD ||--o| BOARD_POLICY : has_policy
+    BOARD ||--o{ BOARD_CATEGORY : contains
+    BOARD ||--o{ POST : contains
+    MEMBER ||--o{ POST : writes
+    BOARD_CATEGORY o|--o{ POST : categorizes
+    POST ||--o{ POST_FILE : attaches
+    POST_FILE o|--o{ POST : represents
+    POST ||--o{ COMMENT : contains
+    MEMBER ||--o{ COMMENT : writes
+    COMMENT o|--o{ COMMENT : parent_of
+    POST ||--o{ POST_LIKE : receives
+    MEMBER ||--o{ POST_LIKE : likes
+    COMMENT ||--o{ COMMENT_LIKE : receives
+    MEMBER ||--o{ COMMENT_LIKE : likes
+    POST ||--o| POST_REPLY : has_official_reply
+    MEMBER ||--o{ POST_REPLY : answers
+    MEMBER ||--o{ REPORT : submits
+    MEMBER o|--o{ REPORT : reviews
+    POST o|--o{ REPORT : reported_post
+    COMMENT o|--o{ REPORT : reported_comment
+    MEMBER ||--o{ MEMBER_SANCTION : receives
+    MEMBER ||--o{ MEMBER_SANCTION : imposes

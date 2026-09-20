@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper">
+
+    <insert id="insertBoard" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO board (
+            name,
+            slug,
+            description,
+            display_type,
+            status,
+            sort_order,
+            created_by
+        )
+        VALUES (
+            #{name},
+            #{slug},
+            #{description},
+            #{displayType},
+            #{status},
+            #{sortOrder},
+            #{createdBy}
+        )
+    </insert>
+
+    <insert id="insertPolicy">
+        INSERT INTO board_policy (
+            board_id,
+            read_permission,
+            write_permission,
+            comment_permission,
+            secret_mode,
+            categories_enabled,
+            category_required,
+            attachments_enabled,
+            upload_profile,
+            max_file_count,
+            max_file_size_bytes,
+            image_required,
+            thumbnail_enabled,
+            representative_image_mode,
+            comments_enabled,
+            comment_replies_enabled,
+            post_likes_enabled,
+            comment_likes_enabled,
+            official_reply_enabled,
+            version
+        )
+        VALUES (
+            #{boardId},
+            #{readPermission},
+            #{writePermission},
+            #{commentPermission},
+            #{secretMode},
+            #{categoriesEnabled},
+            #{categoryRequired},
+            #{attachmentsEnabled},
+            #{uploadProfile},
+            #{maxFileCount},
+            #{maxFileSizeBytes},
+            #{imageRequired},
+            #{thumbnailEnabled},
+            #{representativeImageMode},
+            #{commentsEnabled},
+            #{commentRepliesEnabled},
+            #{postLikesEnabled},
+            #{commentLikesEnabled},
+            #{officialReplyEnabled},
+            #{version}
+        )
+    </insert>
+
+    <insert id="insertCategory" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO board_category (
+            board_id,
+            name,
+            sort_order,
+            active
+        )
+        VALUES (
+            #{boardId},
+            #{name},
+            #{sortOrder},
+            #{active}
+        )
+    </insert>
+
+    <select id="selectAccessibleBoards"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardSummaryResponse">
+        SELECT
+            b.id,
+            b.name,
+            b.slug,
+            b.description,
+            b.display_type AS displayType,
+            b.sort_order AS sortOrder
+        FROM board b
+        INNER JOIN board_policy bp
+            ON bp.board_id = b.id
+        WHERE b.status = 'ACTIVE'
+            AND (
+                bp.read_permission = 'PUBLIC'
+                <if test="memberAccess">
+                    OR bp.read_permission = 'MEMBER'
+                </if>
+                <if test="adminAccess">
+                    OR bp.read_permission = 'ADMIN'
+                </if>
+            )
+        ORDER BY b.sort_order ASC, b.id ASC
+    </select>
+
+</mapper>
