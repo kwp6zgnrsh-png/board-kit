@@ -3,7 +3,7 @@ withDefaults(
   defineProps<{
     id: string
     label: string
-    type?: 'text' | 'number'
+    type?: 'text' | 'number' | 'password'
     placeholder?: string
     min?: number
     max?: number

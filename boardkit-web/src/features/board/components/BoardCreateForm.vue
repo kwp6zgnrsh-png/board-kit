@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 
-import { ApiError, createBoard } from '@/api/boardApi'
+import { createBoard } from '@/api/boardApi'
+import { ApiError } from '@/api/http'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseCheckbox from '@/components/ui/BaseCheckbox.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
