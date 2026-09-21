@@ -173,4 +173,14 @@
         ORDER BY sort_order ASC, id ASC
     </select>
 
+    <select id="existsActiveCategory" resultType="boolean">
+        SELECT EXISTS (
+        SELECT 1
+        FROM board_category
+        WHERE id = #{categoryId}
+        AND board_id = #{boardId}
+        AND active = TRUE
+        )
+    </select>
+
 </mapper>

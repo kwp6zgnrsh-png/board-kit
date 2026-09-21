@@ -1,5 +1,6 @@
 package io.github.kwp6zgnrsh.boardkitapi.post.service;
 
+import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
@@ -10,11 +11,15 @@ import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.converter.PostConverter;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostPageResponse;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostSummaryResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.InvalidPostRequestException;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostWriteDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.Post;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -25,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Service
 @Validated
@@ -88,6 +94,68 @@ public class PostService {
 		}
 
 		return postConverter.toCreateResponse(post);
+	}
+
+	@Transactional(readOnly = true)
+	public PostPageResponse getPosts(@NotBlank String boardSlug,
+									 @Min(1) int page,
+									 @Min(1) @Max(100) int size,
+									 boolean memberAccess,
+									 boolean adminAccess) {
+
+		Board board = boardMapper
+			.selectActiveBoardBySlug(boardSlug)
+			.orElseThrow(BoardNotFoundException::new);
+
+		BoardPolicy policy = boardMapper
+			.selectPolicyByBoardId(board.getId())
+			.orElseThrow(() -> new IllegalStateException(
+				"게시판 정책을 찾을 수 없습니다. boardId=" + board.getId()
+			));
+
+		if (!canReadBoard(policy.getReadPermission(), memberAccess, adminAccess)) {
+			throw new BoardAccessDeniedException();
+		}
+
+		long totalElements = postMapper.countActivePostsByBoardId(board.getId());
+
+		long offset = (long) (page - 1) * size;
+
+		List<PostSummaryResponse> posts;
+
+		if (totalElements == 0 || offset >= totalElements) {
+			posts = List.of();
+		} else {
+			posts = postMapper.selectPostSummaries(
+				board.getId(),
+				size,
+				offset
+			);
+		}
+
+		long calculatedTotalPages =
+			totalElements / size + (totalElements % size == 0 ? 0 : 1);
+
+		int totalPages = Math.toIntExact(calculatedTotalPages);
+
+		return new PostPageResponse(
+			posts,
+			page,
+			size,
+			totalElements,
+			totalPages
+		);
+	}
+	private boolean canReadBoard(String readPermission, boolean memberAccess, boolean adminAccess) {
+		return switch (readPermission) {
+			case "PUBLIC" -> true;
+			case "MEMBER" -> memberAccess || adminAccess;
+			case "ADMIN" -> adminAccess;
+			default -> throw new IllegalStateException(
+				"지원하지 않는 읽기 권한입니다: " +
+					readPermission
+			);
+		};
 	}
 
 	private void validateMember(Long memberId) {

@@ -1,17 +1,12 @@
 package io.github.kwp6zgnrsh.boardkitapi.post.service;
 
-import io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper;
-import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
-import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy;
-import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberSanctionedException;
-import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
-import io.github.kwp6zgnrsh.boardkitapi.post.converter.PostConverter;
-import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
-import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
-import io.github.kwp6zgnrsh.boardkitapi.post.exception.InvalidPostRequestException;
-import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostWriteDeniedException;
-import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper;
-import io.github.kwp6zgnrsh.boardkitapi.post.model.Post;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,13 +15,21 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardAccessDeniedException;
+import io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper;
+import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
+import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy;
+import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberSanctionedException;
+import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
+import io.github.kwp6zgnrsh.boardkitapi.post.converter.PostConverter;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostPageResponse;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostSummaryResponse;
+import io.github.kwp6zgnrsh.boardkitapi.post.exception.InvalidPostRequestException;
+import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostWriteDeniedException;
+import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper;
+import io.github.kwp6zgnrsh.boardkitapi.post.model.Post;
 
 @ExtendWith(MockitoExtension.class)
 class PostServiceTest {
@@ -164,6 +167,107 @@ class PostServiceTest {
 		);
 
 		verifyNoInteractions(postMapper, postConverter);
+	}
+
+	@Test
+	@DisplayName("공개 게시판의 두 번째 페이지를 조회한다")
+	void getSecondPageFromPublicBoard() {
+		BoardPolicy policy = readPolicy("PUBLIC");
+
+		prepareBoard("free", policy);
+
+		LocalDateTime createdAt = LocalDateTime.of(2026, 9, 21, 10, 0);
+
+		List<PostSummaryResponse> posts = List.of(
+			new PostSummaryResponse(
+				11L,
+				"게시글 제목",
+				10L,
+				"작성자",
+				null,
+				null,
+				false,
+				false,
+				3L,
+				2L,
+				createdAt
+			)
+		);
+
+		when(postMapper.countActivePostsByBoardId(1L))
+			.thenReturn(21L);
+		when(postMapper.selectPostSummaries(1L, 10, 10L))
+			.thenReturn(posts);
+
+		PostPageResponse response = postService.getPosts(
+			"free",
+			2,
+			10,
+			false,
+			false
+		);
+
+		assertAll(
+			() -> assertEquals(posts, response.posts()),
+			() -> assertEquals(2, response.page()),
+			() -> assertEquals(10, response.size()),
+			() -> assertEquals(21L, response.totalElements()),
+			() -> assertEquals(3, response.totalPages())
+		);
+
+		verify(postMapper).selectPostSummaries(1L, 10, 10L);
+	}
+
+	@Test
+	@DisplayName("일반 회원은 관리자 전용 게시판 목록을 조회할 수 없다")
+	void rejectMemberFromAdminBoardPostList() {
+		prepareBoard("admin", readPolicy("ADMIN"));
+
+		assertThrows(
+			BoardAccessDeniedException.class,
+			() -> postService.getPosts(
+				"admin",
+				1,
+				10,
+				true,
+				false
+			)
+		);
+
+		verifyNoInteractions(postMapper);
+	}
+
+	@Test
+	@DisplayName("마지막 페이지를 넘으면 빈 게시글 목록을 반환한다")
+	void returnEmptyPostsWhenPageExceedsLastPage() {
+		prepareBoard("free", readPolicy("PUBLIC"));
+
+		when(postMapper.countActivePostsByBoardId(1L))
+			.thenReturn(11L);
+
+		PostPageResponse response = postService.getPosts(
+			"free",
+			3,
+			10,
+			false,
+			false
+		);
+
+		assertAll(
+			() -> assertTrue(response.posts().isEmpty()),
+			() -> assertEquals(3, response.page()),
+			() -> assertEquals(11L, response.totalElements()),
+			() -> assertEquals(2, response.totalPages())
+		);
+
+		verify(postMapper).countActivePostsByBoardId(1L);
+		verifyNoMoreInteractions(postMapper);
+	}
+
+	private BoardPolicy readPolicy(String readPermission) {
+		return BoardPolicy.builder()
+			.readPermission(readPermission)
+			.build();
 	}
 
 	private void allowActiveMember() {
