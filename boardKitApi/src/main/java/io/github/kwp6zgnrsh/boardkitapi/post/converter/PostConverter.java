@@ -1,11 +1,14 @@
 package io.github.kwp6zgnrsh.boardkitapi.post.converter;
 
-import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
-import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
-import io.github.kwp6zgnrsh.boardkitapi.post.model.Post;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostDetailResponse;
+import io.github.kwp6zgnrsh.boardkitapi.post.model.Post;
+import io.github.kwp6zgnrsh.boardkitapi.post.model.PostDetail;
 
 @Mapper(componentModel = "spring")
 public interface PostConverter {
@@ -36,4 +39,7 @@ public interface PostConverter {
 	);
 
 	PostCreateResponse toCreateResponse(Post post);
+
+	@Mapping(target = "viewCount", source = "increasedViewCount")
+	PostDetailResponse toDetailResponse(PostDetail postDetail, long increasedViewCount);
 }

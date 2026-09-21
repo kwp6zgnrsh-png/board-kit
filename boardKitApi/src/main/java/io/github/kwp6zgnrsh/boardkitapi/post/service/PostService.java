@@ -1,5 +1,14 @@
 package io.github.kwp6zgnrsh.boardkitapi.post.service;
 
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Objects;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
+
 import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper;
@@ -11,12 +20,16 @@ import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.converter.PostConverter;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostDetailResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostPageResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostSummaryResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.InvalidPostRequestException;
+import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostWriteDeniedException;
+import io.github.kwp6zgnrsh.boardkitapi.post.exception.SecretPostAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.Post;
+import io.github.kwp6zgnrsh.boardkitapi.post.model.PostDetail;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -24,13 +37,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.validation.annotation.Validated;
-
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 @Service
 @Validated
@@ -113,9 +119,7 @@ public class PostService {
 				"게시판 정책을 찾을 수 없습니다. boardId=" + board.getId()
 			));
 
-		if (!canReadBoard(policy.getReadPermission(), memberAccess, adminAccess)) {
-			throw new BoardAccessDeniedException();
-		}
+		validateReadPermission(policy.getReadPermission(), memberAccess, adminAccess);
 
 		long totalElements = postMapper.countActivePostsByBoardId(board.getId());
 
@@ -146,8 +150,72 @@ public class PostService {
 			totalPages
 		);
 	}
-	private boolean canReadBoard(String readPermission, boolean memberAccess, boolean adminAccess) {
-		return switch (readPermission) {
+
+	@Transactional
+	public PostDetailResponse getPostDetail(@NotBlank String boardSlug, @NotNull @Positive Long postId, Long memberId,
+											boolean memberAccess, boolean adminAccess, String secretPassword) {
+
+		Board board = boardMapper
+			.selectActiveBoardBySlug(boardSlug)
+			.orElseThrow(BoardNotFoundException::new);
+
+		BoardPolicy policy = boardMapper
+			.selectPolicyByBoardId(board.getId())
+			.orElseThrow(() -> new IllegalStateException(
+				"게시판 정책을 찾을 수 없습니다. boardId=" +
+					board.getId()
+			));
+
+		validateReadPermission(policy.getReadPermission(), memberAccess, adminAccess);
+
+		PostDetail postDetail = postMapper
+			.selectActivePostDetail(board.getId(), postId)
+			.orElseThrow(PostNotFoundException::new);
+
+		validateSecretPostAccess(
+			postDetail,
+			memberId,
+			adminAccess,
+			secretPassword
+		);
+
+		int updatedCount = postMapper.increaseViewCount(
+			board.getId(),
+			postId
+		);
+
+		if (updatedCount != 1) {
+			throw new PostNotFoundException();
+		}
+
+		long increasedViewCount = Math.addExact(postDetail.viewCount(), 1L);
+
+		return postConverter.toDetailResponse(
+			postDetail,
+			increasedViewCount
+		);
+	}
+
+	private void validateSecretPostAccess(PostDetail postDetail, Long memberId, boolean adminAccess, String secretPassword) {
+		if (!postDetail.secret() || postDetail.secretPasswordHash() == null) {
+			return;
+		}
+
+		if (adminAccess || Objects.equals(postDetail.authorId(), memberId)) {
+			return;
+		}
+
+		String normalizedPassword = normalizeSecretPassword(secretPassword);
+
+		if (normalizedPassword == null
+			|| normalizedPassword.getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_PASSWORD_BYTES
+			|| !passwordEncoder.matches(normalizedPassword, postDetail.secretPasswordHash())) {
+			throw new SecretPostAccessDeniedException();
+		}
+	}
+
+	private static void validateReadPermission(String readPermission, boolean memberAccess, boolean adminAccess) {
+		boolean readable = switch (readPermission) {
 			case "PUBLIC" -> true;
 			case "MEMBER" -> memberAccess || adminAccess;
 			case "ADMIN" -> adminAccess;
@@ -156,6 +224,10 @@ public class PostService {
 					readPermission
 			);
 		};
+
+		if (!readable) {
+			throw new BoardAccessDeniedException();
+		}
 	}
 
 	private void validateMember(Long memberId) {

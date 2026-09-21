@@ -5,6 +5,7 @@ import AdminBoardCreateView from '@/views/AdminBoardCreateView.vue'
 import LoginView from '@/views/LoginView.vue'
 import BoardDetailView from '@/views/BoardDetailView.vue'
 import PostCreateView from '@/views/PostCreateView.vue'
+import PostDetailView from '@/views/PostDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -39,6 +40,11 @@ const router = createRouter({
       meta: {
         requiresAuth: true,
       },
+    },
+    {
+      path: '/boards/:boardSlug/posts/:postId',
+      name: 'post-detail',
+      component: PostDetailView,
     },
   ],
 })

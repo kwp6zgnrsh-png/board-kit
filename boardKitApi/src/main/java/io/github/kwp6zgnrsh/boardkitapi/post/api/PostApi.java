@@ -1,14 +1,8 @@
 package io.github.kwp6zgnrsh.boardkitapi.post.api;
 
-import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
-import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
-import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
-import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostPageResponse;
-import io.github.kwp6zgnrsh.boardkitapi.post.service.PostService;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import lombok.RequiredArgsConstructor;
+import java.net.URI;
+
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -18,12 +12,23 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.net.URI;
+import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostDetailResponse;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostPageResponse;
+import io.github.kwp6zgnrsh.boardkitapi.post.service.PostService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
@@ -74,6 +79,34 @@ public class PostApi {
 			memberAccess,
 			adminAccess
 		);
+	}
+
+	@GetMapping("/{postId}")
+	public ResponseEntity<PostDetailResponse> getPostDetail(@PathVariable String boardSlug,
+														    @PathVariable @Positive Long postId,
+															@RequestHeader(value = "X-Post-Password", required = false)
+															String secretPassword,
+														    @AuthenticationPrincipal LoginMember loginMember,
+															Authentication authentication) {
+		boolean adminAccess = hasAuthority(authentication, "ROLE_ADMIN");
+
+		boolean memberAccess = adminAccess || hasAuthority(authentication, "ROLE_MEMBER");
+
+		Long memberId = loginMember == null ? null : loginMember.id();
+
+		PostDetailResponse response =
+			postService.getPostDetail(
+				boardSlug,
+				postId,
+				memberId,
+				memberAccess,
+				adminAccess,
+				secretPassword
+			);
+
+		return ResponseEntity.ok()
+			.cacheControl(CacheControl.noStore())
+			.body(response);
 	}
 
 	private boolean hasAuthority(Authentication authentication, String authority) {

@@ -2,6 +2,7 @@ import { apiRequest } from '@/api/http'
 import type {
     PostCreateRequest,
     PostCreateResponse,
+    PostDetailResponse,
     PostPageResponse,
 } from '@/features/post/types/post'
 
@@ -30,5 +31,27 @@ export function getPosts(
 
     return apiRequest<PostPageResponse>(
         `/api/boards/${encodeURIComponent(boardSlug)}/posts?${params}`,
+    )
+}
+
+export function getPostDetail(
+    boardSlug: string,
+    postId: number,
+    secretPassword?: string,
+): Promise<PostDetailResponse> {
+    const headers = new Headers()
+
+    if (secretPassword !== undefined) {
+        headers.set(
+            'X-Post-Password',
+            secretPassword,
+        )
+    }
+
+    return apiRequest<PostDetailResponse>(
+        `/api/boards/${encodeURIComponent(boardSlug)}/posts/${postId}`,
+        {
+            headers,
+        },
     )
 }

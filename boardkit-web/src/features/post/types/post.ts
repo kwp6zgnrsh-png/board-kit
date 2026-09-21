@@ -32,3 +32,20 @@ export interface PostPageResponse {
     totalElements: number
     totalPages: number
 }
+
+export interface PostDetailResponse {
+    id: number
+    boardId: number
+    title: string
+    content: string
+    authorId: number
+    authorDisplayName: string
+    categoryId: number | null
+    categoryName: string | null
+    secret: boolean
+    pinned: boolean
+    commentsLocked: boolean
+    viewCount: number
+    createdAt: string
+    updatedAt: string
+}

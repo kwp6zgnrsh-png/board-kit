@@ -253,7 +253,11 @@ watch(
         </p>
 
         <template v-else-if="postPage">
-          <PostList :posts="postPage.posts" />
+          <PostList
+              :board-slug="board.slug"
+              :page="postPage.page"
+              :posts="postPage.posts"
+          />
 
           <BasePagination
               :page="postPage.page"

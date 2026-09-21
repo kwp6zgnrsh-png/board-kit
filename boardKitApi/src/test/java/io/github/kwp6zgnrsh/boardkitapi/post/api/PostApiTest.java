@@ -16,6 +16,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -31,8 +32,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostDetailResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostPageResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostSummaryResponse;
+import io.github.kwp6zgnrsh.boardkitapi.post.exception.SecretPostAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.post.service.PostService;
 
 @WebMvcTest(PostApi.class)
@@ -280,6 +283,117 @@ class PostApiTest {
 			.andExpect(status().isBadRequest());
 
 		verifyNoInteractions(postService);
+	}
+
+	@Test
+	@DisplayName("비로그인 사용자는 공개 게시글 상세를 조회할 수 있다")
+	void getPublicPostDetailWithoutAuthentication() throws Exception {
+		PostDetailResponse response = postDetailResponse();
+
+		when(postService.getPostDetail(
+			"free",
+			100L,
+			null,
+			false,
+			false,
+			null
+		)).thenReturn(response);
+
+		mockMvc.perform(
+				get("/api/boards/free/posts/100")
+			)
+			.andExpect(status().isOk())
+			.andExpect(header().string(
+				HttpHeaders.CACHE_CONTROL,
+				"no-store"
+			))
+			.andExpect(jsonPath("$.id").value(100))
+			.andExpect(jsonPath("$.title").value("게시글 제목"))
+			.andExpect(jsonPath("$.content").value("게시글 본문"))
+			.andExpect(jsonPath("$.authorDisplayName").value("작성자"))
+			.andExpect(jsonPath("$.viewCount").value(6));
+
+		verify(postService).getPostDetail(
+			"free",
+			100L,
+			null,
+			false,
+			false,
+			null
+		);
+	}
+
+	@Test
+	@DisplayName("비밀글 비밀번호를 서비스에 전달한다")
+	void passSecretPasswordToService() throws Exception {
+		PostDetailResponse response = postDetailResponse();
+
+		when(postService.getPostDetail(
+			"free",
+			100L,
+			null,
+			false,
+			false,
+			"1234"
+		)).thenReturn(response);
+
+		mockMvc.perform(
+				get("/api/boards/free/posts/100")
+					.header("X-Post-Password", "1234")
+			)
+			.andExpect(status().isOk());
+
+		verify(postService).getPostDetail(
+			"free",
+			100L,
+			null,
+			false,
+			false,
+			"1234"
+		);
+	}
+
+	@Test
+	@DisplayName("비밀글 비밀번호가 일치하지 않으면 403을 반환한다")
+	void rejectPostDetailWithWrongPassword() throws Exception {
+		when(postService.getPostDetail(
+			"free",
+			100L,
+			null,
+			false,
+			false,
+			"wrong-password"
+		)).thenThrow(new SecretPostAccessDeniedException());
+
+		mockMvc.perform(
+				get("/api/boards/free/posts/100")
+					.header(
+						"X-Post-Password",
+						"wrong-password"
+					)
+			)
+			.andExpect(status().isForbidden());
+	}
+
+	private PostDetailResponse postDetailResponse() {
+		LocalDateTime createdAt = LocalDateTime.of(2026, 9, 21, 10, 0);
+
+		return new PostDetailResponse(
+			100L,
+			1L,
+			"게시글 제목",
+			"게시글 본문",
+			10L,
+			"작성자",
+			null,
+			null,
+			false,
+			false,
+			false,
+			6L,
+			createdAt,
+			createdAt
+		);
 	}
 
 	private Authentication createAuthentication(Long memberId, String authority) {

@@ -4,6 +4,8 @@ import type {
 } from '@/features/post/types/post'
 
 defineProps<{
+  boardSlug: string
+  page: number
   posts: PostSummaryResponse[]
 }>()
 
@@ -62,7 +64,23 @@ function formatDate(value: string): string {
                 비밀
               </span>
 
-            <span>{{ post.title }}</span>
+            <RouterLink
+                :to="{
+                  name: 'post-detail',
+                  params: {
+                    boardSlug,
+                    postId: post.id,
+                  },
+                  query: {
+                    page: page > 1
+                      ? String(page)
+                      : undefined,
+                  },
+                }"
+                class="post-title-link"
+            >
+              {{ post.title }}
+            </RouterLink>
 
             <span
                 v-if="post.commentCount > 0"
@@ -83,6 +101,17 @@ function formatDate(value: string): string {
 </template>
 
 <style scoped>
+.post-title-link {
+  color: #0f172a;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.post-title-link:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
 .post-list__empty {
   margin: 0;
   padding: 3rem 1rem;

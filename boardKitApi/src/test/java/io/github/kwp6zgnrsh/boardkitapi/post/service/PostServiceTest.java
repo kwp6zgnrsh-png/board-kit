@@ -24,12 +24,15 @@ import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.converter.PostConverter;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostDetailResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostPageResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostSummaryResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.InvalidPostRequestException;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostWriteDeniedException;
+import io.github.kwp6zgnrsh.boardkitapi.post.exception.SecretPostAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.Post;
+import io.github.kwp6zgnrsh.boardkitapi.post.model.PostDetail;
 
 @ExtendWith(MockitoExtension.class)
 class PostServiceTest {
@@ -264,6 +267,160 @@ class PostServiceTest {
 		verifyNoMoreInteractions(postMapper);
 	}
 
+	@Test
+	@DisplayName("일반 게시글 상세를 조회하고 조회수를 증가시킨다")
+	void getRegularPostDetailAndIncreaseViewCount() {
+		PostDetail postDetail = postDetail(false, null);
+		PostDetailResponse expected = detailResponse();
+
+		prepareBoard("free", readPolicy("PUBLIC"));
+
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail));
+		when(postMapper.increaseViewCount(1L, 100L))
+			.thenReturn(1);
+		when(postConverter.toDetailResponse(postDetail, 6L))
+			.thenReturn(expected);
+
+		PostDetailResponse response =
+			postService.getPostDetail(
+				"free",
+				100L,
+				null,
+				false,
+				false,
+				null
+			);
+
+		assertEquals(expected, response);
+		verify(postMapper).increaseViewCount(1L, 100L);
+	}
+
+	@Test
+	@DisplayName("비밀번호가 없는 비밀글은 누구나 조회할 수 있다")
+	void allowPasswordlessSecretPostForAnyone() {
+		PostDetail postDetail = postDetail(true, null);
+		PostDetailResponse expected = detailResponse();
+
+		prepareBoard("free", readPolicy("PUBLIC"));
+
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail));
+		when(postMapper.increaseViewCount(1L, 100L))
+			.thenReturn(1);
+		when(postConverter.toDetailResponse(postDetail, 6L))
+			.thenReturn(expected);
+
+		PostDetailResponse response =
+			postService.getPostDetail(
+				"free",
+				100L,
+				null,
+				false,
+				false,
+				null
+			);
+
+		assertEquals(expected, response);
+		verifyNoInteractions(passwordEncoder);
+	}
+
+	@Test
+	@DisplayName("비밀글 비밀번호가 일치하면 게시글을 조회할 수 있다")
+	void allowSecretPostWithCorrectPassword() {
+		PostDetail postDetail = postDetail(true, "encoded-password");
+		PostDetailResponse expected = detailResponse();
+
+		prepareBoard("free", readPolicy("PUBLIC"));
+
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail));
+		when(passwordEncoder.matches(
+			"1234",
+			"encoded-password"
+		)).thenReturn(true);
+		when(postMapper.increaseViewCount(1L, 100L))
+			.thenReturn(1);
+		when(postConverter.toDetailResponse(postDetail, 6L))
+			.thenReturn(expected);
+
+		PostDetailResponse response =
+			postService.getPostDetail(
+				"free",
+				100L,
+				null,
+				false,
+				false,
+				"1234"
+			);
+
+		assertEquals(expected, response);
+		verify(passwordEncoder).matches(
+			"1234",
+			"encoded-password"
+		);
+	}
+
+	@Test
+	@DisplayName("비밀글 비밀번호가 일치하지 않으면 조회할 수 없다")
+	void rejectSecretPostWithWrongPassword() {
+		PostDetail postDetail = postDetail(true, "encoded-password");
+
+		prepareBoard("free", readPolicy("PUBLIC"));
+
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail));
+		when(passwordEncoder.matches(
+			"wrong-password",
+			"encoded-password"
+		)).thenReturn(false);
+
+		assertThrows(
+			SecretPostAccessDeniedException.class,
+			() -> postService.getPostDetail(
+				"free",
+				100L,
+				null,
+				false,
+				false,
+				"wrong-password"
+			)
+		);
+
+		verify(postMapper, never())
+			.increaseViewCount(1L, 100L);
+		verifyNoInteractions(postConverter);
+	}
+
+	@Test
+	@DisplayName("작성자는 비밀번호 없이 자신의 비밀글을 조회할 수 있다")
+	void allowAuthorToReadSecretPostWithoutPassword() {
+		PostDetail postDetail = postDetail(true, "encoded-password");
+		PostDetailResponse expected = detailResponse();
+
+		prepareBoard("free", readPolicy("PUBLIC"));
+
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail));
+		when(postMapper.increaseViewCount(1L, 100L))
+			.thenReturn(1);
+		when(postConverter.toDetailResponse(postDetail, 6L))
+			.thenReturn(expected);
+
+		PostDetailResponse response =
+			postService.getPostDetail(
+				"free",
+				100L,
+				10L,
+				true,
+				false,
+				null
+			);
+
+		assertEquals(expected, response);
+		verifyNoInteractions(passwordEncoder);
+	}
+
 	private BoardPolicy readPolicy(String readPermission) {
 		return BoardPolicy.builder()
 			.readPermission(readPermission)
@@ -312,5 +469,48 @@ class PostServiceTest {
 			.commentsEnabled(true)
 			.imageRequired(false)
 			.build();
+	}
+
+	private PostDetail postDetail(boolean secret, String passwordHash) {
+		LocalDateTime createdAt = LocalDateTime.of(2026, 9, 21, 10, 0);
+
+		return new PostDetail(
+			100L,
+			1L,
+			"게시글 제목",
+			"게시글 본문",
+			10L,
+			"작성자",
+			null,
+			null,
+			secret,
+			passwordHash,
+			false,
+			false,
+			5L,
+			createdAt,
+			createdAt
+		);
+	}
+
+	private PostDetailResponse detailResponse() {
+		LocalDateTime createdAt = LocalDateTime.of(2026, 9, 21, 10, 0);
+
+		return new PostDetailResponse(
+			100L,
+			1L,
+			"게시글 제목",
+			"게시글 본문",
+			10L,
+			"작성자",
+			null,
+			null,
+			false,
+			false,
+			false,
+			6L,
+			createdAt,
+			createdAt
+		);
 	}
 }

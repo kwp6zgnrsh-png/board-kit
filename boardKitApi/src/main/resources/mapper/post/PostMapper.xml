@@ -74,4 +74,38 @@
             AND deleted_at IS NULL
     </select>
 
+    <select id="selectActivePostDetail" resultType="io.github.kwp6zgnrsh.boardkitapi.post.model.PostDetail">
+        SELECT
+            p.id,
+            p.board_id AS boardId,
+            p.title,
+            p.content,
+            p.author_id AS authorId,
+            m.display_name AS authorDisplayName,
+            p.category_id AS categoryId,
+            bc.name AS categoryName,
+            p.is_secret AS secret,
+            p.secret_password_hash AS secretPasswordHash,
+            p.is_pinned AS pinned,
+            p.comments_locked AS commentsLocked,
+            p.view_count AS viewCount,
+            p.created_at AS createdAt,
+            p.updated_at AS updatedAt
+        FROM post p
+            INNER JOIN member m
+                ON m.id = p.author_id
+            LEFT JOIN board_category bc
+                ON bc.id = p.category_id
+        WHERE p.id = #{postId}
+            AND p.board_id = #{boardId}
+            AND p.deleted_at IS NULL
+    </select>
+
+    <update id="increaseViewCount">
+        UPDATE post
+        SET view_count = view_count + 1
+        WHERE id = #{postId}
+            AND board_id = #{boardId}
+            AND deleted_at IS NULL
+    </update>
 </mapper>
