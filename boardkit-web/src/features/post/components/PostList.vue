@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import type {
-  PostSummaryResponse,
-} from '@/features/post/types/post'
+import type { PostSummaryResponse } from '@/features/post/types/post'
 
 defineProps<{
   boardSlug: string
@@ -10,168 +8,91 @@ defineProps<{
 }>()
 
 function formatDate(value: string): string {
-  return value
-      .replace('T', ' ')
-      .slice(0, 16)
+  const date = value.slice(0, 10).split('-')
+
+  if (date.length !== 3) {
+    return value
+  }
+
+  return `${date[1]}-${date[2]}`
 }
 </script>
 
 <template>
-  <div class="post-list">
+  <div>
     <p
-        v-if="posts.length === 0"
-        class="post-list__empty"
+      v-if="posts.length === 0"
+      class="m-4 rounded border-2 border-dashed border-slate-400 bg-slate-50 px-4 py-16 text-center text-sm font-bold text-slate-500"
     >
-      등록된 게시글이 없습니다.
+      아직 등록된 게시글이 없습니다.<br />첫 번째 이야기를 시작해 보세요.
     </p>
 
-    <div v-else class="post-list__table-wrapper">
-      <table class="post-list__table">
+    <div v-else class="overflow-x-auto">
+      <table class="w-full min-w-[760px] border-collapse text-sm">
         <thead>
-        <tr>
-          <th>번호</th>
-          <th>카테고리</th>
-          <th class="post-list__title">제목</th>
-          <th>작성자</th>
-          <th>작성일</th>
-          <th>조회</th>
-        </tr>
+          <tr class="border-y-2 border-slate-950 bg-slate-100 text-slate-950">
+            <th class="w-20 px-3 py-3 text-center font-black">번호</th>
+            <th class="w-28 px-3 py-3 text-center font-black">카테고리</th>
+            <th class="px-3 py-3 text-left font-black">제목</th>
+            <th class="w-28 px-3 py-3 text-center font-black">작성자</th>
+            <th class="w-20 px-3 py-3 text-center font-black">작성일</th>
+            <th class="w-20 px-3 py-3 text-center font-black">조회</th>
+            <th class="w-20 px-3 py-3 text-center font-black">댓글</th>
+          </tr>
         </thead>
 
         <tbody>
-        <tr
+          <tr
             v-for="post in posts"
             :key="post.id"
-        >
-          <td>{{ post.id }}</td>
-
-          <td>
-            {{ post.categoryName ?? '-' }}
-          </td>
-
-          <td class="post-list__title">
-              <span
+            class="group border-b border-slate-300 bg-white transition hover:bg-blue-50"
+          >
+            <td class="px-3 py-3 text-center font-semibold text-slate-600">{{ post.id }}</td>
+            <td class="px-3 py-3 text-center text-xs font-bold text-slate-500">
+              {{ post.categoryName ?? '-' }}
+            </td>
+            <td class="px-3 py-3">
+              <div class="flex min-w-0 items-center gap-2">
+                <span
                   v-if="post.pinned"
-                  class="badge badge--pinned"
-              >
-                고정
+                  class="shrink-0 rounded border-2 border-slate-950 bg-red-500 px-2 py-0.5 text-[10px] font-black text-white shadow-[1px_1px_0_#0f172a]"
+                >
+                  HOT
+                </span>
+                <span
+                  v-if="post.secret"
+                  class="shrink-0 rounded border-2 border-slate-950 bg-violet-400 px-2 py-0.5 text-[10px] font-black text-slate-950"
+                >
+                  LOCK
+                </span>
+                <RouterLink
+                  :to="{
+                    name: 'post-detail',
+                    params: { boardSlug, postId: post.id },
+                    query: {
+                      page: page > 1 ? String(page) : undefined,
+                    },
+                  }"
+                  class="truncate font-bold text-slate-900 no-underline group-hover:text-blue-600 group-hover:underline"
+                >
+                  {{ post.title }}
+                </RouterLink>
+              </div>
+            </td>
+            <td class="px-3 py-3 text-center text-xs font-semibold text-slate-600">{{ post.authorDisplayName }}</td>
+            <td class="px-3 py-3 text-center text-xs text-slate-500">{{ formatDate(post.createdAt) }}</td>
+            <td class="px-3 py-3 text-center text-xs font-semibold text-slate-600">{{ post.viewCount.toLocaleString() }}</td>
+            <td class="px-3 py-3 text-center text-xs font-bold text-slate-600">
+              <span class="inline-flex items-center gap-1">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+                </svg>
+                {{ post.commentCount }}
               </span>
-
-            <span
-                v-if="post.secret"
-                class="badge badge--secret"
-            >
-                비밀
-              </span>
-
-            <RouterLink
-                :to="{
-                  name: 'post-detail',
-                  params: {
-                    boardSlug,
-                    postId: post.id,
-                  },
-                  query: {
-                    page: page > 1
-                      ? String(page)
-                      : undefined,
-                  },
-                }"
-                class="post-title-link"
-            >
-              {{ post.title }}
-            </RouterLink>
-
-            <span
-                v-if="post.commentCount > 0"
-                class="comment-count"
-            >
-                [{{ post.commentCount }}]
-              </span>
-          </td>
-
-          <td>{{ post.authorDisplayName }}</td>
-          <td>{{ formatDate(post.createdAt) }}</td>
-          <td>{{ post.viewCount }}</td>
-        </tr>
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
   </div>
 </template>
-
-<style scoped>
-.post-title-link {
-  color: #0f172a;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.post-title-link:hover {
-  color: #2563eb;
-  text-decoration: underline;
-}
-
-.post-list__empty {
-  margin: 0;
-  padding: 3rem 1rem;
-  color: #64748b;
-  text-align: center;
-}
-
-.post-list__table-wrapper {
-  overflow-x: auto;
-}
-
-.post-list__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-.post-list__table th,
-.post-list__table td {
-  padding: 0.85rem 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
-  color: #475569;
-  text-align: center;
-  white-space: nowrap;
-}
-
-.post-list__table th {
-  color: #334155;
-  background: #f8fafc;
-  font-weight: 700;
-}
-
-.post-list__table .post-list__title {
-  width: 100%;
-  text-align: left;
-  white-space: normal;
-}
-
-.badge {
-  display: inline-block;
-  margin-right: 0.35rem;
-  padding: 0.15rem 0.4rem;
-  border-radius: 0.35rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-}
-
-.badge--pinned {
-  color: #1d4ed8;
-  background: #dbeafe;
-}
-
-.badge--secret {
-  color: #7c3aed;
-  background: #ede9fe;
-}
-
-.comment-count {
-  margin-left: 0.3rem;
-  color: #2563eb;
-  font-size: 0.8rem;
-}
-</style>

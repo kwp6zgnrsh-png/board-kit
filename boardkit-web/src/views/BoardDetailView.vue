@@ -7,44 +7,36 @@ import { ApiError } from '@/api/http'
 import { getPosts } from '@/api/postApi'
 import BasePagination from '@/components/ui/BasePagination.vue'
 import { getAuthSession } from '@/features/auth/services/authSession'
-import BoardCategoryList from '@/features/board/components/BoardCategoryList.vue'
-import BoardHeader from '@/features/board/components/BoardHeader.vue'
-import type {
-  BoardDetailResponse,
-} from '@/features/board/types/board'
+import BoardHero from '@/features/board/components/BoardHero.vue'
+import BoardPolicyPanel from '@/features/board/components/BoardPolicyPanel.vue'
+import type { BoardDetailResponse } from '@/features/board/types/board'
 import PostList from '@/features/post/components/PostList.vue'
-import type {
-  PostPageResponse,
-} from '@/features/post/types/post'
+import type { PostPageResponse } from '@/features/post/types/post'
 
 const route = useRoute()
 const router = useRouter()
 
 const board = ref<BoardDetailResponse | null>(null)
 const postPage = ref<PostPageResponse | null>(null)
-
 const boardLoading = ref(false)
 const postsLoading = ref(false)
-
 const boardErrorMessage = ref('')
 const postsErrorMessage = ref('')
-
 const session = getAuthSession()
 
 const boardSlug = computed(
-    () => String(route.params.boardSlug ?? ''),
+  () => String(route.params.boardSlug ?? ''),
 )
 
 const requestedPage = computed(() => {
   const queryValue = Array.isArray(route.query.page)
-      ? route.query.page[0]
-      : route.query.page
-
+    ? route.query.page[0]
+    : route.query.page
   const parsedPage = Number(queryValue)
 
   return Number.isInteger(parsedPage) && parsedPage > 0
-      ? parsedPage
-      : 1
+    ? parsedPage
+    : 1
 })
 
 const canWrite = computed(() => {
@@ -53,8 +45,8 @@ const canWrite = computed(() => {
   }
 
   return (
-      board.value.policy.writePermission === 'MEMBER' ||
-      session.role === 'ADMIN'
+    board.value.policy.writePermission === 'MEMBER' ||
+    session.role === 'ADMIN'
   )
 })
 
@@ -75,21 +67,17 @@ async function loadBoard(slug: string) {
       board.value = response
     }
   } catch (error) {
-    if (currentRequest !== boardRequestSequence) {
-      return
-    }
+    if (currentRequest !== boardRequestSequence) return
 
     if (error instanceof ApiError && error.status === 404) {
-      boardErrorMessage.value =
-          '게시판을 찾을 수 없습니다.'
+      boardErrorMessage.value = '게시판을 찾을 수 없습니다.'
     } else if (error instanceof ApiError && error.status === 403) {
-      boardErrorMessage.value =
-          '게시판을 조회할 권한이 없습니다.'
+      boardErrorMessage.value = '게시판을 조회할 권한이 없습니다.'
     } else {
       boardErrorMessage.value =
-          error instanceof Error
-              ? error.message
-              : '게시판을 불러오지 못했습니다.'
+        error instanceof Error
+          ? error.message
+          : '게시판을 불러오지 못했습니다.'
     }
   } finally {
     if (currentRequest === boardRequestSequence) {
@@ -98,10 +86,7 @@ async function loadBoard(slug: string) {
   }
 }
 
-async function loadPosts(
-    slug: string,
-    page: number,
-) {
+async function loadPosts(slug: string, page: number) {
   const currentRequest = ++postsRequestSequence
 
   postsLoading.value = true
@@ -111,46 +96,38 @@ async function loadPosts(
   try {
     const response = await getPosts(slug, page, 10)
 
-    if (currentRequest !== postsRequestSequence) {
-      return
-    }
+    if (currentRequest !== postsRequestSequence) return
 
     const normalizedPage =
-        response.totalPages === 0
-            ? 1
-            : Math.min(page, response.totalPages)
+      response.totalPages === 0
+        ? 1
+        : Math.min(page, response.totalPages)
 
     if (page !== normalizedPage) {
       await router.replace({
         name: 'board-detail',
-        params: {
-          boardSlug: slug,
-        },
+        params: { boardSlug: slug },
         query: {
           ...route.query,
           page: String(normalizedPage),
         },
       })
-
       return
     }
 
     postPage.value = response
   } catch (error) {
-    if (currentRequest !== postsRequestSequence) {
-      return
-    }
+    if (currentRequest !== postsRequestSequence) return
 
     if (error instanceof ApiError && error.status === 404) {
-      postsErrorMessage.value =
-          '게시판을 찾을 수 없습니다.'
+      postsErrorMessage.value = '게시판을 찾을 수 없습니다.'
     } else if (error instanceof ApiError && error.status === 403) {
       postsErrorMessage.value = '게시글 목록을 조회할 권한이 없습니다.'
     } else {
       postsErrorMessage.value =
-          error instanceof Error
-              ? error.message
-              : '게시글 목록을 불러오지 못했습니다.'
+        error instanceof Error
+          ? error.message
+          : '게시글 목록을 불러오지 못했습니다.'
     }
   } finally {
     if (currentRequest === postsRequestSequence) {
@@ -162,9 +139,7 @@ async function loadPosts(
 function changePage(page: number) {
   router.push({
     name: 'board-detail',
-    params: {
-      boardSlug: boardSlug.value,
-    },
+    params: { boardSlug: boardSlug.value },
     query: {
       ...route.query,
       page: String(page),
@@ -172,168 +147,92 @@ function changePage(page: number) {
   })
 }
 
-watch(boardSlug, loadBoard, {
-  immediate: true,
-})
+watch(boardSlug, loadBoard, { immediate: true })
 
 watch(
-    [boardSlug, requestedPage],
-    ([slug, page]) => loadPosts(slug, page),
-    {
-      immediate: true,
-    },
+  [boardSlug, requestedPage],
+  ([slug, page]) => loadPosts(slug, page),
+  { immediate: true },
 )
 </script>
 
 <template>
-  <div class="board-page">
-    <p v-if="boardLoading" class="state-message">
+  <div class="grid gap-5 lg:gap-6">
+    <div
+      v-if="boardLoading"
+      class="rounded-lg border-[3px] border-slate-950 bg-white px-5 py-16 text-center font-black text-slate-600"
+    >
       게시판을 불러오는 중입니다.
-    </p>
+    </div>
 
-    <p
-        v-else-if="boardErrorMessage"
-        class="state-message state-message--error"
-        role="alert"
+    <div
+      v-else-if="boardErrorMessage"
+      class="rounded-lg border-[3px] border-red-950 bg-red-100 px-5 py-12 text-center font-black text-red-900"
+      role="alert"
     >
       {{ boardErrorMessage }}
-    </p>
+    </div>
 
     <template v-else-if="board">
-      <BoardHeader
-          :name="board.name"
-          :description="board.description"
+      <BoardHero
+        :name="board.name"
+        :slug="board.slug"
+        :description="board.description"
       />
 
-      <BoardCategoryList
-          v-if="board.policy.categoriesEnabled"
-          :categories="board.categories"
-      />
+      <div class="grid items-start gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <BoardPolicyPanel :board="board" />
 
-      <section class="post-area">
-        <div class="post-area__header">
-          <div>
-            <h2>게시글</h2>
+        <section class="min-w-0 overflow-hidden rounded-lg border-[3px] border-slate-950 bg-white">
+          <header class="flex flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-5">
+            <div class="flex items-baseline gap-2">
+              <span class="text-sm font-black text-slate-950">전체</span>
+              <strong v-if="postPage" class="text-xl font-black text-blue-600">
+                {{ postPage.totalElements.toLocaleString() }}
+              </strong>
+              <span class="text-sm font-black text-slate-950">개의 글</span>
+            </div>
 
-            <span
-                v-if="postPage"
-                class="post-count"
-            >
-              총 {{ postPage.totalElements }}개
-            </span>
-          </div>
-
-          <RouterLink
+            <RouterLink
               v-if="canWrite"
               :to="{
-              name: 'post-create',
-              params: {
-                boardSlug: board.slug,
-              },
-            }"
-              class="write-link"
-          >
-            글쓰기
-          </RouterLink>
-        </div>
+                name: 'post-create',
+                params: { boardSlug: board.slug },
+              }"
+              class="inline-flex items-center gap-2 rounded border-[3px] border-slate-950 bg-blue-500 px-4 py-2.5 text-sm font-black text-white no-underline shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5 hover:bg-blue-600"
+            >
+              <span aria-hidden="true">✎</span>
+              글쓰기
+            </RouterLink>
+          </header>
 
-        <p
-            v-if="postsLoading"
-            class="state-message"
-        >
-          게시글을 불러오는 중입니다.
-        </p>
+          <p v-if="postsLoading" class="m-4 rounded bg-slate-100 px-4 py-14 text-center text-sm font-bold text-slate-500">
+            게시글을 불러오는 중입니다.
+          </p>
 
-        <p
+          <p
             v-else-if="postsErrorMessage"
-            class="state-message state-message--error"
+            class="m-4 rounded bg-red-100 px-4 py-12 text-center text-sm font-black text-red-900"
             role="alert"
-        >
-          {{ postsErrorMessage }}
-        </p>
+          >
+            {{ postsErrorMessage }}
+          </p>
 
-        <template v-else-if="postPage">
-          <PostList
+          <template v-else-if="postPage">
+            <PostList
               :board-slug="board.slug"
               :page="postPage.page"
               :posts="postPage.posts"
-          />
+            />
 
-          <BasePagination
+            <BasePagination
               :page="postPage.page"
               :total-pages="postPage.totalPages"
               @change="changePage"
-          />
-        </template>
-      </section>
+            />
+          </template>
+        </section>
+      </div>
     </template>
   </div>
 </template>
-
-<style scoped>
-.board-page {
-  display: grid;
-  gap: 1.5rem;
-}
-
-.state-message {
-  margin: 0;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  color: #475569;
-  background: #f1f5f9;
-}
-
-.state-message--error {
-  color: #991b1b;
-  background: #fee2e2;
-}
-
-.post-area {
-  display: grid;
-  gap: 1.5rem;
-  min-height: 16rem;
-  padding: 1.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 1rem;
-  background: #fff;
-}
-
-.post-area__header {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.post-area__header > div {
-  display: flex;
-  gap: 0.65rem;
-  align-items: baseline;
-}
-
-.post-area h2 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 1.1rem;
-}
-
-.post-count {
-  color: #64748b;
-  font-size: 0.8rem;
-}
-
-.write-link {
-  padding: 0.65rem 1rem;
-  border-radius: 0.65rem;
-  color: #fff;
-  background: #2563eb;
-  font-size: 0.875rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.write-link:hover {
-  background: #1d4ed8;
-}
-</style>

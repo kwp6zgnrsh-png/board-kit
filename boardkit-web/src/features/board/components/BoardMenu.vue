@@ -44,8 +44,11 @@ watch(
 </script>
 
 <template>
-  <nav class="board-menu" aria-label="게시판 메뉴">
-    <span v-if="loading" class="board-menu__state">
+  <nav
+    class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    aria-label="게시판 메뉴"
+  >
+    <span v-if="loading" class="px-3 text-xs font-bold text-slate-400">
       불러오는 중
     </span>
 
@@ -59,43 +62,14 @@ watch(
           boardSlug: board.slug,
         },
       }"
-        class="board-menu__link"
+        class="shrink-0 rounded border-2 border-slate-950 px-3 py-2 text-xs font-black no-underline shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5"
+        :class="
+          route.params.boardSlug === board.slug
+            ? 'bg-blue-500 text-white'
+            : 'bg-white text-slate-950 hover:bg-yellow-200'
+        "
     >
       {{ board.name }}
     </RouterLink>
   </nav>
 </template>
-
-<style scoped>
-.board-menu {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  align-items: center;
-  margin-left: auto;
-}
-
-.board-menu__link {
-  padding: 0.45rem 0.7rem;
-  border-radius: 0.5rem;
-  color: #475569;
-  font-size: 0.875rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.board-menu__link:hover {
-  color: #1d4ed8;
-  background: #eff6ff;
-}
-
-.board-menu__link.router-link-active {
-  color: #fff;
-  background: #2563eb;
-}
-
-.board-menu__state {
-  color: #94a3b8;
-  font-size: 0.8rem;
-}
-</style>
