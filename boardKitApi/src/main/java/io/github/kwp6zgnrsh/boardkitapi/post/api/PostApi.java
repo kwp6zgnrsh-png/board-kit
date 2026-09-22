@@ -66,7 +66,7 @@ public class PostApi {
 
 	@GetMapping
 	public PostPageResponse getPosts(@PathVariable String boardSlug, @RequestParam(defaultValue = "1")
-									 @Min(1) int page, @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size,
+									 @Min(1) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
 									 Authentication authentication) {
 		boolean adminAccess = hasAuthority(authentication, "ROLE_ADMIN");
 

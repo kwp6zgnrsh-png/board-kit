@@ -6,13 +6,15 @@ import LoginView from '@/views/LoginView.vue'
 import BoardDetailView from '@/views/BoardDetailView.vue'
 import PostCreateView from '@/views/PostCreateView.vue'
 import PostDetailView from '@/views/PostDetailView.vue'
+import HomeView from '@/views/HomeView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      redirect: '/admin/boards/new',
+      name: 'home',
+      component: HomeView,
     },
     {
       path: '/login',

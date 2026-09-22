@@ -76,3 +76,25 @@ npm run build
 - `vite build` 통과
 - `http://localhost:5173/boards/free`에서 게시판 정책과 실제 게시글 2개가 표시되는 것을 브라우저로 확인
 - Git diff whitespace 검사 통과
+
+## 홈 화면 추가
+
+- `src/views/HomeView.vue`
+  - `/` 기본 경로에서 접근 가능한 게시판과 각 게시판의 최신 글 10개를 불러온다.
+  - 여러 게시판의 응답을 합쳐 가장 최근 글 5개를 상단 새 글 영역에 표시한다.
+  - 일부 게시판의 글 요청이 실패해도 성공한 게시판 카드는 계속 표시한다.
+- `src/features/home/components/HomeHero.vue`
+  - 참고 시안의 환영 배너와 CSS 도형 장식을 구현했다.
+  - 게시판 카드가 더 빨리 보이도록 배너와 최신 글 영역을 초기 시안 세로폭의 약 50%로 줄였다.
+- `src/features/home/components/HomeRecentPanel.vue`
+  - 실제 게시글 작성 시간을 기준으로 최신 글을 보여준다.
+- `src/features/home/components/HomeBoardCard.vue`
+  - 게시판 정보와 최신 글을 공통 카드로 표시하며 게시판 slug에 따라 색상을 정한다.
+- `src/features/home/types/home.ts`
+  - 홈 게시판 미리보기와 최신 글 항목 타입을 정의했다.
+- `src/router/index.ts`
+  - `/`의 기본 화면을 `HomeView`로 변경했다.
+- `src/App.vue`
+  - BOARDKIT 로고와 로그아웃 후 이동 경로를 홈으로 연결했다.
+
+현재 홈 화면은 기존 API만 사용하므로 접근 가능한 게시판마다 게시글 목록을 한 번씩 요청한다. 게시판 수가 크게 늘어나는 시점에는 홈 전용 요약 API로 합치는 것을 검토한다.

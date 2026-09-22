@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { RouterLink, RouterView, useRoute } from 'vue-router'
-
+import { RouterLink, RouterView, useRoute,  useRouter} from 'vue-router'
 import BoardMenu from '@/features/board/components/BoardMenu.vue'
-import {
-  getAuthSession,
-} from '@/features/auth/services/authSession'
+import { getAuthSession, clearAuthSession } from '@/features/auth/services/authSession'
 
 const route = useRoute()
+const router = useRouter()
+
 const session = ref(getAuthSession())
+
+async function logout() {
+  clearAuthSession()
+  session.value = null
+
+  await router.replace({ name: 'home',})
+}
 
 watch(
   () => route.fullPath,
@@ -21,14 +27,17 @@ watch(
 <template>
   <header class="sticky top-0 z-40 border-b-[3px] border-slate-950 bg-white/95 backdrop-blur">
     <div class="mx-auto flex min-h-20 w-full max-w-[1500px] items-center gap-4 px-4 py-3 lg:px-6">
-      <div class="shrink-0 rotate-[-1deg] rounded border-[3px] border-slate-950 bg-yellow-300 px-4 py-2 shadow-[2px_2px_0_#0f172a]">
+      <RouterLink
+        :to="{ name: 'home' }"
+        class="shrink-0 rotate-[-1deg] rounded border-[3px] border-slate-950 bg-yellow-300 px-4 py-2 text-slate-950 no-underline shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5"
+      >
         <strong class="font-display block text-xl leading-none text-slate-950 sm:text-2xl">
           BOARDKIT
         </strong>
         <span class="mt-1 block text-[9px] font-black tracking-[0.18em] text-slate-800">
           PEOPLE · IDEAS · TOGETHER
         </span>
-      </div>
+      </RouterLink>
 
       <BoardMenu />
 
@@ -36,17 +45,26 @@ watch(
         <RouterLink
           v-if="session?.role === 'ADMIN'"
           :to="{ name: 'admin-board-create' }"
-          class="hidden rounded border-2 border-slate-950 bg-white px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5 sm:block"
+          class="hidden h-9 min-w-20 items-center justify-center rounded border-2 border-slate-950 bg-white px-3 text-xs font-black leading-none text-slate-950 shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5 sm:inline-flex"
         >
           + 게시판
         </RouterLink>
 
         <span
           v-if="session"
-          class="rounded border-2 border-slate-950 bg-pink-300 px-3 py-2 text-xs font-black text-slate-950"
+          class="inline-flex h-9 min-w-20 items-center justify-center rounded border-2 border-slate-950 bg-pink-300 px-3 text-xs font-black leading-none text-slate-950"
         >
           {{ session.displayName }}
         </span>
+
+        <button
+            v-if="session"
+            type="button"
+            class="inline-flex h-9 min-w-20 items-center justify-center rounded border-2 border-slate-950 bg-white px-3 text-xs font-black leading-none text-slate-950 shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5"
+            @click="logout"
+        >
+          로그아웃
+        </button>
 
         <RouterLink
           v-else
