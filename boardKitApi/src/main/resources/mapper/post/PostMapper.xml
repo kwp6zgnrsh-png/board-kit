@@ -89,6 +89,7 @@
             p.is_pinned AS pinned,
             p.comments_locked AS commentsLocked,
             p.view_count AS viewCount,
+            p.version,
             p.created_at AS createdAt,
             p.updated_at AS updatedAt
         FROM post p
@@ -106,6 +107,33 @@
         SET view_count = view_count + 1
         WHERE id = #{postId}
             AND board_id = #{boardId}
+            AND deleted_at IS NULL
+    </update>
+
+    <update id="updatePost">
+        UPDATE post
+        SET category_id = #{categoryId},
+            title = #{title},
+            content = #{content},
+            is_secret = #{isSecret},
+            secret_password_hash = #{secretPasswordHash},
+            comments_locked = #{commentsLocked},
+            version = version + 1,
+            updated_at = CURRENT_TIMESTAMP(6)
+        WHERE id = #{id}
+            AND board_id = #{boardId}
+            AND author_id = #{authorId}
+            AND version = #{version}
+            AND deleted_at IS NULL
+    </update>
+
+    <update id="softDeletePost">
+        UPDATE post
+        SET deleted_at = CURRENT_TIMESTAMP(6),
+            version = version + 1
+        WHERE id = #{postId}
+            AND board_id = #{boardId}
+            AND version = #{version}
             AND deleted_at IS NULL
     </update>
 </mapper>

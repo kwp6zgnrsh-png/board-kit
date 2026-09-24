@@ -31,6 +31,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostUpdateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostDetailResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostPageResponse;
@@ -52,6 +53,19 @@ class PostApiTest {
           "commentsLocked": false
         }
         """;
+
+	private static final String VALID_UPDATE_REQUEST = """
+    {
+      "title": "수정 제목",
+      "content": "수정 본문",
+      "categoryId": null,
+      "isSecret": false,
+      "secretPassword": null,
+      "clearSecretPassword": false,
+      "commentsLocked": false,
+      "version": 0
+    }
+    """;
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -311,7 +325,8 @@ class PostApiTest {
 			.andExpect(jsonPath("$.title").value("게시글 제목"))
 			.andExpect(jsonPath("$.content").value("게시글 본문"))
 			.andExpect(jsonPath("$.authorDisplayName").value("작성자"))
-			.andExpect(jsonPath("$.viewCount").value(6));
+			.andExpect(jsonPath("$.viewCount").value(6))
+			.andExpect(jsonPath("$.version").value(0));
 
 		verify(postService).getPostDetail(
 			"free",
@@ -391,9 +406,82 @@ class PostApiTest {
 			false,
 			false,
 			6L,
+			0,
 			createdAt,
 			createdAt
 		);
+	}
+
+	@Test
+	@DisplayName("로그인한 작성자의 게시글 수정 요청은 204를 반환한다")
+	void updatePostWithMemberAuthentication() throws Exception {
+		mockMvc.perform(patch("/api/boards/free/posts/100")
+				.with(authentication(
+					createAuthentication(10L, "ROLE_MEMBER")
+				))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(VALID_UPDATE_REQUEST))
+			.andExpect(status().isNoContent());
+
+		verify(postService).updatePost(
+			eq("free"),
+			eq(100L),
+			any(PostUpdateRequest.class),
+			eq(10L),
+			eq(false)
+		);
+	}
+
+	@Test
+	@DisplayName("잘못된 게시글 수정 요청은 서비스 호출 전에 거절한다")
+	void rejectInvalidPostUpdateRequest() throws Exception {
+		String invalidRequest = VALID_UPDATE_REQUEST.replace("수정 제목", "");
+
+		mockMvc.perform(patch("/api/boards/free/posts/100")
+				.with(authentication(
+					createAuthentication(10L, "ROLE_MEMBER")
+				))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(invalidRequest))
+			.andExpect(status().isBadRequest());
+
+		verifyNoInteractions(postService);
+	}
+
+	@Test
+	@DisplayName("비로그인 사용자는 게시글을 수정할 수 없다")
+	void rejectPostUpdateWithoutAuthentication() throws Exception {
+		mockMvc.perform(patch("/api/boards/free/posts/100")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(VALID_UPDATE_REQUEST))
+			.andExpect(status().isUnauthorized());
+
+		verifyNoInteractions(postService);
+	}
+
+	@Test
+	@DisplayName("관리자의 게시글 삭제 요청은 204를 반환한다")
+	void deletePostWithAdminAuthentication() throws Exception {
+		mockMvc.perform(delete("/api/boards/free/posts/100")
+				.param("version", "0")
+				.with(authentication(
+					createAuthentication(1L, "ROLE_ADMIN")
+				)))
+			.andExpect(status().isNoContent());
+
+		verify(postService).deletePost(
+			"free", 100L, 0, 1L, true
+		);
+	}
+
+	@Test
+	@DisplayName("비로그인 사용자는 게시글을 삭제할 수 없다")
+	void rejectPostDeletionWithoutAuthentication() throws Exception {
+		mockMvc.perform(delete("/api/boards/free/posts/100")
+				.param("version", "0"))
+			.andExpect(status().isUnauthorized());
+
+		verifyNoInteractions(postService);
 	}
 
 	private Authentication createAuthentication(Long memberId, String authority) {

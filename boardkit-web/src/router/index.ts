@@ -8,6 +8,7 @@ import PostCreateView from '@/views/PostCreateView.vue'
 import PostDetailView from '@/views/PostDetailView.vue'
 import HomeView from '@/views/HomeView.vue'
 import MemberCreateView from '@/views/MemberCreateView.vue'
+import PostEditView from '@/views/PostEditView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -53,6 +54,12 @@ const router = createRouter({
       path: '/signup',
       name: 'member-create',
       component: MemberCreateView,
+    },
+    {
+      path: '/boards/:boardSlug/posts/:postId/edit',
+      name: 'post-edit',
+      component: PostEditView,
+      meta: { requiresAuth: true },
     },
   ],
 })

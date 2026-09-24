@@ -16,6 +16,7 @@ public record PostDetail(
 	boolean pinned,
 	boolean commentsLocked,
 	long viewCount,
+	Integer version,
 	LocalDateTime createdAt,
 	LocalDateTime updatedAt
 ) {

@@ -34,4 +34,12 @@ public interface PostMapper {
 		@Param("boardId") Long boardId,
 		@Param("postId") Long postId
 	);
+
+	int updatePost(Post post);
+
+	int softDeletePost(
+		@Param("boardId") Long boardId,
+		@Param("postId") Long postId,
+		@Param("version") Integer version
+	);
 }

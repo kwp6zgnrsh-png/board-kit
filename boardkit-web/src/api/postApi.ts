@@ -4,6 +4,7 @@ import type {
     PostCreateResponse,
     PostDetailResponse,
     PostPageResponse,
+    PostUpdateRequest,
 } from '@/features/post/types/post'
 
 export function createPost(
@@ -52,6 +53,37 @@ export function getPostDetail(
         `/api/boards/${encodeURIComponent(boardSlug)}/posts/${postId}`,
         {
             headers,
+        },
+    )
+}
+
+export function updatePost(
+    boardSlug: string,
+    postId: number,
+    request: PostUpdateRequest,
+): Promise<void> {
+    return apiRequest<void>(
+        `/api/boards/${encodeURIComponent(boardSlug)}/posts/${postId}`,
+        {
+            method: 'PATCH',
+            body: JSON.stringify(request),
+        },
+    )
+}
+
+export function deletePost(
+    boardSlug: string,
+    postId: number,
+    version: number,
+): Promise<void> {
+    const params = new URLSearchParams({
+        version: String(version),
+    })
+
+    return apiRequest<void>(
+        `/api/boards/${encodeURIComponent(boardSlug)}/posts/${postId}?${params}`,
+        {
+            method: 'DELETE',
         },
     )
 }

@@ -46,6 +46,18 @@ export interface PostDetailResponse {
     pinned: boolean
     commentsLocked: boolean
     viewCount: number
+    version: number
     createdAt: string
     updatedAt: string
+}
+
+export interface PostUpdateRequest {
+    title: string
+    content: string
+    categoryId: number | null
+    isSecret: boolean
+    secretPassword: string | null
+    clearSecretPassword: boolean
+    commentsLocked: boolean
+    version: number
 }

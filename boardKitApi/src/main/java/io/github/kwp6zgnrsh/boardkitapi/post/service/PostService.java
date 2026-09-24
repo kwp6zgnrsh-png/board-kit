@@ -19,11 +19,15 @@ import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberUnavailableExcept
 import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.converter.PostConverter;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostUpdateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostDetailResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostPageResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostSummaryResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.InvalidPostRequestException;
+import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostConflictException;
+import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostDeleteDeniedException;
+import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostEditDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostWriteDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.SecretPostAccessDeniedException;
@@ -36,6 +40,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -196,6 +201,116 @@ public class PostService {
 		);
 	}
 
+	@Transactional
+	public void updatePost(@NotBlank String boardSlug,
+						   @NotNull @Positive Long postId,
+						   @NotNull @Valid PostUpdateRequest request,
+						   @NotNull @Positive Long memberId,
+						   boolean adminAccess) {
+
+		validateMember(memberId);
+
+		Board board = boardMapper
+			.selectActiveBoardBySlug(boardSlug)
+			.orElseThrow(BoardNotFoundException::new);
+
+		BoardPolicy policy = boardMapper
+			.selectPolicyByBoardId(board.getId())
+			.orElseThrow(() -> new IllegalStateException(
+				"게시판 정책을 찾을 수 없습니다. boardId=" + board.getId()
+			));
+
+		validateWritePermission(policy, adminAccess);
+
+		PostDetail currentPost = postMapper
+			.selectActivePostDetail(board.getId(), postId)
+			.orElseThrow(PostNotFoundException::new);
+
+		if (!Objects.equals(currentPost.authorId(), memberId)) {
+			throw new PostEditDeniedException();
+		}
+
+		validateVersion(currentPost.version(), request.version());
+		validateCategory(board.getId(), policy, request.categoryId());
+		validateCommentsLock(policy, request.commentsLocked());
+
+		String newSecretPassword =
+			normalizeSecretPassword(request.secretPassword());
+
+		if (request.clearSecretPassword() && newSecretPassword != null) {
+			throw new InvalidPostRequestException("비밀글 비밀번호 변경과 삭제를 동시에 요청할 수 없습니다.");
+		}
+
+		boolean retainingExistingSecret =
+			"OFF".equals(policy.getSecretMode())
+				&& currentPost.secret()
+				&& request.isSecret();
+
+		if (!retainingExistingSecret) {
+			validateSecretPolicy(
+				policy.getSecretMode(),
+				request.isSecret(),
+				newSecretPassword
+			);
+		}
+
+		String secretPasswordHash = resolveSecretPasswordHash(
+			currentPost,
+			request,
+			newSecretPassword
+		);
+
+		Post post = postConverter.toUpdatedPost(
+			request,
+			postId,
+			board.getId(),
+			memberId,
+			secretPasswordHash
+		);
+
+		int updatedCount = postMapper.updatePost(post);
+
+		if (updatedCount != 1) {
+			throw new PostConflictException();
+		}
+	}
+
+	@Transactional
+	public void deletePost(@NotBlank String boardSlug,
+						   @NotNull @Positive Long postId,
+						   @NotNull @PositiveOrZero Integer version,
+						   @NotNull @Positive Long memberId,
+						   boolean adminAccess) {
+
+		validateActiveMember(memberId);
+
+		Board board = boardMapper
+			.selectActiveBoardBySlug(boardSlug)
+			.orElseThrow(BoardNotFoundException::new);
+
+		PostDetail currentPost = postMapper
+			.selectActivePostDetail(board.getId(), postId)
+			.orElseThrow(PostNotFoundException::new);
+
+		boolean author = Objects.equals(currentPost.authorId(), memberId);
+
+		if (!author && !adminAccess) {
+			throw new PostDeleteDeniedException();
+		}
+
+		validateVersion(currentPost.version(), version);
+
+		int deletedCount = postMapper.softDeletePost(
+			board.getId(),
+			postId,
+			version
+		);
+
+		if (deletedCount != 1) {
+			throw new PostConflictException();
+		}
+	}
+
 	private void validateSecretPostAccess(PostDetail postDetail, Long memberId, boolean adminAccess, String secretPassword) {
 		if (!postDetail.secret() || postDetail.secretPasswordHash() == null) {
 			return;
@@ -231,9 +346,7 @@ public class PostService {
 	}
 
 	private void validateMember(Long memberId) {
-		if (!memberMapper.existsActiveMemberById(memberId)) {
-			throw new MemberUnavailableException();
-		}
+		validateActiveMember(memberId);
 
 		if (memberMapper.existsActiveSanctionByMemberId(memberId)) {
 			throw new MemberSanctionedException();
@@ -350,5 +463,32 @@ public class PostService {
 		}
 
 		return passwordEncoder.encode(password);
+	}
+
+	private void validateVersion(Integer currentVersion, Integer requestVersion) {
+		if (!Objects.equals(currentVersion, requestVersion)) {
+			throw new PostConflictException();
+		}
+	}
+
+	private String resolveSecretPasswordHash(PostDetail currentPost,
+											 PostUpdateRequest request,
+											 String newSecretPassword) {
+
+		if (!request.isSecret() || request.clearSecretPassword()) {
+			return null;
+		}
+
+		if (newSecretPassword == null) {
+			return currentPost.secretPasswordHash();
+		}
+
+		return encodeSecretPassword(newSecretPassword);
+	}
+
+	private void validateActiveMember(Long memberId) {
+		if (!memberMapper.existsActiveMemberById(memberId)) {
+			throw new MemberUnavailableException();
+		}
 	}
 }

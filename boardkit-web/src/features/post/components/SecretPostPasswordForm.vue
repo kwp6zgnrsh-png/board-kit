@@ -37,12 +37,12 @@ function submit() {
 
 <template>
   <form
-      class="password-form"
+      class="grid w-full max-w-120 gap-5 rounded-lg border-[3px] border-slate-950 bg-white p-5 shadow-[2px_3px_0_#0f172a] sm:p-8 [&_.field\_\_label]:font-black! [&_.field\_\_label]:text-slate-950! [&_.field\_\_control]:rounded-sm! [&_.field\_\_control]:border-2! [&_.field\_\_control]:border-slate-950! [&_.field\_\_control:focus]:border-blue-600!"
       @submit.prevent="submit"
   >
     <div>
-      <h2>비밀글입니다</h2>
-      <p>게시글 비밀번호를 입력하세요.</p>
+      <h2 class="m-0 text-2xl font-black text-slate-950">비밀글입니다</h2>
+      <p class="mt-2 mb-0 text-slate-600">게시글 비밀번호를 입력하세요.</p>
     </div>
 
     <BaseInput
@@ -55,7 +55,7 @@ function submit() {
 
     <p
         v-if="validationMessage || errorMessage"
-        class="error-message"
+        class="m-0 rounded border-2 border-red-900 bg-rose-50 px-4 py-3 font-bold text-red-900"
         role="alert"
     >
       {{ validationMessage || errorMessage }}
@@ -63,39 +63,10 @@ function submit() {
 
     <BaseButton
         type="submit"
+        class="rounded! border-2! border-slate-950! bg-blue-500! font-black! shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5 hover:bg-blue-600!"
         :disabled="submitting"
     >
       {{ submitting ? '확인 중...' : '게시글 열기' }}
     </BaseButton>
   </form>
 </template>
-
-<style scoped>
-.password-form {
-  display: grid;
-  gap: 1rem;
-  width: min(420px, 100%);
-  padding: 1.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 1rem;
-  background: #fff;
-}
-
-.password-form h2,
-.password-form p {
-  margin: 0;
-}
-
-.password-form h2 {
-  color: #0f172a;
-}
-
-.password-form > div p {
-  margin-top: 0.4rem;
-  color: #64748b;
-}
-
-.error-message {
-  color: #dc2626;
-}
-</style>

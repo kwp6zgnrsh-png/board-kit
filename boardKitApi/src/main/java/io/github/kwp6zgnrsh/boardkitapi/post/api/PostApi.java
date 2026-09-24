@@ -8,7 +8,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostUpdateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostDetailResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostPageResponse;
@@ -28,6 +31,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -43,19 +47,13 @@ public class PostApi {
 														 @AuthenticationPrincipal LoginMember loginMember,
 														 Authentication authentication) {
 
-		if (loginMember == null || loginMember.id() == null) {
-			throw new ResponseStatusException(
-				HttpStatus.UNAUTHORIZED,
-				"로그인이 필요합니다."
-			);
-		}
-
+		Long memberId = requireMemberId(loginMember);
 		boolean adminAccess = hasAuthority(authentication, "ROLE_ADMIN");
 
 		PostCreateResponse response = postService.createPost(
 			boardSlug,
 			request,
-			loginMember.id(),
+			memberId,
 			adminAccess
 		);
 
@@ -66,7 +64,7 @@ public class PostApi {
 
 	@GetMapping
 	public PostPageResponse getPosts(@PathVariable String boardSlug, @RequestParam(defaultValue = "1")
-									 @Min(1) int page, @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+									 @Min(1) int page, @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size,
 									 Authentication authentication) {
 		boolean adminAccess = hasAuthority(authentication, "ROLE_ADMIN");
 
@@ -107,6 +105,56 @@ public class PostApi {
 		return ResponseEntity.ok()
 			.cacheControl(CacheControl.noStore())
 			.body(response);
+	}
+
+	@PatchMapping("/{postId}")
+	public ResponseEntity<Void> updatePost(@PathVariable String boardSlug,
+										   @PathVariable @Positive Long postId,
+										   @Valid @RequestBody PostUpdateRequest request,
+										   @AuthenticationPrincipal LoginMember loginMember,
+										   Authentication authentication) {
+
+		Long memberId = requireMemberId(loginMember);
+		boolean adminAccess = hasAuthority(authentication, "ROLE_ADMIN");
+
+		postService.updatePost(
+			boardSlug,
+			postId,
+			request,
+			memberId,
+			adminAccess
+		);
+
+		return ResponseEntity.noContent().build();
+	}
+
+	@DeleteMapping("/{postId}")
+	public ResponseEntity<Void> deletePost(@PathVariable String boardSlug,
+										   @PathVariable @Positive Long postId,
+										   @RequestParam @PositiveOrZero Integer version,
+										   @AuthenticationPrincipal LoginMember loginMember,
+										   Authentication authentication) {
+
+		Long memberId = requireMemberId(loginMember);
+		boolean adminAccess = hasAuthority(authentication, "ROLE_ADMIN");
+
+		postService.deletePost(
+			boardSlug,
+			postId,
+			version,
+			memberId,
+			adminAccess
+		);
+
+		return ResponseEntity.noContent().build();
+	}
+
+	private Long requireMemberId(LoginMember loginMember) {
+		if (loginMember == null || loginMember.id() == null) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+		}
+
+		return loginMember.id();
 	}
 
 	private boolean hasAuthority(Authentication authentication, String authority) {

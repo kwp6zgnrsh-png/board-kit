@@ -5,6 +5,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostUpdateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostDetailResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.Post;
@@ -42,4 +43,17 @@ public interface PostConverter {
 
 	@Mapping(target = "viewCount", source = "increasedViewCount")
 	PostDetailResponse toDetailResponse(PostDetail postDetail, long increasedViewCount);
+
+	@BeanMapping(ignoreByDefault = true)
+	@Mapping(target = "id", source = "postId")
+	@Mapping(target = "boardId", source = "boardId")
+	@Mapping(target = "authorId", source = "authorId")
+	@Mapping(target = "categoryId", source = "request.categoryId")
+	@Mapping(target = "title", source = "request.title")
+	@Mapping(target = "content", source = "request.content")
+	@Mapping(target = "isSecret", source = "request.isSecret")
+	@Mapping(target = "secretPasswordHash", source = "secretPasswordHash")
+	@Mapping(target = "commentsLocked", source = "request.commentsLocked")
+	@Mapping(target = "version", source = "request.version")
+	Post toUpdatedPost(PostUpdateRequest request, Long postId, Long boardId, Long authorId, String secretPasswordHash);
 }

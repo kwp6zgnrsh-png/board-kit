@@ -23,11 +23,15 @@ import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberSanctionedExcepti
 import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.converter.PostConverter;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostUpdateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostDetailResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostPageResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostSummaryResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.InvalidPostRequestException;
+import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostConflictException;
+import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostDeleteDeniedException;
+import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostEditDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostWriteDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.SecretPostAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper;
@@ -421,6 +425,287 @@ class PostServiceTest {
 		verifyNoInteractions(passwordEncoder);
 	}
 
+	@Test
+	@DisplayName("작성자는 기존 비밀글 비밀번호를 유지하며 게시글을 수정할 수 있다")
+	void updateOwnPostAndKeepSecretPassword() {
+		PostUpdateRequest request = new PostUpdateRequest(
+			"수정 제목",
+			"수정 본문",
+			null,
+			true,
+			null,
+			false,
+			false,
+			0
+		);
+
+		PostDetail currentPost = postDetail(10L, true, "existing-hash", 0);
+
+		Post updatedPost = Post.builder()
+			.id(100L)
+			.boardId(1L)
+			.authorId(10L)
+			.title("수정 제목")
+			.content("수정 본문")
+			.isSecret(true)
+			.secretPasswordHash("existing-hash")
+			.commentsLocked(false)
+			.version(0)
+			.build();
+
+		allowActiveMember();
+		prepareBoard(
+			"free",
+			policy("MEMBER", "OPTIONAL", false, false)
+		);
+
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(currentPost));
+		when(postConverter.toUpdatedPost(
+			request,
+			100L,
+			1L,
+			10L,
+			"existing-hash"
+		)).thenReturn(updatedPost);
+		when(postMapper.updatePost(updatedPost))
+			.thenReturn(1);
+
+		postService.updatePost(
+			"free",
+			100L,
+			request,
+			10L,
+			false
+		);
+
+		verify(postMapper).updatePost(updatedPost);
+		verifyNoInteractions(passwordEncoder);
+	}
+
+	@Test
+	@DisplayName("비밀글 정책을 끈 뒤에도 기존 비밀글의 비밀번호를 유지하며 수정할 수 있다")
+	void updateExistingSecretPostWhenSecretModeIsOff() {
+		PostUpdateRequest request = new PostUpdateRequest(
+			"수정 제목", "수정 본문", null, true, null, false, false, 0
+		);
+		PostDetail currentPost = postDetail(10L, true, "existing-hash", 0);
+		Post updatedPost = Post.builder()
+			.id(100L)
+			.boardId(1L)
+			.authorId(10L)
+			.title("수정 제목")
+			.content("수정 본문")
+			.isSecret(true)
+			.secretPasswordHash("existing-hash")
+			.commentsLocked(false)
+			.version(0)
+			.build();
+
+		allowActiveMember();
+		prepareBoard("free", policy("MEMBER", "OFF", false, false));
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(currentPost));
+		when(postConverter.toUpdatedPost(request, 100L, 1L, 10L, "existing-hash"))
+			.thenReturn(updatedPost);
+		when(postMapper.updatePost(updatedPost)).thenReturn(1);
+
+		postService.updatePost("free", 100L, request, 10L, false);
+
+		verify(postMapper).updatePost(updatedPost);
+		verifyNoInteractions(passwordEncoder);
+	}
+
+	@Test
+	@DisplayName("비밀글 정책이 꺼져 있으면 일반 글을 비밀글로 전환할 수 없다")
+	void rejectSecretConversionWhenSecretModeIsOff() {
+		PostUpdateRequest request = new PostUpdateRequest(
+			"수정 제목", "수정 본문", null, true, null, false, false, 0
+		);
+
+		allowActiveMember();
+		prepareBoard("free", policy("MEMBER", "OFF", false, false));
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail(10L, false, null, 0)));
+
+		assertThrows(
+			InvalidPostRequestException.class,
+			() -> postService.updatePost("free", 100L, request, 10L, false)
+		);
+
+		verify(postMapper, never()).updatePost(any());
+		verifyNoInteractions(postConverter);
+	}
+
+	@Test
+	@DisplayName("비밀글 정책이 꺼져 있어도 작성자가 기존 비밀글을 명시적으로 공개할 수 있다")
+	void publishExistingSecretPostWhenSecretModeIsOff() {
+		PostUpdateRequest request = new PostUpdateRequest(
+			"수정 제목", "수정 본문", null, false, null, false, false, 0
+		);
+		PostDetail currentPost = postDetail(10L, true, "existing-hash", 0);
+		Post updatedPost = Post.builder()
+			.id(100L)
+			.boardId(1L)
+			.authorId(10L)
+			.title("수정 제목")
+			.content("수정 본문")
+			.isSecret(false)
+			.secretPasswordHash(null)
+			.commentsLocked(false)
+			.version(0)
+			.build();
+
+		allowActiveMember();
+		prepareBoard("free", policy("MEMBER", "OFF", false, false));
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(currentPost));
+		when(postConverter.toUpdatedPost(request, 100L, 1L, 10L, null))
+			.thenReturn(updatedPost);
+		when(postMapper.updatePost(updatedPost)).thenReturn(1);
+
+		postService.updatePost("free", 100L, request, 10L, false);
+
+		verify(postMapper).updatePost(updatedPost);
+		verifyNoInteractions(passwordEncoder);
+	}
+
+	@Test
+	@DisplayName("작성자가 아니면 게시글을 수정할 수 없다")
+	void rejectPostUpdateByNonAuthor() {
+		PostUpdateRequest request = new PostUpdateRequest(
+			"수정 제목",
+			"수정 본문",
+			null,
+			false,
+			null,
+			false,
+			false,
+			0
+		);
+
+		allowActiveMember();
+		prepareBoard(
+			"free",
+			policy("MEMBER", "OPTIONAL", false, false)
+		);
+
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail(20L, false, null, 0)));
+
+		assertThrows(
+			PostEditDeniedException.class,
+			() -> postService.updatePost(
+				"free",
+				100L,
+				request,
+				10L,
+				false
+			)
+		);
+
+		verify(postMapper, never()).updatePost(any());
+		verifyNoInteractions(postConverter);
+	}
+
+	@Test
+	@DisplayName("이전 버전으로 게시글을 수정하면 충돌이 발생한다")
+	void rejectPostUpdateWithStaleVersion() {
+		PostUpdateRequest request = new PostUpdateRequest(
+			"수정 제목",
+			"수정 본문",
+			null,
+			false,
+			null,
+			false,
+			false,
+			1
+		);
+
+		allowActiveMember();
+		prepareBoard(
+			"free",
+			policy("MEMBER", "OPTIONAL", false, false)
+		);
+
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(
+				postDetail(10L, false, null, 0)
+			));
+
+		assertThrows(
+			PostConflictException.class,
+			() -> postService.updatePost(
+				"free",
+				100L,
+				request,
+				10L,
+				false
+			)
+		);
+
+		verify(postMapper, never()).updatePost(any());
+		verifyNoInteractions(postConverter);
+	}
+
+	@Test
+	@DisplayName("관리자는 다른 회원의 게시글을 삭제할 수 있다")
+	void deletePostByAdmin() {
+		when(memberMapper.existsActiveMemberById(1L))
+			.thenReturn(true);
+
+		prepareBoard("free");
+
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(
+				postDetail(10L, false, null, 0)
+			));
+		when(postMapper.softDeletePost(1L, 100L, 0))
+			.thenReturn(1);
+
+		postService.deletePost(
+			"free",
+			100L,
+			0,
+			1L,
+			true
+		);
+
+		verify(postMapper).softDeletePost(1L, 100L, 0);
+		verify(
+			memberMapper,
+			never()
+		).existsActiveSanctionByMemberId(anyLong());
+	}
+
+	@Test
+	@DisplayName("작성자도 관리자가 아니면 게시글을 삭제할 수 없다")
+	void rejectPostDeletionByNonAuthor() {
+		when(memberMapper.existsActiveMemberById(10L))
+			.thenReturn(true);
+
+		prepareBoard("free");
+
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(
+				postDetail(20L, false, null, 0)
+			));
+
+		assertThrows(
+			PostDeleteDeniedException.class,
+			() -> postService.deletePost(
+				"free",
+				100L,
+				0,
+				10L,
+				false
+			)
+		);
+
+		verify(postMapper, never())
+			.softDeletePost(anyLong(), anyLong(), anyInt());
+	}
+
 	private BoardPolicy readPolicy(String readPermission) {
 		return BoardPolicy.builder()
 			.readPermission(readPermission)
@@ -432,18 +717,6 @@ class PostServiceTest {
 			.thenReturn(true);
 		when(memberMapper.existsActiveSanctionByMemberId(10L))
 			.thenReturn(false);
-	}
-
-	private void prepareBoard(String boardSlug, BoardPolicy policy) {
-		Board board = Board.builder()
-			.id(1L)
-			.slug(boardSlug)
-			.build();
-
-		when(boardMapper.selectActiveBoardBySlug(boardSlug))
-			.thenReturn(Optional.of(board));
-		when(boardMapper.selectPolicyByBoardId(1L))
-			.thenReturn(Optional.of(policy));
 	}
 
 	private PostCreateRequest request(boolean secret, String password) {
@@ -472,14 +745,19 @@ class PostServiceTest {
 	}
 
 	private PostDetail postDetail(boolean secret, String passwordHash) {
-		LocalDateTime createdAt = LocalDateTime.of(2026, 9, 21, 10, 0);
+		return postDetail(10L, secret, passwordHash, 0);
+	}
+
+	private PostDetail postDetail(Long authorId, boolean secret, String passwordHash, int version) {
+		LocalDateTime createdAt =
+			LocalDateTime.of(2026, 9, 21, 10, 0);
 
 		return new PostDetail(
 			100L,
 			1L,
 			"게시글 제목",
 			"게시글 본문",
-			10L,
+			authorId,
 			"작성자",
 			null,
 			null,
@@ -488,6 +766,7 @@ class PostServiceTest {
 			false,
 			false,
 			5L,
+			version,
 			createdAt,
 			createdAt
 		);
@@ -509,8 +788,26 @@ class PostServiceTest {
 			false,
 			false,
 			6L,
+			0,
 			createdAt,
 			createdAt
 		);
+	}
+
+	private void prepareBoard(String boardSlug) {
+		Board board = Board.builder()
+			.id(1L)
+			.slug(boardSlug)
+			.build();
+
+		when(boardMapper.selectActiveBoardBySlug(boardSlug))
+			.thenReturn(Optional.of(board));
+	}
+
+	private void prepareBoard(String boardSlug, BoardPolicy policy) {
+		prepareBoard(boardSlug);
+
+		when(boardMapper.selectPolicyByBoardId(1L))
+			.thenReturn(Optional.of(policy));
 	}
 }

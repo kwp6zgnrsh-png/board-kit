@@ -1,20 +1,23 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-
+import { useRoute, useRouter } from 'vue-router'
 import { getBoardDetail } from '@/api/boardApi'
 import { ApiError } from '@/api/http'
-import { getPostDetail } from '@/api/postApi'
-import BoardHeader from '@/features/board/components/BoardHeader.vue'
-import type {
-  BoardDetailResponse,
-} from '@/features/board/types/board'
+import BoardHero from '@/features/board/components/BoardHero.vue'
+import type {BoardDetailResponse,} from '@/features/board/types/board'
+import PostCommentsPanel from '@/features/post/components/PostCommentsPanel.vue'
+import PostDetailSidebar from '@/features/post/components/PostDetailSidebar.vue'
 import SecretPostPasswordForm from '@/features/post/components/SecretPostPasswordForm.vue'
-import type {
-  PostDetailResponse,
-} from '@/features/post/types/post'
+import type {PostDetailResponse,} from '@/features/post/types/post'
+import { deletePost, getPostDetail } from '@/api/postApi'
+import { getAuthSession } from '@/features/auth/services/authSession'
+import BaseButton from '@/components/ui/BaseButton.vue'
 
 const route = useRoute()
+const router = useRouter()
+
+const deleting = ref(false)
+const deleteErrorMessage = ref('')
 
 const board = ref<BoardDetailResponse | null>(null)
 const post = ref<PostDetailResponse | null>(null)
@@ -40,10 +43,7 @@ const postId = computed(() => {
 
 let requestSequence = 0
 
-async function loadPage(
-    slug: string,
-    id: number | null,
-) {
+async function loadPage(slug: string, id: number | null,) {
   const currentRequest = ++requestSequence
 
   board.value = null
@@ -53,8 +53,7 @@ async function loadPage(
   passwordErrorMessage.value = ''
 
   if (id === null) {
-    errorMessage.value =
-        '올바르지 않은 게시글 번호입니다.'
+    errorMessage.value = '올바르지 않은 게시글 번호입니다.'
     return
   }
 
@@ -83,22 +82,11 @@ async function loadPage(
       return
     }
 
-    if (
-        error instanceof ApiError &&
-        error.status === 403 &&
-        boardLoaded
-    ) {
+    if (error instanceof ApiError && error.status === 403 && boardLoaded) {
       passwordRequired.value = true
-    } else if (
-        error instanceof ApiError &&
-        error.status === 403
-    ) {
-      errorMessage.value =
-          '게시판을 조회할 권한이 없습니다.'
-    } else if (
-        error instanceof ApiError &&
-        error.status === 404
-    ) {
+    } else if (error instanceof ApiError && error.status === 403) {
+      errorMessage.value = '게시판을 조회할 권한이 없습니다.'
+    } else if (error instanceof ApiError && error.status === 404) {
       errorMessage.value =
           boardLoaded
               ? '게시글을 찾을 수 없습니다.'
@@ -142,12 +130,8 @@ async function submitPassword(password: string) {
       return
     }
 
-    if (
-        error instanceof ApiError &&
-        error.status === 403
-    ) {
-      passwordErrorMessage.value =
-          '비밀번호가 올바르지 않습니다.'
+    if (error instanceof ApiError && error.status === 403) {
+      passwordErrorMessage.value = '비밀번호가 올바르지 않습니다.'
     } else {
       passwordErrorMessage.value =
           error instanceof Error
@@ -158,6 +142,66 @@ async function submitPassword(password: string) {
     if (currentRequest === requestSequence) {
       passwordSubmitting.value = false
     }
+  }
+}
+
+const canDelete = computed(() => {
+  const session = getAuthSession()
+  const currentPost = post.value
+
+  return session !== null &&
+      currentPost !== null &&
+      (session.memberId === currentPost.authorId ||
+          session.role === 'ADMIN')
+})
+
+const canEdit = computed(() => {
+  const session = getAuthSession()
+  const currentPost = post.value
+  const currentBoard = board.value
+
+  return session !== null &&
+      currentPost !== null &&
+      currentBoard !== null &&
+      session.memberId === currentPost.authorId &&
+      (currentBoard.policy.writePermission === 'MEMBER' ||
+          session.role === 'ADMIN')
+})
+
+async function removePost() {
+  const currentPost = post.value
+  const id = postId.value
+
+  if (!canDelete.value || currentPost === null || id === null || deleting.value) {
+    return
+  }
+
+  if (!window.confirm('게시글을 삭제하시겠습니까?')) {
+    return
+  }
+
+  deleting.value = true
+  deleteErrorMessage.value = ''
+
+  try {
+    await deletePost(boardSlug.value, id, currentPost.version)
+
+    await router.replace({
+      name: 'board-detail',
+      params: { boardSlug: boardSlug.value },
+      query: route.query.page ? { page: route.query.page } : {},
+    })
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 409) {
+      deleteErrorMessage.value = '게시글이 변경되었습니다. 새로고침 후 다시 시도해주세요.'
+    } else if (error instanceof ApiError && error.status === 404) {
+      deleteErrorMessage.value = '이미 삭제된 게시글입니다.'
+    } else {
+      deleteErrorMessage.value =
+          error instanceof Error ? error.message : '게시글 삭제에 실패했습니다.'
+    }
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -177,31 +221,32 @@ watch(
 </script>
 
 <template>
-  <div class="post-detail-page">
+  <div class="grid min-w-0 gap-5">
     <p
         v-if="loading && !board"
-        class="state-message"
+        class="m-0 rounded-lg border-[3px] border-slate-950 bg-slate-100 p-5 font-bold text-slate-700"
     >
       게시글을 불러오는 중입니다.
     </p>
 
     <p
         v-else-if="errorMessage && !board"
-        class="state-message state-message--error"
+        class="m-0 rounded-lg border-[3px] border-red-900 bg-rose-50 p-5 font-bold text-red-900"
         role="alert"
     >
       {{ errorMessage }}
     </p>
 
     <template v-else-if="board">
-      <BoardHeader
-          :name="board.name"
-          :description="board.description"
+      <BoardHero
+          name="POST DETAIL"
+          :slug="board.slug"
+          :description="`${board.name} · 게시글을 읽고 대화에 참여해 보세요.`"
       />
 
       <p
           v-if="loading"
-          class="state-message"
+          class="m-0 rounded-lg border-[3px] border-slate-950 bg-slate-100 p-5 font-bold text-slate-700"
       >
         게시글을 불러오는 중입니다.
       </p>
@@ -215,190 +260,113 @@ watch(
 
       <p
           v-else-if="errorMessage"
-          class="state-message state-message--error"
+          class="m-0 rounded-lg border-[3px] border-red-900 bg-rose-50 p-5 font-bold text-red-900"
           role="alert"
       >
         {{ errorMessage }}
       </p>
 
-      <article
+      <div
           v-else-if="post"
-          class="post-detail"
+          class="grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]"
       >
-        <header class="post-detail__header">
-          <div class="post-detail__badges">
-            <span
-                v-if="post.pinned"
-                class="badge"
+        <div class="grid min-w-0 content-start gap-3">
+          <article class="grid min-w-0 gap-0 rounded-lg border-[3px] border-slate-950 bg-white px-4 shadow-[2px_3px_0_#0f172a] sm:px-6">
+            <div class="flex min-h-14 items-center gap-3 border-b border-slate-300 py-2 text-lg font-black text-slate-950">
+              <span class="grid size-9 shrink-0 place-items-center rounded border-2 border-slate-950 bg-sky-100 text-xl leading-none" aria-hidden="true">▤</span>
+              <strong>{{ board.name }} 게시글</strong>
+            </div>
+
+            <header class="grid gap-3 border-b border-slate-300 py-4">
+              <div class="flex flex-wrap items-center gap-2 text-sm font-extrabold text-slate-700">
+                <span class="rounded border-2 border-blue-700 bg-blue-600 px-2 py-0.5 font-black text-white">{{ board.name }}</span>
+                <span v-if="post.pinned" class="rounded border-2 border-slate-950 bg-yellow-300 px-2 py-0.5 font-black text-slate-950">고정</span>
+                <span v-if="post.secret" class="rounded border-2 border-slate-950 bg-pink-300 px-2 py-0.5 font-black text-slate-950">비밀글</span>
+                <span v-if="post.categoryName" class="rounded border-2 border-slate-950 bg-emerald-100 px-2 py-0.5 font-black text-slate-950">
+                  {{ post.categoryName }}
+                </span>
+              </div>
+
+              <h1 class="m-0 text-2xl leading-tight font-black break-words text-slate-950 sm:text-3xl">{{ post.title }}</h1>
+
+              <dl class="m-0 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                <div class="flex gap-2">
+                  <dt class="font-bold text-slate-500">작성자</dt>
+                  <dd class="m-0 font-extrabold text-slate-950">{{ post.authorDisplayName }}</dd>
+                </div>
+
+                <div class="flex gap-2">
+                  <dt class="font-bold text-slate-500">작성일</dt>
+                  <dd class="m-0 font-extrabold text-slate-950">{{ formatDate(post.createdAt) }}</dd>
+                </div>
+
+                <div class="flex gap-2">
+                  <dt class="font-bold text-slate-500">조회</dt>
+                  <dd class="m-0 font-extrabold text-slate-950">{{ post.viewCount }}</dd>
+                </div>
+              </dl>
+            </header>
+
+            <div class="min-h-36 py-5 leading-8 whitespace-pre-wrap text-slate-800 [overflow-wrap:anywhere] max-sm:min-h-24">
+              {{ post.content }}
+            </div>
+
+            <p
+                v-if="deleteErrorMessage"
+                class="m-0 rounded-lg border-2 border-red-900 bg-rose-50 p-4 font-bold text-red-900"
+                role="alert"
             >
-              고정
-            </span>
+              {{ deleteErrorMessage }}
+            </p>
 
-            <span
-                v-if="post.secret"
-                class="badge badge--secret"
-            >
-              비밀글
-            </span>
+            <footer class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-300 py-3 max-sm:justify-stretch">
+              <div v-if="canEdit || canDelete" class="flex flex-wrap gap-3 max-sm:flex-1 max-sm:[&>*]:flex-1">
+                <RouterLink
+                    v-if="canEdit"
+                    class="inline-flex min-h-11 items-center justify-center rounded border-2 border-slate-950 bg-blue-200 px-4 text-sm font-black text-slate-950 no-underline shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                    :to="{
+                      name: 'post-edit',
+                      params: { boardSlug, postId: post.id },
+                      query: route.query.page ? { page: route.query.page } : {},
+                    }"
+                >
+                  수정
+                </RouterLink>
+                <BaseButton
+                    variant="danger"
+                    class="min-h-11 rounded! border-2! border-slate-950! bg-rose-200! px-4 text-sm! font-black! shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5"
+                    :disabled="deleting"
+                    @click="removePost"
+                >
+                  {{ deleting ? '삭제 중...' : '삭제' }}
+                </BaseButton>
+              </div>
 
-            <span v-if="post.categoryName">
-              {{ post.categoryName }}
-            </span>
-          </div>
+              <RouterLink
+                  :to="{
+                    name: 'board-detail',
+                    params: { boardSlug },
+                    query: route.query.page ? { page: route.query.page } : {},
+                  }"
+                  class="inline-flex min-h-11 items-center justify-center rounded border-2 border-slate-950 bg-blue-600 px-4 text-sm font-black text-white no-underline shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-blue-600 max-sm:flex-1"
+              >
+                ← 목록으로
+              </RouterLink>
+            </footer>
+          </article>
 
-          <h1>{{ post.title }}</h1>
-
-          <dl class="post-detail__meta">
-            <div>
-              <dt>작성자</dt>
-              <dd>{{ post.authorDisplayName }}</dd>
-            </div>
-
-            <div>
-              <dt>작성일</dt>
-              <dd>{{ formatDate(post.createdAt) }}</dd>
-            </div>
-
-            <div>
-              <dt>조회</dt>
-              <dd>{{ post.viewCount }}</dd>
-            </div>
-          </dl>
-        </header>
-
-        <div class="post-detail__content">
-          {{ post.content }}
+          <PostCommentsPanel
+              v-if="board.policy.commentsEnabled"
+              :locked="post.commentsLocked"
+          />
         </div>
 
-        <p
-            v-if="post.commentsLocked"
-            class="locked-message"
-        >
-          이 게시글은 댓글 작성이 잠겨 있습니다.
-        </p>
-
-        <RouterLink
-            :to="{
-            name: 'board-detail',
-            params: {
-              boardSlug,
-            },
-            query: {
-              page: route.query.page,
-            },
-          }"
-            class="back-link"
-        >
-          목록으로
-        </RouterLink>
-      </article>
+        <PostDetailSidebar
+            :board-name="board.name"
+            :board-slug="board.slug"
+            :author-display-name="post.authorDisplayName"
+        />
+      </div>
     </template>
   </div>
 </template>
-
-<style scoped>
-.post-detail-page {
-  display: grid;
-  gap: 1.5rem;
-}
-
-.state-message {
-  margin: 0;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  color: #475569;
-  background: #f1f5f9;
-}
-
-.state-message--error {
-  color: #991b1b;
-  background: #fee2e2;
-}
-
-.post-detail {
-  display: grid;
-  gap: 1.5rem;
-  padding: 1.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 1rem;
-  background: #fff;
-}
-
-.post-detail__header {
-  display: grid;
-  gap: 0.8rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.post-detail__header h1 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 1.6rem;
-}
-
-.post-detail__badges {
-  display: flex;
-  gap: 0.4rem;
-  align-items: center;
-  color: #64748b;
-  font-size: 0.8rem;
-}
-
-.badge {
-  padding: 0.2rem 0.45rem;
-  border-radius: 0.35rem;
-  color: #1d4ed8;
-  background: #dbeafe;
-  font-weight: 700;
-}
-
-.badge--secret {
-  color: #7c3aed;
-  background: #ede9fe;
-}
-
-.post-detail__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin: 0;
-}
-
-.post-detail__meta div {
-  display: flex;
-  gap: 0.35rem;
-}
-
-.post-detail__meta dt {
-  color: #94a3b8;
-}
-
-.post-detail__meta dd {
-  margin: 0;
-  color: #475569;
-}
-
-.post-detail__content {
-  min-height: 12rem;
-  color: #334155;
-  line-height: 1.75;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.locked-message {
-  margin: 0;
-  padding: 0.8rem 1rem;
-  border-radius: 0.65rem;
-  color: #92400e;
-  background: #fef3c7;
-}
-
-.back-link {
-  justify-self: start;
-  color: #2563eb;
-  font-weight: 700;
-  text-decoration: none;
-}
-</style>
