@@ -1,10 +1,11 @@
 package io.github.kwp6zgnrsh.boardkitapi.member.mapper;
 
-import io.github.kwp6zgnrsh.boardkitapi.member.model.Member;
+import java.util.Optional;
+
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import java.util.Optional;
+import io.github.kwp6zgnrsh.boardkitapi.member.model.Member;
 
 @Mapper
 public interface MemberMapper {
@@ -20,4 +21,14 @@ public interface MemberMapper {
 	boolean existsActiveSanctionByMemberId(
 		@Param("memberId") Long memberId
 	);
+
+	boolean existsByLoginId(
+		@Param("loginId") String loginId
+	);
+
+	boolean existsByDisplayName(
+		@Param("displayName") String displayName
+	);
+
+	int insertMember(Member member);
 }

@@ -1,7 +1,7 @@
 package io.github.kwp6zgnrsh.boardkitapi.config;
 
-import io.github.kwp6zgnrsh.boardkitapi.auth.security.JwtAuthenticationFilter;
-import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
+import java.nio.charset.StandardCharsets;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -15,7 +15,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import java.nio.charset.StandardCharsets;
+import io.github.kwp6zgnrsh.boardkitapi.auth.security.JwtAuthenticationFilter;
+import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
 
 @Configuration
 public class SecurityConfig {
@@ -68,7 +69,7 @@ public class SecurityConfig {
 			)
 
 			.authorizeHttpRequests(authorize -> authorize
-				.requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+				.requestMatchers(HttpMethod.POST, "/api/auth/login","/api/members").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/boards/**").permitAll()
 				.requestMatchers(
 					"/v3/api-docs/**",

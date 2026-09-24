@@ -43,4 +43,38 @@
                 )
         )
     </select>
+
+    <select id="existsByLoginId" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM member
+            WHERE login_id = #{loginId}
+        )
+    </select>
+
+    <select id="existsByDisplayName" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM member
+            WHERE display_name = #{displayName}
+        )
+    </select>
+
+    <insert id="insertMember"
+            parameterType="io.github.kwp6zgnrsh.boardkitapi.member.model.Member"
+            useGeneratedKeys="true"
+            keyProperty="id">
+        INSERT INTO member (
+            login_id,
+            password_hash,
+            display_name,
+            role
+        )
+        VALUES (
+            #{loginId},
+            #{passwordHash},
+            #{displayName},
+            #{role}
+        )
+    </insert>
 </mapper>
