@@ -3,12 +3,13 @@ package io.github.kwp6zgnrsh.boardkitapi.board.mapper;
 import java.util.List;
 import java.util.Optional;
 
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardSummaryResponse;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardCategory;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
 
 @Mapper
 public interface BoardMapper {
@@ -39,5 +40,24 @@ public interface BoardMapper {
 	boolean existsActiveCategory(
 		@Param("boardId") Long boardId,
 		@Param("categoryId") Long categoryId
+	);
+
+	Optional<Board> selectActiveBoardBySlugForUpdate(
+		@Param("slug") String slug
+	);
+
+	int updateBoard(Board board);
+
+	int updatePolicy(BoardPolicy policy);
+
+	int updateCategory(BoardCategory category);
+
+	int deactivateActiveCategoriesExcept(
+		@Param("boardId") Long boardId,
+		@Param("retainedIds") List<Long> retainedIds
+	);
+
+	int archiveBoard(
+		@Param("boardId") Long boardId
 	);
 }

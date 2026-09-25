@@ -183,4 +183,99 @@
         )
     </select>
 
+    <select id="selectActiveBoardBySlugForUpdate"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.board.model.Board">
+        SELECT
+            id,
+            name,
+            slug,
+            description,
+            display_type,
+            status,
+            sort_order,
+            created_by,
+            created_at,
+            updated_at
+        FROM board
+        WHERE slug = #{slug}
+            AND status = 'ACTIVE'
+        FOR UPDATE
+    </select>
+
+    <update id="updateBoard">
+        UPDATE board
+        SET
+            name = #{name},
+            description = #{description},
+            display_type = #{displayType},
+            sort_order = #{sortOrder},
+            updated_at = CURRENT_TIMESTAMP(6)
+        WHERE id = #{id}
+            AND status = 'ACTIVE'
+    </update>
+
+    <update id="updatePolicy">
+        UPDATE board_policy
+        SET
+            read_permission = #{readPermission},
+            write_permission = #{writePermission},
+            comment_permission = #{commentPermission},
+            secret_mode = #{secretMode},
+            categories_enabled = #{categoriesEnabled},
+            category_required = #{categoryRequired},
+            attachments_enabled = #{attachmentsEnabled},
+            upload_profile = #{uploadProfile},
+            max_file_count = #{maxFileCount},
+            max_file_size_bytes = #{maxFileSizeBytes},
+            image_required = #{imageRequired},
+            thumbnail_enabled = #{thumbnailEnabled},
+            representative_image_mode = #{representativeImageMode},
+            comments_enabled = #{commentsEnabled},
+            comment_replies_enabled = #{commentRepliesEnabled},
+            post_likes_enabled = #{postLikesEnabled},
+            comment_likes_enabled = #{commentLikesEnabled},
+            official_reply_enabled = #{officialReplyEnabled},
+            version = version + 1,
+            updated_at = CURRENT_TIMESTAMP(6)
+        WHERE board_id = #{boardId}
+            AND version = #{version}
+    </update>
+
+    <update id="updateCategory">
+        UPDATE board_category
+        SET
+            name = #{name},
+            sort_order = #{sortOrder}
+        WHERE id = #{id}
+            AND board_id = #{boardId}
+            AND active = TRUE
+    </update>
+
+    <update id="deactivateActiveCategoriesExcept">
+        UPDATE board_category
+        SET active = FALSE
+        WHERE board_id = #{boardId}
+            AND active = TRUE
+        <if test="retainedIds != null and !retainedIds.isEmpty()">
+            AND id NOT IN
+            <foreach
+                    collection="retainedIds"
+                    item="categoryId"
+                    open="("
+                    separator=","
+                    close=")"
+            >
+                #{categoryId}
+            </foreach>
+        </if>
+    </update>
+
+    <update id="archiveBoard">
+        UPDATE board
+        SET
+            status = 'ARCHIVED',
+            updated_at = CURRENT_TIMESTAMP(6)
+        WHERE id = #{boardId}
+            AND status = 'ACTIVE'
+    </update>
 </mapper>

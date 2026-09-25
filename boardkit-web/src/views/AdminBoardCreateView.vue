@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import BoardCreateForm from '@/features/board/components/BoardCreateForm.vue'
+import BoardSettingsForm from '@/features/board/components/BoardSettingsForm.vue'
 </script>
 
 <template>
@@ -15,7 +15,7 @@ import BoardCreateForm from '@/features/board/components/BoardCreateForm.vue'
       <span class="status-badge">관리자</span>
     </header>
 
-    <BoardCreateForm />
+    <BoardSettingsForm />
   </div>
 </template>
 

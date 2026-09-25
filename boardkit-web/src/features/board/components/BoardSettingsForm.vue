@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 
-import { createBoard } from '@/api/boardApi'
+import {createBoard, updateBoard} from '@/api/boardApi'
 import { ApiError } from '@/api/http'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseCheckbox from '@/components/ui/BaseCheckbox.vue'
@@ -9,9 +9,11 @@ import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseTextarea from '@/components/ui/BaseTextarea.vue'
 import type {
+  BoardAdminDetailResponse,
   BoardCreateRequest,
-  BoardCreateResponse,
   BoardDisplayType,
+  BoardPolicyRequest,
+  BoardUpdateRequest,
   ReadPermission,
   RepresentativeImageMode,
   SecretMode,
@@ -19,8 +21,17 @@ import type {
   WritePermission,
 } from '@/features/board/types/board'
 
+const props = defineProps<{
+  board?: BoardAdminDetailResponse
+}>()
+
+const emit = defineEmits<{
+  updated: []
+}>()
+
 interface CategoryForm {
   key: number
+  id: number | null
   name: string
   sortOrder: number
 }
@@ -57,106 +68,207 @@ const representativeImageOptions = [
   { value: 'MANUAL', label: '작성자가 직접 선택' },
 ]
 
+const editing = computed(
+    () => props.board !== undefined,
+)
+
+const initialBoard = props.board
+
+const currentVersion = ref(initialBoard?.version ?? 0)
+
 const form = reactive({
-  name: '',
-  slug: '',
-  description: '',
-  displayType: 'LIST' as BoardDisplayType,
-  sortOrder: 0,
-  readPermission: 'PUBLIC' as ReadPermission,
-  writePermission: 'MEMBER' as WritePermission,
-  commentPermission: 'MEMBER' as WritePermission,
-  secretMode: 'OFF' as SecretMode,
-  categoriesEnabled: false,
-  categoryRequired: false,
-  attachmentsEnabled: false,
-  uploadProfile: 'IMAGE' as UploadProfile,
-  maxFileCount: 5,
-  maxFileSizeMb: 10,
-  imageRequired: false,
-  thumbnailEnabled: false,
-  representativeImageMode: 'FIRST_IMAGE' as RepresentativeImageMode,
-  commentsEnabled: true,
-  commentRepliesEnabled: true,
-  postLikesEnabled: true,
-  commentLikesEnabled: true,
-  officialReplyEnabled: false,
-  categories: [] as CategoryForm[],
+  name: initialBoard?.name ?? '',
+  slug: initialBoard?.slug ?? '',
+  description: initialBoard?.description ?? '',
+  displayType:
+      initialBoard?.displayType ??
+      ('LIST' as BoardDisplayType),
+  sortOrder: initialBoard?.sortOrder ?? 0,
+
+  readPermission:
+      initialBoard?.policy.readPermission ??
+      ('PUBLIC' as ReadPermission),
+  writePermission:
+      initialBoard?.policy.writePermission ??
+      ('MEMBER' as WritePermission),
+  commentPermission:
+      initialBoard?.policy.commentPermission ??
+      ('MEMBER' as WritePermission),
+  secretMode:
+      initialBoard?.policy.secretMode ??
+      ('OFF' as SecretMode),
+
+  categoriesEnabled:
+      initialBoard?.policy.categoriesEnabled ?? false,
+  categoryRequired:
+      initialBoard?.policy.categoryRequired ?? false,
+
+  attachmentsEnabled:
+      initialBoard?.policy.attachmentsEnabled ?? false,
+  uploadProfile:
+      initialBoard?.policy.uploadProfile ??
+      ('IMAGE' as UploadProfile),
+  maxFileCount:
+      initialBoard && initialBoard.policy.maxFileCount > 0
+          ? initialBoard.policy.maxFileCount
+          : 5,
+  maxFileSizeMb:
+      initialBoard &&
+      initialBoard.policy.maxFileSizeBytes > 0
+          ? initialBoard.policy.maxFileSizeBytes /
+          (1024 * 1024)
+          : 10,
+  imageRequired:
+      initialBoard?.policy.imageRequired ?? false,
+  thumbnailEnabled:
+      initialBoard?.policy.thumbnailEnabled ?? false,
+  representativeImageMode:
+      initialBoard?.policy.representativeImageMode ??
+      ('FIRST_IMAGE' as RepresentativeImageMode),
+
+  commentsEnabled:
+      initialBoard?.policy.commentsEnabled ?? true,
+  commentRepliesEnabled:
+      initialBoard?.policy.commentRepliesEnabled ?? true,
+  postLikesEnabled:
+      initialBoard?.policy.postLikesEnabled ?? true,
+  commentLikesEnabled:
+      initialBoard?.policy.commentLikesEnabled ?? true,
+  officialReplyEnabled:
+      initialBoard?.policy.officialReplyEnabled ?? false,
+
+  categories:
+      initialBoard?.categories.map(
+          (category, index): CategoryForm => ({
+            key: index + 1,
+            id: category.id,
+            name: category.name,
+            sortOrder: category.sortOrder,
+          }),
+      ) ?? [],
 })
+
+let nextCategoryKey = form.categories.length + 1
 
 const submitting = ref(false)
 const errorMessage = ref('')
-const createdBoard = ref<BoardCreateResponse | null>(null)
-let nextCategoryKey = 1
+const successMessage = ref('')
 
 function addCategory() {
   form.categories.push({
     key: nextCategoryKey++,
+    id: null,
     name: '',
     sortOrder: form.categories.length,
   })
 }
 
 function removeCategory(key: number) {
-  form.categories = form.categories.filter((category) => category.key !== key)
+  form.categories = form.categories.filter(
+      (category) => category.key !== key,
+  )
 }
 
-function buildRequest(): BoardCreateRequest {
+function buildPolicy(): BoardPolicyRequest {
   const attachmentsEnabled = form.attachmentsEnabled
   const commentsEnabled = form.commentsEnabled
 
+  return {
+    readPermission: form.readPermission,
+    writePermission: form.writePermission,
+    commentPermission: form.commentPermission,
+    secretMode: form.secretMode,
+    categoriesEnabled: form.categoriesEnabled,
+    categoryRequired: form.categoriesEnabled && form.categoryRequired, attachmentsEnabled,
+    uploadProfile: form.uploadProfile,
+    maxFileCount:
+        attachmentsEnabled
+            ? form.maxFileCount
+            : 0,
+    maxFileSizeBytes:
+        attachmentsEnabled
+            ? Math.round(
+                form.maxFileSizeMb * 1024 * 1024,
+            )
+            : 0,
+    imageRequired: attachmentsEnabled && form.imageRequired,
+    thumbnailEnabled: attachmentsEnabled && form.thumbnailEnabled,
+    representativeImageMode: form.representativeImageMode, commentsEnabled,
+    commentRepliesEnabled: commentsEnabled && form.commentRepliesEnabled,
+    postLikesEnabled: form.postLikesEnabled,
+    commentLikesEnabled: commentsEnabled && form.commentLikesEnabled,
+    officialReplyEnabled: form.officialReplyEnabled,
+  }
+}
+
+function buildCreateRequest(): BoardCreateRequest {
   return {
     name: form.name.trim(),
     slug: form.slug.trim(),
     description: form.description.trim(),
     displayType: form.displayType,
     sortOrder: form.sortOrder,
-    policy: {
-      readPermission: form.readPermission,
-      writePermission: form.writePermission,
-      commentPermission: form.commentPermission,
-      secretMode: form.secretMode,
-      categoriesEnabled: form.categoriesEnabled,
-      categoryRequired: form.categoriesEnabled && form.categoryRequired,
-      attachmentsEnabled,
-      uploadProfile: form.uploadProfile,
-      maxFileCount: attachmentsEnabled ? form.maxFileCount : 0,
-      maxFileSizeBytes: attachmentsEnabled
-        ? Math.round(form.maxFileSizeMb * 1024 * 1024)
-        : 0,
-      imageRequired: attachmentsEnabled && form.imageRequired,
-      thumbnailEnabled: attachmentsEnabled && form.thumbnailEnabled,
-      representativeImageMode: form.representativeImageMode,
-      commentsEnabled,
-      commentRepliesEnabled: commentsEnabled && form.commentRepliesEnabled,
-      postLikesEnabled: form.postLikesEnabled,
-      commentLikesEnabled: commentsEnabled && form.commentLikesEnabled,
-      officialReplyEnabled: form.officialReplyEnabled,
-    },
-    categories: form.categoriesEnabled
-      ? form.categories.map(({ name, sortOrder }) => ({
-          name: name.trim(),
-          sortOrder,
-        }))
-      : [],
+    policy: buildPolicy(),
+    categories:
+        form.categoriesEnabled
+            ? form.categories.map((category) => ({
+              name: category.name.trim(),
+              sortOrder: category.sortOrder,
+            }))
+            : [],
+  }
+}
+
+function buildUpdateRequest(
+    board: BoardAdminDetailResponse,
+): BoardUpdateRequest {
+  return {
+    name: form.name.trim(),
+    description: form.description.trim(),
+    displayType: form.displayType,
+    sortOrder: form.sortOrder,
+    policy: buildPolicy(),
+
+    // 카테고리 기능을 꺼도 배열은 메모리에 유지한다.
+    // 백엔드는 이 경우 카테고리를 변경하지 않는다.
+    categories: form.categories.map((category) => ({
+      id: category.id,
+      name: category.name.trim(),
+      sortOrder: category.sortOrder,
+    })),
+
+    version: currentVersion.value,
   }
 }
 
 async function submit() {
   errorMessage.value = ''
-  createdBoard.value = null
+  successMessage.value = ''
   submitting.value = true
 
   try {
-    createdBoard.value = await createBoard(buildRequest())
+    if (props.board) {
+      await updateBoard(props.board.slug, buildUpdateRequest(props.board))
+
+      currentVersion.value++
+      successMessage.value = '게시판 설정이 수정되었습니다.'
+      emit('updated')
+    } else {
+      const response = await createBoard(buildCreateRequest())
+
+      successMessage.value = `${response.name}이 생성되었습니다. 주소: /boards/${response.slug}`
+    }
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       errorMessage.value = '관리자 로그인이 필요합니다.'
     } else if (error instanceof ApiError && error.status === 403) {
-      errorMessage.value = '게시판 생성 권한이 없습니다.'
+      errorMessage.value = '게시판 관리 권한이 없습니다.'
+    } else if (error instanceof ApiError && error.status === 409) {
+      errorMessage.value = '게시판 설정이 변경되었습니다. 새로고침 후 다시 시도해주세요.'
     } else {
-      errorMessage.value =
-        error instanceof Error ? error.message : '게시판 생성에 실패했습니다.'
+      errorMessage.value = error instanceof Error
+              ? error.message
+              : `게시판 ${editing.value ? '수정' : '생성'}에 실패했습니다.`
     }
   } finally {
     submitting.value = false
@@ -188,7 +300,12 @@ async function submit() {
           v-model="form.slug"
           label="URL 주소"
           placeholder="예: free"
-          hint="영문 소문자, 숫자, 하이픈만 사용할 수 있습니다."
+          :hint="
+            editing
+            ? 'URL 주소는 게시판 생성 후 변경할 수 없습니다.'
+            : '영문 소문자, 숫자, 하이픈만 사용할 수 있습니다.'
+          "
+          :disabled="editing"
           required
         />
         <BaseSelect
@@ -375,13 +492,25 @@ async function submit() {
       {{ errorMessage }}
     </p>
 
-    <p v-if="createdBoard" class="message message--success" role="status">
-      {{ createdBoard.name }}이 생성되었습니다. 주소: /boards/{{ createdBoard.slug }}
+    <p
+        v-if="successMessage"
+        class="message message--success"
+        role="status"
+    >
+      {{ successMessage }}
     </p>
 
     <div class="form-actions">
       <BaseButton type="submit" :disabled="submitting">
-        {{ submitting ? '생성 중...' : '게시판 생성' }}
+        {{
+          submitting
+              ? editing
+                  ? '수정 중...'
+                  : '생성 중...'
+              : editing
+                  ? '설정 저장'
+                  : '게시판 생성'
+        }}
       </BaseButton>
     </div>
   </form>

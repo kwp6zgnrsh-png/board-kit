@@ -29,7 +29,7 @@ public record BoardCreateRequest(
 
 	@NotNull
 	@Valid
-	BoardPolicyCreateRequest policy,
+	BoardPolicyRequest policy,
 
 	@NotNull
 	List<@NotNull @Valid BoardCategoryCreateRequest> categories

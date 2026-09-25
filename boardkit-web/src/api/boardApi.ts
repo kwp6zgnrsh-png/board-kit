@@ -4,6 +4,8 @@ import type {
   BoardCreateResponse,
   BoardDetailResponse,
   BoardSummaryResponse,
+  BoardAdminDetailResponse,
+  BoardUpdateRequest,
 } from '@/features/board/types/board'
 
 export function createBoard(
@@ -24,5 +26,37 @@ export function getBoardDetail(
 ): Promise<BoardDetailResponse> {
   return apiRequest<BoardDetailResponse>(
       `/api/boards/${encodeURIComponent(boardSlug)}`,
+  )
+}
+
+export function getAdminBoard(
+    boardSlug: string,
+): Promise<BoardAdminDetailResponse> {
+  return apiRequest<BoardAdminDetailResponse>(
+      `/api/admin/boards/${encodeURIComponent(boardSlug)}`,
+  )
+}
+
+export function updateBoard(
+    boardSlug: string,
+    request: BoardUpdateRequest,
+): Promise<void> {
+  return apiRequest<void>(
+      `/api/admin/boards/${encodeURIComponent(boardSlug)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(request),
+      },
+  )
+}
+
+export function archiveBoard(
+    boardSlug: string,
+): Promise<void> {
+  return apiRequest<void>(
+      `/api/admin/boards/${encodeURIComponent(boardSlug)}`,
+      {
+        method: 'DELETE',
+      },
   )
 }

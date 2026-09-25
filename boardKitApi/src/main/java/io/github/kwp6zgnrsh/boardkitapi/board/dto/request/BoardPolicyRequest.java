@@ -2,7 +2,7 @@ package io.github.kwp6zgnrsh.boardkitapi.board.dto.request;
 
 import jakarta.validation.constraints.*;
 
-public record BoardPolicyCreateRequest(
+public record BoardPolicyRequest(
 
 	@NotBlank
 	@Pattern(regexp = "PUBLIC|MEMBER|ADMIN")

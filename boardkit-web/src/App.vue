@@ -43,11 +43,11 @@ watch(
 
       <div class="ml-auto flex shrink-0 items-center gap-2 border-l-2 border-slate-950 pl-3">
         <RouterLink
-          v-if="session?.role === 'ADMIN'"
-          :to="{ name: 'admin-board-create' }"
-          class="hidden h-9 min-w-20 items-center justify-center rounded border-2 border-slate-950 bg-white px-3 text-xs font-black leading-none text-slate-950 shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5 sm:inline-flex"
+            v-if="session?.role === 'ADMIN'"
+            :to="{ name: 'admin-dashboard' }"
+            class="hidden h-9 min-w-24 items-center justify-center rounded border-2 border-slate-950 bg-white px-3 text-xs font-black leading-none text-slate-950 shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5 hover:bg-yellow-200 sm:inline-flex"
         >
-          + 게시판
+          게시판 관리
         </RouterLink>
 
         <span

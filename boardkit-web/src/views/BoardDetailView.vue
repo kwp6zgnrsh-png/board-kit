@@ -193,17 +193,19 @@ watch(
               <span class="text-sm font-black text-slate-950">개의 글</span>
             </div>
 
-            <RouterLink
-              v-if="canWrite"
-              :to="{
-                name: 'post-create',
-                params: { boardSlug: board.slug },
-              }"
-              class="inline-flex items-center gap-2 rounded border-[3px] border-slate-950 bg-blue-500 px-4 py-2.5 text-sm font-black text-white no-underline shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5 hover:bg-blue-600"
-            >
-              <span aria-hidden="true">✎</span>
-              글쓰기
-            </RouterLink>
+            <div class="flex flex-wrap items-center gap-2">
+              <RouterLink
+                  v-if="canWrite"
+                  :to="{
+                    name: 'post-create',
+                    params: { boardSlug: board.slug },
+                  }"
+                  class="inline-flex items-center gap-2 rounded border-[3px] border-slate-950 bg-blue-500 px-4 py-2.5 text-sm font-black text-white no-underline shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5 hover:bg-blue-600"
+              >
+                <span aria-hidden="true">✎</span>
+                글쓰기
+              </RouterLink>
+            </div>
           </header>
 
           <p v-if="postsLoading" class="m-4 rounded bg-slate-100 px-4 py-14 text-center text-sm font-bold text-slate-500">
