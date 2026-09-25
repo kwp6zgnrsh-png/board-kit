@@ -31,6 +31,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostListRequest;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostSort;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostUpdateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostDetailResponse;
@@ -66,6 +68,9 @@ class PostApiTest {
       "version": 0
     }
     """;
+
+	private static final PostListRequest DEFAULT_LIST_REQUEST =
+		new PostListRequest(null, null, PostSort.LATEST);
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -224,6 +229,7 @@ class PostApiTest {
 			"free",
 			1,
 			10,
+			DEFAULT_LIST_REQUEST,
 			false,
 			false
 		)).thenReturn(response);
@@ -245,6 +251,7 @@ class PostApiTest {
 			"free",
 			1,
 			10,
+			DEFAULT_LIST_REQUEST,
 			false,
 			false
 		);
@@ -261,29 +268,33 @@ class PostApiTest {
 			0
 		);
 
+		PostListRequest request =
+			new PostListRequest("spring", 2L, PostSort.VIEWS);
+
 		when(postService.getPosts(
 			"admin",
 			2,
 			5,
+			request,
 			true,
 			true
 		)).thenReturn(response);
 
 		mockMvc.perform(get("/api/boards/admin/posts")
-				.param("page", "2")
-				.param("size", "5")
-				.with(authentication(
-					createAuthentication(1L, "ROLE_ADMIN")
-				)))
-			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.posts.length()").value(0))
-			.andExpect(jsonPath("$.page").value(2))
-			.andExpect(jsonPath("$.size").value(5));
+			.param("page", "2")
+			.param("size", "5")
+			.param("keyword", " spring ")
+			.param("categoryId", "2")
+			.param("sort", "VIEWS")
+			.with(authentication(
+				createAuthentication(1L, "ROLE_ADMIN")
+			)));
 
 		verify(postService).getPosts(
 			"admin",
 			2,
 			5,
+			request,
 			true,
 			true
 		);
@@ -480,6 +491,26 @@ class PostApiTest {
 		mockMvc.perform(delete("/api/boards/free/posts/100")
 				.param("version", "0"))
 			.andExpect(status().isUnauthorized());
+
+		verifyNoInteractions(postService);
+	}
+
+	@Test
+	@DisplayName("지원하지 않는 게시글 정렬값은 거절한다")
+	void rejectUnsupportedPostSort() throws Exception {
+		mockMvc.perform(get("/api/boards/free/posts")
+				.param("sort", "POPULAR"))
+			.andExpect(status().isBadRequest());
+
+		verifyNoInteractions(postService);
+	}
+
+	@Test
+	@DisplayName("100자를 초과한 게시글 검색어는 거절한다")
+	void rejectKeywordLongerThanOneHundredCharacters() throws Exception {
+		mockMvc.perform(get("/api/boards/free/posts")
+				.param("keyword", "a".repeat(101)))
+			.andExpect(status().isBadRequest());
 
 		verifyNoInteractions(postService);
 	}

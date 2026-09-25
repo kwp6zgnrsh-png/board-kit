@@ -118,9 +118,7 @@ async function submit() {
         boardSlug: props.board.slug,
         postId: props.post.id,
       },
-      query: route.query.page ?
-          { page: route.query.page }
-          : {},
+      query: route.query,
     })
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {

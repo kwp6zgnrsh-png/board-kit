@@ -19,6 +19,7 @@ import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberUnavailableExcept
 import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.converter.PostConverter;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostListRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostUpdateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostDetailResponse;
@@ -93,6 +94,7 @@ public class PostService {
 	public PostPageResponse getPosts(@NotBlank String boardSlug,
 									 @Min(1) int page,
 									 @Min(1) @Max(100) int size,
+									 @NotNull @Valid PostListRequest request,
 									 boolean memberAccess,
 									 boolean adminAccess) {
 
@@ -108,7 +110,11 @@ public class PostService {
 
 		BoardReadAccess.validate(policy.getReadPermission(), memberAccess, adminAccess);
 
-		long totalElements = postMapper.countActivePostsByBoardId(board.getId());
+		validateCategoryFilter(board.getId(), policy, request.categoryId());
+
+		String keyword = escapeLikeKeyword(request.keyword());
+
+		long totalElements = postMapper.countPostSummaries(board.getId(), keyword, request.categoryId());
 
 		long offset = (long) (page - 1) * size;
 
@@ -117,21 +123,19 @@ public class PostService {
 		if (totalElements == 0 || offset >= totalElements) {
 			posts = List.of();
 		} else {
-			posts = postMapper.selectPostSummaries(board.getId(), size, offset);
+			posts = postMapper.selectPostSummaries(
+				board.getId(),
+				keyword,
+				request.categoryId(),
+				request.sort(),
+				size,
+				offset
+			);
 		}
 
-		long calculatedTotalPages =
-			totalElements / size + (totalElements % size == 0 ? 0 : 1);
+		long calculatedTotalPages = totalElements / size + (totalElements % size == 0 ? 0 : 1);
 
-		int totalPages = Math.toIntExact(calculatedTotalPages);
-
-		return new PostPageResponse(
-			posts,
-			page,
-			size,
-			totalElements,
-			totalPages
-		);
+		return new PostPageResponse(posts, page, size, totalElements, Math.toIntExact(calculatedTotalPages));
 	}
 
 	@Transactional
@@ -444,6 +448,31 @@ public class PostService {
 		validateWritePermission(policy, adminAccess);
 
 		return new PostWriteContext(board, policy);
+	}
+
+	private void validateCategoryFilter(Long boardId, BoardPolicy policy, Long categoryId) {
+		if (categoryId == null) {
+			return;
+		}
+
+		if (!policy.isCategoriesEnabled()) {
+			throw new InvalidPostRequestException("카테고리 필터를 사용할 수 없는 게시판입니다.");
+		}
+
+		if (!boardMapper.existsActiveCategory(boardId, categoryId)) {
+			throw new InvalidPostRequestException("사용할 수 없는 카테고리입니다.");
+		}
+	}
+
+	private String escapeLikeKeyword(String keyword) {
+		if (keyword == null) {
+			return null;
+		}
+
+		return keyword
+			.replace("=", "==")
+			.replace("%", "=%")
+			.replace("_", "=_");
 	}
 
 	private record PostWriteContext(

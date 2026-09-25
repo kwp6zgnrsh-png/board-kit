@@ -1,3 +1,13 @@
+export type PostSort = 'LATEST' | 'OLDEST' | 'VIEWS'
+
+export interface GetPostsOptions {
+    page?: number
+    size?: number
+    keyword?: string
+    categoryId?: number
+    sort?: PostSort
+}
+
 export interface PostCreateRequest {
     title: string
     content: string

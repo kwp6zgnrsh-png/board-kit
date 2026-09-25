@@ -35,7 +35,7 @@ onMounted(async () => {
     const previewResults = await Promise.allSettled(
       boards.map(async (board) => ({
         board,
-        postPage: await getPosts(board.slug, 1, 10),
+        postPage: await getPosts(board.slug, { page: 1, size: 10 }),
       })),
     )
 

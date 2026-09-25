@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { PostSummaryResponse } from '@/features/post/types/post'
+import { useRoute } from 'vue-router'
 
 defineProps<{
   boardSlug: string
-  page: number
   posts: PostSummaryResponse[]
 }>()
+
+const route = useRoute()
 
 function formatDate(value: string): string {
   const date = value.slice(0, 10).split('-')
@@ -66,14 +68,15 @@ function formatDate(value: string): string {
                   LOCK
                 </span>
                 <RouterLink
-                  :to="{
-                    name: 'post-detail',
-                    params: { boardSlug, postId: post.id },
-                    query: {
-                      page: page > 1 ? String(page) : undefined,
-                    },
-                  }"
-                  class="truncate font-bold text-slate-900 no-underline group-hover:text-blue-600 group-hover:underline"
+                    :to="{
+                      name: 'post-detail',
+                      params: {
+                        boardSlug,
+                        postId: post.id,
+                      },
+                      query: route.query,
+                    }"
+                    class="truncate font-bold text-slate-900 no-underline group-hover:text-blue-600 group-hover:underline"
                 >
                   {{ post.title }}
                 </RouterLink>

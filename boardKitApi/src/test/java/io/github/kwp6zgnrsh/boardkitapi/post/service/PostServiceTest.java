@@ -23,6 +23,8 @@ import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberSanctionedExcepti
 import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.converter.PostConverter;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostListRequest;
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostSort;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostUpdateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostDetailResponse;
@@ -201,15 +203,23 @@ class PostServiceTest {
 			)
 		);
 
-		when(postMapper.countActivePostsByBoardId(1L))
+		when(postMapper.countPostSummaries(1L, null, null))
 			.thenReturn(21L);
-		when(postMapper.selectPostSummaries(1L, 10, 10L))
-			.thenReturn(posts);
+
+		when(postMapper.selectPostSummaries(
+			1L,
+			null,
+			null,
+			PostSort.LATEST,
+			10,
+			10L
+		)).thenReturn(posts);
 
 		PostPageResponse response = postService.getPosts(
 			"free",
 			2,
 			10,
+			defaultPostListRequest(),
 			false,
 			false
 		);
@@ -222,7 +232,14 @@ class PostServiceTest {
 			() -> assertEquals(3, response.totalPages())
 		);
 
-		verify(postMapper).selectPostSummaries(1L, 10, 10L);
+		verify(postMapper).selectPostSummaries(
+			1L,
+			null,
+			null,
+			PostSort.LATEST,
+			10,
+			10L
+		);
 	}
 
 	@Test
@@ -236,6 +253,7 @@ class PostServiceTest {
 				"admin",
 				1,
 				10,
+				defaultPostListRequest(),
 				true,
 				false
 			)
@@ -249,13 +267,14 @@ class PostServiceTest {
 	void returnEmptyPostsWhenPageExceedsLastPage() {
 		prepareBoard("free", readPolicy("PUBLIC"));
 
-		when(postMapper.countActivePostsByBoardId(1L))
+		when(postMapper.countPostSummaries(1L, null, null))
 			.thenReturn(11L);
 
 		PostPageResponse response = postService.getPosts(
 			"free",
 			3,
 			10,
+			defaultPostListRequest(),
 			false,
 			false
 		);
@@ -267,7 +286,7 @@ class PostServiceTest {
 			() -> assertEquals(2, response.totalPages())
 		);
 
-		verify(postMapper).countActivePostsByBoardId(1L);
+		verify(postMapper).countPostSummaries(1L, null, null);
 		verifyNoMoreInteractions(postMapper);
 	}
 
@@ -706,6 +725,122 @@ class PostServiceTest {
 			.softDeletePost(anyLong(), anyLong(), anyInt());
 	}
 
+	@Test
+	@DisplayName("검색어와 카테고리와 정렬 조건을 적용해 게시글 목록을 조회한다")
+	void getPostsWithSearchFilters() {
+		BoardPolicy policy =
+			policy("MEMBER", "OFF", true, false);
+
+		prepareBoard("free", policy);
+
+		when(boardMapper.existsActiveCategory(1L, 2L))
+			.thenReturn(true);
+
+		when(postMapper.countPostSummaries(
+			1L,
+			"50=%=_off==",
+			2L
+		)).thenReturn(1L);
+
+		when(postMapper.selectPostSummaries(
+			1L,
+			"50=%=_off==",
+			2L,
+			PostSort.VIEWS,
+			10,
+			0L
+		)).thenReturn(List.of());
+
+		PostListRequest request = new PostListRequest(
+			"50%_off=",
+			2L,
+			PostSort.VIEWS
+		);
+
+		PostPageResponse response = postService.getPosts(
+			"free",
+			1,
+			10,
+			request,
+			false,
+			false
+		);
+
+		assertAll(
+			() -> assertEquals(1L, response.totalElements()),
+			() -> assertEquals(1, response.totalPages())
+		);
+
+		verify(boardMapper).existsActiveCategory(1L, 2L);
+
+		verify(postMapper).selectPostSummaries(
+			1L,
+			"50=%=_off==",
+			2L,
+			PostSort.VIEWS,
+			10,
+			0L
+		);
+	}
+
+	@Test
+	@DisplayName("카테고리를 사용하지 않는 게시판은 카테고리 필터를 거절한다")
+	void rejectCategoryFilterWhenCategoriesAreDisabled() {
+		prepareBoard("free", readPolicy("PUBLIC"));
+
+		PostListRequest request = new PostListRequest(
+			null,
+			2L,
+			PostSort.LATEST
+		);
+
+		assertThrows(
+			InvalidPostRequestException.class,
+			() -> postService.getPosts(
+				"free",
+				1,
+				10,
+				request,
+				false,
+				false
+			)
+		);
+
+		verifyNoInteractions(postMapper);
+	}
+
+	@Test
+	@DisplayName("다른 게시판이거나 비활성화된 카테고리 필터를 거절한다")
+	void rejectUnavailableCategoryFilter() {
+		BoardPolicy policy =
+			policy("MEMBER", "OFF", true, false);
+
+		prepareBoard("free", policy);
+
+		when(boardMapper.existsActiveCategory(1L, 2L))
+			.thenReturn(false);
+
+		PostListRequest request = new PostListRequest(
+			null,
+			2L,
+			PostSort.LATEST
+		);
+
+		assertThrows(
+			InvalidPostRequestException.class,
+			() -> postService.getPosts(
+				"free",
+				1,
+				10,
+				request,
+				false,
+				false
+			)
+		);
+
+		verifyNoInteractions(postMapper);
+	}
+
 	private BoardPolicy readPolicy(String readPermission) {
 		return BoardPolicy.builder()
 			.readPermission(readPermission)
@@ -792,6 +927,14 @@ class PostServiceTest {
 			0,
 			createdAt,
 			createdAt
+		);
+	}
+
+	private PostListRequest defaultPostListRequest() {
+		return new PostListRequest(
+			null,
+			null,
+			PostSort.LATEST
 		);
 	}
 

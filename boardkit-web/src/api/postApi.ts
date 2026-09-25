@@ -1,5 +1,6 @@
 import { apiRequest } from '@/api/http'
 import type {
+    GetPostsOptions,
     PostCreateRequest,
     PostCreateResponse,
     PostDetailResponse,
@@ -22,13 +23,23 @@ export function createPost(
 
 export function getPosts(
     boardSlug: string,
-    page = 1,
-    size = 10,
+    options: GetPostsOptions = {},
 ): Promise<PostPageResponse> {
     const params = new URLSearchParams({
-        page: String(page),
-        size: String(size),
+        page: String(options.page ?? 1),
+        size: String(options.size ?? 10),
+        sort: options.sort ?? 'LATEST',
     })
+
+    const keyword = options.keyword?.trim()
+
+    if (keyword) {
+        params.set('keyword', keyword)
+    }
+
+    if (options.categoryId !== undefined) {
+        params.set('categoryId', String(options.categoryId))
+    }
 
     return apiRequest<PostPageResponse>(
         `/api/boards/${encodeURIComponent(boardSlug)}/posts?${params}`,

@@ -192,7 +192,7 @@ async function removePost() {
     await router.replace({
       name: 'board-detail',
       params: { boardSlug: boardSlug.value },
-      query: route.query.page ? { page: route.query.page } : {},
+      query: route.query,
     })
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
@@ -330,7 +330,7 @@ watch(
                     :to="{
                       name: 'post-edit',
                       params: { boardSlug, postId: post.id },
-                      query: route.query.page ? { page: route.query.page } : {},
+                      query: route.query,
                     }"
                 >
                   수정
@@ -349,7 +349,7 @@ watch(
                   :to="{
                     name: 'board-detail',
                     params: { boardSlug },
-                    query: route.query.page ? { page: route.query.page } : {},
+                    query: route.query,
                   }"
                   class="inline-flex min-h-11 items-center justify-center rounded border-2 border-slate-950 bg-blue-600 px-4 text-sm font-black text-white no-underline shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-blue-600 max-sm:flex-1"
               >

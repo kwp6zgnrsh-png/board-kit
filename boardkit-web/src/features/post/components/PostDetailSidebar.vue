@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { useRoute } from 'vue-router'
+
 defineProps<{
   boardName: string
   boardSlug: string
   authorDisplayName: string
 }>()
+
+const route = useRoute()
 </script>
 
 <template>
@@ -36,8 +40,11 @@ defineProps<{
       <div class="grid gap-4 p-4">
         <p class="m-0 text-xs text-slate-600">관련 글 추천은 준비 중입니다.</p>
         <RouterLink
-          :to="{ name: 'board-detail', params: { boardSlug } }"
-          class="flex justify-center gap-2 rounded border-2 border-slate-950 bg-white px-3 py-2 text-xs font-black text-slate-950 no-underline hover:bg-blue-50 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            :to="{
+              name: 'board-detail',
+              params: { boardSlug },
+              query: route.query,
+            }"
         >
           게시판 글 보기 <span aria-hidden="true">→</span>
         </RouterLink>

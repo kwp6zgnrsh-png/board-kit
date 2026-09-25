@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostSort;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostSummaryResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.Post;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.PostCommentTarget;
@@ -18,12 +19,17 @@ public interface PostMapper {
 
 	List<PostSummaryResponse> selectPostSummaries(
 		@Param("boardId") Long boardId,
+		@Param("keyword") String keyword,
+		@Param("categoryId") Long categoryId,
+		@Param("sort") PostSort sort,
 		@Param("limit") int limit,
 		@Param("offset") long offset
 	);
 
-	long countActivePostsByBoardId(
-		@Param("boardId") Long boardId
+	long countPostSummaries(
+		@Param("boardId") Long boardId,
+		@Param("keyword") String keyword,
+		@Param("categoryId") Long categoryId
 	);
 
 	Optional<PostDetail> selectActivePostDetail(
