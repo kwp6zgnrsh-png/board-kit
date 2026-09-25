@@ -136,4 +136,31 @@
             AND version = #{version}
             AND deleted_at IS NULL
     </update>
+
+    <select id="selectActiveCommentTargetForUpdate"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.post.model.PostCommentTarget">
+        SELECT
+            author_id AS authorId,
+            is_secret AS secret,
+            secret_password_hash AS secretPasswordHash,
+            comments_locked AS commentsLocked
+        FROM post
+        WHERE id = #{postId}
+            AND board_id = #{boardId}
+            AND deleted_at IS NULL
+        FOR UPDATE
+    </select>
+
+    <select id="selectActiveCommentTarget"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.post.model.PostCommentTarget">
+        SELECT
+            author_id AS authorId,
+            is_secret AS secret,
+            secret_password_hash AS secretPasswordHash,
+            comments_locked AS commentsLocked
+        FROM post
+        WHERE id = #{postId}
+            AND board_id = #{boardId}
+            AND deleted_at IS NULL
+    </select>
 </mapper>

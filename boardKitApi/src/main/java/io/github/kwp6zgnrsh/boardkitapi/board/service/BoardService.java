@@ -2,28 +2,27 @@ package io.github.kwp6zgnrsh.boardkitapi.board.service;
 
 import java.util.List;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
+
 import io.github.kwp6zgnrsh.boardkitapi.board.converter.BoardConverter;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.request.BoardCategoryCreateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.request.BoardCreateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.request.BoardPolicyCreateRequest;
-import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardCategoryResponse;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardCreateResponse;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardDetailResponse;
-import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardPolicyResponse;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardSummaryResponse;
-import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardCategory;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy;
+import io.github.kwp6zgnrsh.boardkitapi.board.policy.BoardReadAccess;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.validation.annotation.Validated;
 
 @Service
 @Validated
@@ -91,9 +90,8 @@ public class BoardService {
 				"게시판 정책을 찾을 수 없습니다. boardId=" + board.getId()
 			));
 
-		if (!canReadBoard(policy.getReadPermission(), memberAccess, adminAccess)) {
-			throw new BoardAccessDeniedException();
-		}
+
+		BoardReadAccess.validate(policy.getReadPermission(), memberAccess, adminAccess);
 
 		List<BoardCategory> categories;
 
@@ -108,15 +106,6 @@ public class BoardService {
 			policy,
 			categories
 		);
-	}
-
-	private boolean canReadBoard(String readPermission, boolean memberAccess, boolean adminAccess) {
-		return switch (readPermission) {
-			case "PUBLIC" -> true;
-			case "MEMBER" -> memberAccess || adminAccess;
-			case "ADMIN" -> adminAccess;
-			default -> throw new IllegalStateException("지원하지 않는 읽기 권한입니다: " + readPermission);
-		};
 	}
 
 	private void validatePolicy(BoardPolicyCreateRequest policy) {

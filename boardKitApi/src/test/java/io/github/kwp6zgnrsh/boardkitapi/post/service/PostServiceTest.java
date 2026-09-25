@@ -735,6 +735,7 @@ class PostServiceTest {
 							   boolean categoriesEnabled,
 							   boolean categoryRequired) {
 		return BoardPolicy.builder()
+			.readPermission("PUBLIC")
 			.writePermission(writePermission)
 			.secretMode(secretMode)
 			.categoriesEnabled(categoriesEnabled)

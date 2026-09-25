@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Param;
 
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostSummaryResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.Post;
+import io.github.kwp6zgnrsh.boardkitapi.post.model.PostCommentTarget;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.PostDetail;
 
 @Mapper
@@ -41,5 +42,15 @@ public interface PostMapper {
 		@Param("boardId") Long boardId,
 		@Param("postId") Long postId,
 		@Param("version") Integer version
+	);
+
+	Optional<PostCommentTarget> selectActiveCommentTargetForUpdate(
+		@Param("boardId") Long boardId,
+		@Param("postId") Long postId
+	);
+
+	Optional<PostCommentTarget> selectActiveCommentTarget(
+		@Param("boardId") Long boardId,
+		@Param("postId") Long postId
 	);
 }

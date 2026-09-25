@@ -9,11 +9,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
-import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy;
+import io.github.kwp6zgnrsh.boardkitapi.board.policy.BoardReadAccess;
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberSanctionedException;
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberUnavailableException;
 import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
@@ -61,42 +61,24 @@ public class PostService {
 										 @NotNull @Valid PostCreateRequest request,
 										 @NotNull @Positive Long authorId,
 										 boolean adminAccess) {
-		validateMember(authorId);
 
-		Board board = boardMapper
-			.selectActiveBoardBySlug(boardSlug)
-			.orElseThrow(BoardNotFoundException::new);
+		PostWriteContext context = requirePostWriteContext(boardSlug, authorId, adminAccess);
+		Board board = context.board();
+		BoardPolicy policy = context.policy();
 
-		BoardPolicy policy = boardMapper
-			.selectPolicyByBoardId(board.getId())
-			.orElseThrow(() -> new IllegalStateException(
-				"게시판 정책을 찾을 수 없습니다. boardId=" + board.getId()
-			));
-
-		validateWritePermission(policy, adminAccess);
 		validateCategory(board.getId(), policy, request.categoryId());
+
 		validateCommentsLock(policy, request.commentsLocked());
 
-		String secretPassword = normalizeSecretPassword(
-			request.secretPassword()
-		);
+		String secretPassword = normalizeSecretPassword(request.secretPassword());
 
-		validateSecretPolicy(
-			policy.getSecretMode(),
-			request.isSecret(),
-			secretPassword
-		);
+		validateSecretPolicy(policy.getSecretMode(), request.isSecret(), secretPassword);
 
 		validateImagePolicy(policy);
 
 		String secretPasswordHash = encodeSecretPassword(secretPassword);
 
-		Post post = postConverter.toPost(
-			request,
-			board.getId(),
-			authorId,
-			secretPasswordHash
-		);
+		Post post = postConverter.toPost(request, board.getId(), authorId, secretPasswordHash);
 
 		int insertedCount = postMapper.insertPost(post);
 
@@ -124,7 +106,7 @@ public class PostService {
 				"게시판 정책을 찾을 수 없습니다. boardId=" + board.getId()
 			));
 
-		validateReadPermission(policy.getReadPermission(), memberAccess, adminAccess);
+		BoardReadAccess.validate(policy.getReadPermission(), memberAccess, adminAccess);
 
 		long totalElements = postMapper.countActivePostsByBoardId(board.getId());
 
@@ -135,11 +117,7 @@ public class PostService {
 		if (totalElements == 0 || offset >= totalElements) {
 			posts = List.of();
 		} else {
-			posts = postMapper.selectPostSummaries(
-				board.getId(),
-				size,
-				offset
-			);
+			posts = postMapper.selectPostSummaries(board.getId(), size, offset);
 		}
 
 		long calculatedTotalPages =
@@ -171,7 +149,7 @@ public class PostService {
 					board.getId()
 			));
 
-		validateReadPermission(policy.getReadPermission(), memberAccess, adminAccess);
+		BoardReadAccess.validate(policy.getReadPermission(), memberAccess, adminAccess);
 
 		PostDetail postDetail = postMapper
 			.selectActivePostDetail(board.getId(), postId)
@@ -208,19 +186,9 @@ public class PostService {
 						   @NotNull @Positive Long memberId,
 						   boolean adminAccess) {
 
-		validateMember(memberId);
-
-		Board board = boardMapper
-			.selectActiveBoardBySlug(boardSlug)
-			.orElseThrow(BoardNotFoundException::new);
-
-		BoardPolicy policy = boardMapper
-			.selectPolicyByBoardId(board.getId())
-			.orElseThrow(() -> new IllegalStateException(
-				"게시판 정책을 찾을 수 없습니다. boardId=" + board.getId()
-			));
-
-		validateWritePermission(policy, adminAccess);
+		PostWriteContext context = requirePostWriteContext(boardSlug, memberId, adminAccess);
+		Board board = context.board();
+		BoardPolicy policy = context.policy();
 
 		PostDetail currentPost = postMapper
 			.selectActivePostDetail(board.getId(), postId)
@@ -234,8 +202,7 @@ public class PostService {
 		validateCategory(board.getId(), policy, request.categoryId());
 		validateCommentsLock(policy, request.commentsLocked());
 
-		String newSecretPassword =
-			normalizeSecretPassword(request.secretPassword());
+		String newSecretPassword = normalizeSecretPassword(request.secretPassword());
 
 		if (request.clearSecretPassword() && newSecretPassword != null) {
 			throw new InvalidPostRequestException("비밀글 비밀번호 변경과 삭제를 동시에 요청할 수 없습니다.");
@@ -254,19 +221,9 @@ public class PostService {
 			);
 		}
 
-		String secretPasswordHash = resolveSecretPasswordHash(
-			currentPost,
-			request,
-			newSecretPassword
-		);
+		String secretPasswordHash = resolveSecretPasswordHash(currentPost, request, newSecretPassword);
 
-		Post post = postConverter.toUpdatedPost(
-			request,
-			postId,
-			board.getId(),
-			memberId,
-			secretPasswordHash
-		);
+		Post post = postConverter.toUpdatedPost(request, postId, board.getId(), memberId, secretPasswordHash);
 
 		int updatedCount = postMapper.updatePost(post);
 
@@ -300,11 +257,7 @@ public class PostService {
 
 		validateVersion(currentPost.version(), version);
 
-		int deletedCount = postMapper.softDeletePost(
-			board.getId(),
-			postId,
-			version
-		);
+		int deletedCount = postMapper.softDeletePost(board.getId(), postId, version);
 
 		if (deletedCount != 1) {
 			throw new PostConflictException();
@@ -326,22 +279,6 @@ public class PostService {
 			|| normalizedPassword.getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_PASSWORD_BYTES
 			|| !passwordEncoder.matches(normalizedPassword, postDetail.secretPasswordHash())) {
 			throw new SecretPostAccessDeniedException();
-		}
-	}
-
-	private static void validateReadPermission(String readPermission, boolean memberAccess, boolean adminAccess) {
-		boolean readable = switch (readPermission) {
-			case "PUBLIC" -> true;
-			case "MEMBER" -> memberAccess || adminAccess;
-			case "ADMIN" -> adminAccess;
-			default -> throw new IllegalStateException(
-				"지원하지 않는 읽기 권한입니다: " +
-					readPermission
-			);
-		};
-
-		if (!readable) {
-			throw new BoardAccessDeniedException();
 		}
 	}
 
@@ -386,9 +323,7 @@ public class PostService {
 			);
 		}
 
-		if (categoryId != null &&
-			!boardMapper.existsActiveCategory(boardId, categoryId)
-		) {
+		if (categoryId != null && !boardMapper.existsActiveCategory(boardId, categoryId)) {
 			throw new InvalidPostRequestException(
 				"사용할 수 없는 카테고리입니다."
 			);
@@ -453,8 +388,7 @@ public class PostService {
 			return null;
 		}
 
-		int passwordBytes =
-			password.getBytes(StandardCharsets.UTF_8).length;
+		int passwordBytes = password.getBytes(StandardCharsets.UTF_8).length;
 
 		if (passwordBytes > BCRYPT_MAX_PASSWORD_BYTES) {
 			throw new InvalidPostRequestException(
@@ -490,5 +424,31 @@ public class PostService {
 		if (!memberMapper.existsActiveMemberById(memberId)) {
 			throw new MemberUnavailableException();
 		}
+	}
+
+	private PostWriteContext requirePostWriteContext(String boardSlug, Long memberId, boolean adminAccess) {
+		validateMember(memberId);
+
+		Board board = boardMapper
+			.selectActiveBoardBySlug(boardSlug)
+			.orElseThrow(BoardNotFoundException::new);
+
+		BoardPolicy policy = boardMapper
+			.selectPolicyByBoardId(board.getId())
+			.orElseThrow(() -> new IllegalStateException(
+				"게시판 정책을 찾을 수 없습니다. boardId=" + board.getId()
+			));
+
+		BoardReadAccess.validate(policy.getReadPermission(), true, adminAccess);
+
+		validateWritePermission(policy, adminAccess);
+
+		return new PostWriteContext(board, policy);
+	}
+
+	private record PostWriteContext(
+		Board board,
+		BoardPolicy policy
+	) {
 	}
 }

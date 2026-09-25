@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.github.kwp6zgnrsh.boardkitapi.comment.mapper.CommentMapper">
+
+    <insert id="insertComment" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO comment (
+            post_id,
+            author_id,
+            parent_id,
+            content
+        )
+        VALUES (
+            #{postId},
+            #{authorId},
+            #{parentId},
+            #{content}
+        )
+    </insert>
+
+    <select id="selectActiveRootIdForUpdate" resultType="long">
+        SELECT id
+        FROM comment
+        WHERE id = #{parentId}
+            AND post_id = #{postId}
+            AND parent_id IS NULL
+            AND deleted_at IS NULL
+        FOR UPDATE
+    </select>
+
+    <select id="selectActiveComments"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.comment.dto.response.CommentItemResponse">
+        SELECT
+            c.id,
+            c.parent_id AS parentId,
+            c.author_id AS authorId,
+            m.display_name AS authorDisplayName,
+            CASE
+                WHEN c.deleted_at IS NULL THEN c.content
+                ELSE NULL
+            END AS content,
+            (c.deleted_at IS NOT NULL) AS deleted,
+            c.version,
+            c.created_at AS createdAt,
+            c.updated_at AS updatedAt
+        FROM comment c
+            INNER JOIN member m
+                ON m.id = c.author_id
+            INNER JOIN comment thread_root
+                ON thread_root.id = COALESCE(c.parent_id, c.id)
+            AND thread_root.post_id = c.post_id
+        WHERE c.post_id = #{postId}
+            AND (
+                c.deleted_at IS NULL
+                OR (
+                    c.parent_id IS NULL
+                    AND EXISTS (
+                        SELECT 1
+                        FROM comment child
+                        WHERE child.parent_id = c.id
+                            AND child.post_id = c.post_id
+                            AND child.deleted_at IS NULL
+                    )
+                )
+            )
+        ORDER BY
+            thread_root.created_at ASC,
+            thread_root.id ASC,
+            CASE WHEN c.parent_id IS NULL THEN 0 ELSE 1 END,
+            c.created_at ASC,
+            c.id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countActiveComments" resultType="long">
+        SELECT COUNT(*)
+        FROM comment c
+        WHERE c.post_id = #{postId}
+            AND (
+                c.deleted_at IS NULL
+                OR (
+                    c.parent_id IS NULL
+                    AND EXISTS (
+                        SELECT 1
+                        FROM comment child
+                        WHERE child.parent_id = c.id
+                            AND child.post_id = c.post_id
+                            AND child.deleted_at IS NULL
+                    )
+                )
+            )
+    </select>
+
+    <select id="selectActiveComment"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.comment.model.Comment">
+        SELECT
+            c.id,
+            c.post_id AS postId,
+            c.author_id AS authorId,
+            c.parent_id AS parentId,
+            c.content,
+            c.version,
+            c.created_at AS createdAt,
+            c.updated_at AS updatedAt,
+            c.deleted_at AS deletedAt
+        FROM comment c
+            INNER JOIN post p ON p.id = c.post_id
+        WHERE c.id = #{commentId}
+            AND c.post_id = #{postId}
+            AND p.board_id = #{boardId}
+            AND c.deleted_at IS NULL
+            AND p.deleted_at IS NULL
+    </select>
+
+    <update id="updateComment">
+        UPDATE comment c
+            INNER JOIN post p ON p.id = c.post_id
+        SET
+            c.content = #{content},
+            c.version = c.version + 1,
+            c.updated_at = CURRENT_TIMESTAMP(6)
+        WHERE c.id = #{commentId}
+            AND c.post_id = #{postId}
+            AND p.board_id = #{boardId}
+            AND c.author_id = #{authorId}
+            AND c.version = #{version}
+            AND c.deleted_at IS NULL
+            AND p.deleted_at IS NULL
+    </update>
+
+    <update id="softDeleteComment">
+        UPDATE comment c
+            INNER JOIN post p ON p.id = c.post_id
+        SET
+            c.deleted_at = CURRENT_TIMESTAMP(6),
+            c.updated_at = CURRENT_TIMESTAMP(6),
+            c.version = c.version + 1
+        WHERE c.id = #{commentId}
+            AND c.post_id = #{postId}
+            AND p.board_id = #{boardId}
+            AND c.version = #{version}
+            AND c.deleted_at IS NULL
+            AND p.deleted_at IS NULL
+    </update>
+</mapper>

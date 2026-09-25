@@ -61,7 +61,7 @@
 - 공식 답변·신고 처리·제재는 ADMIN 권한으로만 실행한다.
 - 게시판의 댓글 사용 여부와 개별 게시글의 댓글 잠금을 모두 검사한다. 댓글 기능 비활성화 시 기존 댓글과 좋아요 표시 정책을 따로 적용한다.
 - 정책 변경으로 기존 비밀글의 보호나 기존 첨부파일 참조가 사라지지 않게 한다. 썸네일 재생성·삭제는 명시적 작업으로 처리한다.
-- 정책 version / 게시글 version은 UPDATE 조건에서 비교하고 성공 시 증가시킨다. 컬럼만으로 낙관적 잠금이 동작하지 않는다.
+- 정책 version / 게시글 version / 댓글 version은 UPDATE 조건에서 비교하고 성공 시 증가시킨다. 컬럼만으로 낙관적 잠금이 동작하지 않는다.
 - `post.updated_at`은 조회수 증가로 바뀌지 않도록 자동 갱신을 사용하지 않는다. 게시글 편집 시 서비스의 UPDATE에서 명시적으로 갱신한다.
 - 현재 회원 제재 여부는 `member_sanction`에서 `revoked_at IS NULL`, `starts_at <= 현재 시각`, `ends_at IS NULL OR ends_at > 현재 시각`을 모두 만족하는 기록의 존재 여부로 판단한다. 탈퇴 여부는 `member.deleted_at`으로 별도 검사한다.
 - 파일 삭제 표시·대표 파일 해제 또는 교체·정리 작업 등록을 함께 커밋한다. 롤백된 신규 파일 정리 작업은 독립 트랜잭션 등으로 기록한다.
@@ -69,7 +69,7 @@
 
 ## 검증 범위
 
-- DDL과 Mermaid의 13개 테이블·117개 컬럼·23개 FK 참조를 정적으로 대조했다.
+- DDL과 Mermaid의 13개 테이블· 118개 컬럼 · 23개 FK 참조를 정적으로 대조했다.
 - 설치된 MySQL 8.1.0으로 별도 임시 인스턴스 검증을 시도했으나, 데이터 디렉토리 초기화 중 서버 프로세스가 signal 11로 종료됐다. DDL 실행 및 DB 제약 동작 검증은 완료하지 못했다.
 - 기존 프로젝트 DB에는 접속하거나 변경하지 않았다. 실제 적용 전 별도 빈 DB에서 실행 검증이 필요하다.
 - MySQL 문법 참고: [CHECK 제약](https://dev.mysql.com/doc/refman/8.0/en/create-table-check-constraints.html), [FK 제약](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-keys.html).
@@ -174,6 +174,7 @@
 - author_id (FK → member.id)
 - parent_id (FK → comment.id, NULL 허용)
 - content
+- version
 - created_at
 - updated_at
 - deleted_at (NULL 허용)
@@ -341,6 +342,7 @@ erDiagram
         bigint author_id FK
         bigint parent_id FK "nullable"
         text content
+        int version
         datetime(6) created_at
         datetime(6) updated_at
         datetime(6) deleted_at "nullable"

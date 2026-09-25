@@ -5,7 +5,7 @@ import { getBoardDetail } from '@/api/boardApi'
 import { ApiError } from '@/api/http'
 import BoardHero from '@/features/board/components/BoardHero.vue'
 import type {BoardDetailResponse,} from '@/features/board/types/board'
-import PostCommentsPanel from '@/features/post/components/PostCommentsPanel.vue'
+import PostCommentsPanel from '@/features/comment/components/PostCommentsPanel.vue'
 import PostDetailSidebar from '@/features/post/components/PostDetailSidebar.vue'
 import SecretPostPasswordForm from '@/features/post/components/SecretPostPasswordForm.vue'
 import type {PostDetailResponse,} from '@/features/post/types/post'
@@ -25,6 +25,7 @@ const post = ref<PostDetailResponse | null>(null)
 const loading = ref(false)
 const passwordSubmitting = ref(false)
 const passwordRequired = ref(false)
+const secretPostPassword = ref<string | undefined>(undefined)
 
 const errorMessage = ref('')
 const passwordErrorMessage = ref('')
@@ -48,6 +49,7 @@ async function loadPage(slug: string, id: number | null,) {
 
   board.value = null
   post.value = null
+  secretPostPassword.value = undefined
   passwordRequired.value = false
   errorMessage.value = ''
   passwordErrorMessage.value = ''
@@ -122,6 +124,7 @@ async function submitPassword(password: string) {
     )
 
     if (currentRequest === requestSequence) {
+      secretPostPassword.value = password
       post.value = response
       passwordRequired.value = false
     }
@@ -356,8 +359,13 @@ watch(
           </article>
 
           <PostCommentsPanel
-              v-if="board.policy.commentsEnabled"
+              :board-slug="board.slug"
+              :post-id="post.id"
+              :comments-enabled="board.policy.commentsEnabled"
+              :comment-permission="board.policy.commentPermission"
+              :comment-replies-enabled="board.policy.commentRepliesEnabled"
               :locked="post.commentsLocked"
+              :secret-password="secretPostPassword"
           />
         </div>
 

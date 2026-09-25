@@ -7,6 +7,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 public class MemberSanctionedException extends RuntimeException {
 
 	public MemberSanctionedException() {
-		super("제재 중인 회원은 게시글을 작성할 수 없습니다.");
+		super("제재 중인 회원은 게시글이나 댓글을 작성할 수 없습니다.");
 	}
 }
