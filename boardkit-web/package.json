@@ -11,6 +11,14 @@
     "type-check": "vue-tsc --build"
   },
   "dependencies": {
+    "@tiptap/core": "^3.31.4",
+    "@tiptap/extension-document": "^3.31.4",
+    "@tiptap/extension-hard-break": "^3.31.4",
+    "@tiptap/extension-paragraph": "^3.31.4",
+    "@tiptap/extension-text": "^3.31.4",
+    "@tiptap/extensions": "^3.31.4",
+    "@tiptap/pm": "^3.31.4",
+    "@tiptap/vue-3": "^3.31.4",
     "vue": "^3.5.42",
     "vue-router": "^4.6.4"
   },

@@ -8,16 +8,11 @@ import jakarta.validation.constraints.Size;
 
 public record BoardCategoryUpdateRequest(
 
-	@Positive
-	Long id,
+	@Positive Long id,
 
-	@NotBlank
-	@Size(max = 50)
-	String name,
+	@NotBlank @Size(max = 50) String name,
 
-	@NotNull
-	@PositiveOrZero
-	Integer sortOrder
+	@NotNull @PositiveOrZero Integer sortOrder
 
 ) {
 }

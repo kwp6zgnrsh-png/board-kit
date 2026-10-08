@@ -11,6 +11,7 @@ import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostSummaryResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.Post;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.PostCommentTarget;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.PostDetail;
+import tools.jackson.databind.JsonNode;
 
 @Mapper
 public interface PostMapper {
@@ -58,5 +59,16 @@ public interface PostMapper {
 	Optional<PostCommentTarget> selectActiveCommentTarget(
 		@Param("boardId") Long boardId,
 		@Param("postId") Long postId
+	);
+
+	int refreshRepresentativeImage(
+		@Param("boardId") Long boardId,
+		@Param("postId") Long postId
+	);
+
+	int updateContentDocument(
+		@Param("boardId") Long boardId,
+		@Param("postId") Long postId,
+		@Param("contentDocument") JsonNode contentDocument
 	);
 }

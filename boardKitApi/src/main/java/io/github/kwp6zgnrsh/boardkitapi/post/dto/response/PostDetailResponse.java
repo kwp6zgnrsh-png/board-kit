@@ -1,6 +1,10 @@
 package io.github.kwp6zgnrsh.boardkitapi.post.dto.response;
 
 import java.time.LocalDateTime;
+import java.util.List;
+
+import io.github.kwp6zgnrsh.boardkitapi.file.dto.response.PostFileResponse;
+import tools.jackson.databind.JsonNode;
 
 public record PostDetailResponse(
 	Long id,
@@ -17,6 +21,9 @@ public record PostDetailResponse(
 	long viewCount,
 	Integer version,
 	LocalDateTime createdAt,
-	LocalDateTime updatedAt
+	LocalDateTime updatedAt,
+	Long representativeFileId,
+	List<PostFileResponse> files,
+	JsonNode contentDocument
 ) {
 }

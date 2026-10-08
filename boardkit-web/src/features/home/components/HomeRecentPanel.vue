@@ -15,41 +15,19 @@ function formatDate(value: string): string {
 </script>
 
 <template>
-  <aside class="overflow-hidden rounded-lg border-[3px] border-slate-950 bg-sky-200">
-    <header class="flex items-center justify-between px-3 py-2">
-      <div>
-        <p class="m-0 text-[9px] font-black tracking-[0.18em] text-slate-600">WHAT'S NEW</p>
-        <h2 class="m-0 text-base font-black text-slate-950">지금 새 글 🔥</h2>
-      </div>
-      <span class="text-xl" aria-hidden="true">↗</span>
-    </header>
-
-    <ol v-if="posts.length > 0" class="grid gap-0.5 px-2 pb-2">
-      <li v-for="({ board, post }, index) in posts" :key="`${board.id}-${post.id}`">
-        <RouterLink
-          :to="{
-            name: 'post-detail',
-            params: { boardSlug: board.slug, postId: post.id },
-          }"
-          class="grid grid-cols-[22px_minmax(0,1fr)_auto] items-center gap-1.5 rounded border-2 border-slate-950 bg-white px-1.5 py-0.5 text-slate-950 no-underline transition hover:-translate-y-0.5 hover:bg-yellow-100"
-        >
-          <strong
-            class="grid h-5 w-5 place-items-center border-2 border-slate-950 text-[9px] leading-none"
-            :class="index === 0 ? 'bg-yellow-300' : index < 3 ? 'bg-emerald-300' : 'bg-white'"
-          >
-            {{ index + 1 }}
-          </strong>
-          <span class="min-w-0">
-            <span class="block truncate text-[11px] font-black leading-tight">{{ post.title }}</span>
-            <span class="hidden">{{ board.name }}</span>
-          </span>
-          <span class="text-[9px] font-bold text-slate-500">{{ formatDate(post.createdAt) }}</span>
+  <section class="overflow-hidden rounded-md border border-slate-200 bg-white" aria-labelledby="recent-heading">
+    <header class="border-b border-slate-200 bg-slate-50 px-4 py-3"><h2 id="recent-heading" class="text-sm font-semibold text-slate-800">최근 올라온 글</h2></header>
+    <ol v-if="posts.length" class="divide-y divide-slate-100">
+      <li v-for="{ board, post } in posts" :key="`${board.id}-${post.id}`">
+        <RouterLink :to="{ name: 'post-detail', params: { boardSlug: board.slug, postId: post.id } }"
+          class="flex min-w-0 items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50/50 hover:text-blue-600">
+          <span class="hidden w-24 shrink-0 truncate text-xs text-slate-400 sm:block">{{ board.name }}</span>
+          <span class="truncate">{{ post.title }}</span>
+          <span v-if="post.commentCount" class="shrink-0 text-xs text-red-500">[{{ post.commentCount }}]</span>
+          <time :datetime="post.createdAt" class="ml-auto shrink-0 text-xs text-slate-400">{{ formatDate(post.createdAt) }}</time>
         </RouterLink>
       </li>
     </ol>
-
-    <p v-else class="mx-4 mb-4 rounded border-2 border-dashed border-slate-500 bg-white/70 px-3 py-8 text-center text-xs font-bold text-slate-500">
-      아직 등록된 글이 없습니다.
-    </p>
-  </aside>
+    <p v-else class="py-8 text-center text-sm text-slate-400">아직 등록된 글이 없습니다.</p>
+  </section>
 </template>

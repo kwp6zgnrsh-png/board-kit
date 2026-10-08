@@ -10,31 +10,19 @@ import jakarta.validation.constraints.Size;
 
 public record BoardUpdateRequest(
 
-	@NotBlank
-	@Size(max = 100)
-	String name,
+	@NotBlank @Size(max = 100) String name,
 
-	@Size(max = 2000)
-	String description,
+	@Size(max = 2000) String description,
 
-	@NotBlank
-	@jakarta.validation.constraints.Pattern(regexp = "LIST|CARD")
-	String displayType,
+	@NotBlank @jakarta.validation.constraints.Pattern(regexp = "LIST|CARD") String displayType,
 
-	@NotNull
-	@PositiveOrZero
-	Integer sortOrder,
+	@NotNull @PositiveOrZero Integer sortOrder,
 
-	@NotNull
-	@Valid
-	BoardPolicyRequest policy,
+	@NotNull @Valid BoardPolicyRequest policy,
 
-	@NotNull
-	List<@NotNull @Valid BoardCategoryUpdateRequest> categories,
+	@NotNull List<@NotNull @Valid BoardCategoryUpdateRequest> categories,
 
-	@NotNull
-	@PositiveOrZero
-	Integer version
+	@NotNull @PositiveOrZero Integer version
 
 ) {
 }

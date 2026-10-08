@@ -25,26 +25,15 @@ public interface BoardMapper {
 		@Param("adminAccess") boolean adminAccess
 	);
 
-	Optional<Board> selectActiveBoardBySlug(
-		@Param("slug") String slug
-	);
+	Optional<Board> selectActiveBoardBySlug(@Param("slug") String slug);
 
-	Optional<BoardPolicy> selectPolicyByBoardId(
-		@Param("boardId") Long boardId
-	);
+	Optional<BoardPolicy> selectPolicyByBoardId(@Param("boardId") Long boardId);
 
-	List<BoardCategory> selectActiveCategoriesByBoardId(
-		@Param("boardId") Long boardId
-	);
+	List<BoardCategory> selectActiveCategoriesByBoardId(@Param("boardId") Long boardId);
 
-	boolean existsActiveCategory(
-		@Param("boardId") Long boardId,
-		@Param("categoryId") Long categoryId
-	);
+	boolean existsActiveCategory(@Param("boardId") Long boardId, @Param("categoryId") Long categoryId);
 
-	Optional<Board> selectActiveBoardBySlugForUpdate(
-		@Param("slug") String slug
-	);
+	Optional<Board> selectActiveBoardBySlugForUpdate(@Param("slug") String slug);
 
 	int updateBoard(Board board);
 
@@ -52,12 +41,7 @@ public interface BoardMapper {
 
 	int updateCategory(BoardCategory category);
 
-	int deactivateActiveCategoriesExcept(
-		@Param("boardId") Long boardId,
-		@Param("retainedIds") List<Long> retainedIds
-	);
+	int deactivateActiveCategoriesExcept(@Param("boardId") Long boardId, @Param("retainedIds") List<Long> retainedIds);
 
-	int archiveBoard(
-		@Param("boardId") Long boardId
-	);
+	int archiveBoard(@Param("boardId") Long boardId);
 }

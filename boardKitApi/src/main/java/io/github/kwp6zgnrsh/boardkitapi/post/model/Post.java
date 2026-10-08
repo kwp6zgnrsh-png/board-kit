@@ -1,12 +1,13 @@
 package io.github.kwp6zgnrsh.boardkitapi.post.model;
 
+import java.time.LocalDateTime;
+
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
+import tools.jackson.databind.JsonNode;
 
 @Getter
 @Builder
@@ -21,6 +22,7 @@ public class Post {
 
 	private String title;
 	private String content;
+	private JsonNode contentDocument;
 
 	private boolean isSecret;
 	private String secretPasswordHash;

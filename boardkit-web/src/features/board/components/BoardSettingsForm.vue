@@ -15,7 +15,6 @@ import type {
   BoardPolicyRequest,
   BoardUpdateRequest,
   ReadPermission,
-  RepresentativeImageMode,
   SecretMode,
   UploadProfile,
   WritePermission,
@@ -61,11 +60,7 @@ const secretModeOptions = [
 const uploadProfileOptions = [
   { value: 'IMAGE', label: '이미지만' },
   { value: 'IMAGE_AND_ZIP', label: '이미지와 ZIP' },
-]
-
-const representativeImageOptions = [
-  { value: 'FIRST_IMAGE', label: '첫 이미지 자동 선택' },
-  { value: 'MANUAL', label: '작성자가 직접 선택' },
+  { value: 'IMAGE_AND_FILE', label: '이미지·TXT·ZIP·PDF' },
 ]
 
 const editing = computed(
@@ -122,10 +117,6 @@ const form = reactive({
       initialBoard?.policy.imageRequired ?? false,
   thumbnailEnabled:
       initialBoard?.policy.thumbnailEnabled ?? false,
-  representativeImageMode:
-      initialBoard?.policy.representativeImageMode ??
-      ('FIRST_IMAGE' as RepresentativeImageMode),
-
   commentsEnabled:
       initialBoard?.policy.commentsEnabled ?? true,
   commentRepliesEnabled:
@@ -193,7 +184,7 @@ function buildPolicy(): BoardPolicyRequest {
             : 0,
     imageRequired: attachmentsEnabled && form.imageRequired,
     thumbnailEnabled: attachmentsEnabled && form.thumbnailEnabled,
-    representativeImageMode: form.representativeImageMode, commentsEnabled,
+    commentsEnabled,
     commentRepliesEnabled: commentsEnabled && form.commentRepliesEnabled,
     postLikesEnabled: form.postLikesEnabled,
     commentLikesEnabled: commentsEnabled && form.commentLikesEnabled,
@@ -277,17 +268,17 @@ async function submit() {
 </script>
 
 <template>
-  <form class="board-form" @submit.prevent="submit">
-    <section class="form-section">
-      <div class="section-heading">
-        <div>
-          <span class="section-number">01</span>
-          <h2>기본 정보</h2>
+  <form class="grid min-w-0 gap-5" @submit.prevent="submit">
+    <section class="grid gap-5 rounded-lg border border-slate-200 bg-white p-5 sm:p-6">
+      <div class="flex flex-col justify-between gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-center">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold text-blue-600">01</span>
+          <h2 class="text-base font-semibold text-slate-900">기본 정보</h2>
         </div>
-        <p>게시판 이름과 화면 표시 방식을 설정합니다.</p>
+        <p class="text-xs leading-5 text-slate-500">게시판 이름과 화면 표시 방식을 설정합니다.</p>
       </div>
 
-      <div class="field-grid field-grid--two">
+      <div class="grid gap-5 sm:grid-cols-2">
         <BaseInput
           id="board-name"
           v-model="form.name"
@@ -332,16 +323,16 @@ async function submit() {
       />
     </section>
 
-    <section class="form-section">
-      <div class="section-heading">
-        <div>
-          <span class="section-number">02</span>
-          <h2>접근 권한</h2>
+    <section class="grid gap-5 rounded-lg border border-slate-200 bg-white p-5 sm:p-6">
+      <div class="flex flex-col justify-between gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-center">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold text-blue-600">02</span>
+          <h2 class="text-base font-semibold text-slate-900">접근 권한</h2>
         </div>
-        <p>조회, 게시글 작성, 댓글 작성 권한을 지정합니다.</p>
+        <p class="text-xs leading-5 text-slate-500">조회, 게시글 작성, 댓글 작성 권한을 지정합니다.</p>
       </div>
 
-      <div class="field-grid field-grid--two">
+      <div class="grid gap-5 sm:grid-cols-2">
         <BaseSelect
           id="read-permission"
           v-model="form.readPermission"
@@ -369,11 +360,11 @@ async function submit() {
       </div>
     </section>
 
-    <section class="form-section">
-      <div class="section-heading section-heading--with-switch">
-        <div>
-          <span class="section-number">03</span>
-          <h2>카테고리</h2>
+    <section class="grid gap-5 rounded-lg border border-slate-200 bg-white p-5 sm:p-6">
+      <div class="flex flex-col justify-between gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold text-blue-600">03</span>
+          <h2 class="text-base font-semibold text-slate-900">카테고리</h2>
         </div>
         <BaseCheckbox v-model="form.categoriesEnabled" label="카테고리 사용" />
       </div>
@@ -385,11 +376,11 @@ async function submit() {
           description="게시글 작성 시 카테고리를 반드시 선택하게 합니다."
         />
 
-        <div class="category-list">
+        <div class="grid gap-3">
           <div
             v-for="category in form.categories"
             :key="category.key"
-            class="category-row"
+            class="grid items-end gap-3 rounded-md bg-slate-50 p-4 sm:grid-cols-[minmax(0,1fr)_7rem_auto]"
           >
             <BaseInput
               :id="`category-name-${category.key}`"
@@ -416,16 +407,23 @@ async function submit() {
       </template>
     </section>
 
-    <section class="form-section">
-      <div class="section-heading section-heading--with-switch">
-        <div>
-          <span class="section-number">04</span>
-          <h2>첨부파일과 이미지</h2>
+    <section class="grid gap-5 rounded-lg border border-slate-200 bg-white p-5 sm:p-6">
+      <div class="flex flex-col justify-between gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold text-blue-600">04</span>
+          <h2 class="text-base font-semibold text-slate-900">첨부파일과 이미지</h2>
         </div>
         <BaseCheckbox v-model="form.attachmentsEnabled" label="첨부파일 사용" />
       </div>
 
-      <div v-if="form.attachmentsEnabled" class="field-grid field-grid--two">
+      <p
+          v-if="form.attachmentsEnabled"
+          class="m-0 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600"
+      >
+        대표 이미지는 게시글 본문에서 가장 먼저 배치된 이미지로 자동 지정됩니다.
+      </p>
+
+      <div v-if="form.attachmentsEnabled" class="grid gap-5 sm:grid-cols-2">
         <BaseSelect
           id="upload-profile"
           v-model="form.uploadProfile"
@@ -448,30 +446,24 @@ async function submit() {
           :min="1"
           required
         />
-        <BaseSelect
-          id="representative-image"
-          v-model="form.representativeImageMode"
-          label="대표 이미지 선택"
-          :options="representativeImageOptions"
-        />
       </div>
 
-      <div v-if="form.attachmentsEnabled" class="toggle-grid">
+      <div v-if="form.attachmentsEnabled" class="grid gap-3 sm:grid-cols-2">
         <BaseCheckbox v-model="form.imageRequired" label="이미지 첨부 필수" />
         <BaseCheckbox v-model="form.thumbnailEnabled" label="썸네일 생성" />
       </div>
     </section>
 
-    <section class="form-section">
-      <div class="section-heading">
-        <div>
-          <span class="section-number">05</span>
-          <h2>상호작용 기능</h2>
+    <section class="grid gap-5 rounded-lg border border-slate-200 bg-white p-5 sm:p-6">
+      <div class="flex flex-col justify-between gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-center">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold text-blue-600">05</span>
+          <h2 class="text-base font-semibold text-slate-900">상호작용 기능</h2>
         </div>
-        <p>댓글과 좋아요, 관리자 공식 답변 사용 여부를 선택합니다.</p>
+        <p class="text-xs leading-5 text-slate-500">댓글과 좋아요, 관리자 공식 답변 사용 여부를 선택합니다.</p>
       </div>
 
-      <div class="toggle-grid">
+      <div class="grid gap-3 sm:grid-cols-2">
         <BaseCheckbox v-model="form.commentsEnabled" label="댓글" />
         <BaseCheckbox
           v-model="form.commentRepliesEnabled"
@@ -488,19 +480,19 @@ async function submit() {
       </div>
     </section>
 
-    <p v-if="errorMessage" class="message message--error" role="alert">
+    <p v-if="errorMessage" class="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
       {{ errorMessage }}
     </p>
 
     <p
         v-if="successMessage"
-        class="message message--success"
+        class="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700"
         role="status"
     >
       {{ successMessage }}
     </p>
 
-    <div class="form-actions">
+    <div class="flex justify-end border-t border-slate-200 pt-5">
       <BaseButton type="submit" :disabled="submitting">
         {{
           submitting
@@ -515,117 +507,3 @@ async function submit() {
     </div>
   </form>
 </template>
-
-<style scoped>
-.board-form {
-  display: grid;
-  gap: 1.25rem;
-}
-
-.form-section {
-  display: grid;
-  gap: 1.25rem;
-  padding: 1.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 1rem;
-  background: #fff;
-  box-shadow: 0 8px 30px rgb(15 23 42 / 4%);
-}
-
-.section-heading {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.section-heading > div {
-  display: flex;
-  gap: 0.65rem;
-  align-items: center;
-}
-
-.section-heading h2,
-.section-heading p {
-  margin: 0;
-}
-
-.section-heading h2 {
-  color: #0f172a;
-  font-size: 1.05rem;
-}
-
-.section-heading p {
-  color: #64748b;
-  font-size: 0.875rem;
-}
-
-.section-number {
-  color: #2563eb;
-  font-size: 0.75rem;
-  font-weight: 800;
-}
-
-.field-grid,
-.toggle-grid {
-  display: grid;
-  gap: 1rem;
-}
-
-.field-grid--two,
-.toggle-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.category-list {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.category-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 8rem auto;
-  gap: 0.75rem;
-  align-items: end;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  background: #f8fafc;
-}
-
-.message {
-  margin: 0;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  font-weight: 700;
-}
-
-.message--error {
-  color: #991b1b;
-  background: #fee2e2;
-}
-
-.message--success {
-  color: #166534;
-  background: #dcfce7;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-@media (max-width: 720px) {
-  .section-heading,
-  .section-heading--with-switch {
-    display: grid;
-  }
-
-  .field-grid--two,
-  .toggle-grid,
-  .category-row {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

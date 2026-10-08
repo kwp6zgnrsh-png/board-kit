@@ -4,18 +4,15 @@ import {
 } from '@/features/auth/services/authSession'
 
 export class ApiError extends Error {
-    constructor(
-        public readonly status: number,
-        message: string,
-    ) {
+    constructor(public readonly status: number, message: string) {
         super(message)
     }
 }
 
-export async function apiRequest<T>(
+async function fetchApiResponse(
     url: string,
     options: RequestInit = {},
-): Promise<T> {
+): Promise<Response> {
     const headers = new Headers(options.headers)
     const accessToken = getAccessToken()
 
@@ -23,11 +20,7 @@ export async function apiRequest<T>(
         headers.set('Authorization', `Bearer ${accessToken}`)
     }
 
-    if (
-        options.body != null &&
-        !(options.body instanceof FormData) &&
-        !headers.has('Content-Type')
-    ) {
+    if (options.body != null && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
         headers.set('Content-Type', 'application/json')
     }
 
@@ -47,13 +40,32 @@ export async function apiRequest<T>(
 
         throw new ApiError(
             response.status,
-            body?.message ?? `요청에 실패했습니다. (${response.status})`,
+            body?.message ??
+            `요청에 실패했습니다. (${response.status})`,
         )
     }
+
+    return response
+}
+
+export async function apiRequest<T>(
+    url: string,
+    options: RequestInit = {},
+): Promise<T> {
+    const response = await fetchApiResponse(url, options)
 
     if (response.status === 204) {
         return undefined as T
     }
 
     return response.json() as Promise<T>
+}
+
+export async function apiBlobRequest(
+    url: string,
+    options: RequestInit = {},
+): Promise<Blob> {
+    const response = await fetchApiResponse(url, options)
+
+    return response.blob()
 }

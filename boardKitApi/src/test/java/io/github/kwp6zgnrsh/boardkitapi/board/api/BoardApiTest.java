@@ -1,12 +1,12 @@
 package io.github.kwp6zgnrsh.boardkitapi.board.api;
 
-import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardCategoryResponse;
-import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardDetailResponse;
-import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardPolicyResponse;
-import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardSummaryResponse;
-import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardAccessDeniedException;
-import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardNotFoundException;
-import io.github.kwp6zgnrsh.boardkitapi.board.service.BoardService;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import java.util.List;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,14 +23,13 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.List;
-
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardCategoryResponse;
+import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardDetailResponse;
+import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardPolicyResponse;
+import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardSummaryResponse;
+import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardAccessDeniedException;
+import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardNotFoundException;
+import io.github.kwp6zgnrsh.boardkitapi.board.service.BoardService;
 
 @WebMvcTest(BoardApi.class)
 @Import(BoardApiTest.SecurityTestConfig.class)
@@ -233,7 +232,6 @@ class BoardApiTest {
 			0L,
 			false,
 			false,
-			"FIRST_IMAGE",
 			true,
 			true,
 			true,

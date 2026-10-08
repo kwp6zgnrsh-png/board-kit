@@ -34,37 +34,24 @@ public interface BoardConverter {
 	@Mapping(target = "sortOrder", source = "board.sortOrder")
 	@Mapping(target = "policy", source = "policy")
 	@Mapping(target = "categories", source = "categories")
-	BoardDetailResponse toDetailResponse(
-		Board board,
-		BoardPolicy policy,
-		List<BoardCategory> categories
-	);
+	BoardDetailResponse toDetailResponse(Board board, BoardPolicy policy, List<BoardCategory> categories);
 
 	@Mapping(target = "id", ignore = true)
 	@Mapping(target = "status", constant = "ACTIVE")
 	@Mapping(target = "createdBy", source = "adminId")
 	@Mapping(target = "createdAt", ignore = true)
 	@Mapping(target = "updatedAt", ignore = true)
-	Board toBoard(
-		BoardCreateRequest request,
-		Long adminId
-	);
+	Board toBoard(BoardCreateRequest request, Long adminId);
 
 	@Mapping(target = "boardId", source = "boardId")
 	@Mapping(target = "version", constant = "0")
 	@Mapping(target = "updatedAt", ignore = true)
-	BoardPolicy toPolicy(
-		BoardPolicyRequest request,
-		Long boardId
-	);
+	BoardPolicy toPolicy(BoardPolicyRequest request, Long boardId);
 
 	@Mapping(target = "id", ignore = true)
 	@Mapping(target = "boardId", source = "boardId")
 	@Mapping(target = "active", constant = "true")
-	BoardCategory toCategory(
-		BoardCategoryCreateRequest request,
-		Long boardId
-	);
+	BoardCategory toCategory(BoardCategoryCreateRequest request, Long boardId);
 
 	BoardCreateResponse toCreateResponse(Board board);
 
@@ -77,11 +64,7 @@ public interface BoardConverter {
 	@Mapping(target = "version", source = "policy.version")
 	@Mapping(target = "policy", source = "policy")
 	@Mapping(target = "categories", source = "categories")
-	BoardAdminDetailResponse toAdminDetailResponse(
-		Board board,
-		BoardPolicy policy,
-		List<BoardCategory> categories
-	);
+	BoardAdminDetailResponse toAdminDetailResponse(Board board, BoardPolicy policy, List<BoardCategory> categories);
 
 	@Mapping(target = "id", source = "boardId")
 	@Mapping(target = "slug", ignore = true)
@@ -89,24 +72,14 @@ public interface BoardConverter {
 	@Mapping(target = "createdBy", ignore = true)
 	@Mapping(target = "createdAt", ignore = true)
 	@Mapping(target = "updatedAt", ignore = true)
-	Board toUpdatedBoard(
-		BoardUpdateRequest request,
-		Long boardId
-	);
+	Board toUpdatedBoard(BoardUpdateRequest request, Long boardId);
 
 	@Mapping(target = "boardId", source = "boardId")
 	@Mapping(target = "version", source = "version")
 	@Mapping(target = "updatedAt", ignore = true)
-	BoardPolicy toUpdatedPolicy(
-		BoardPolicyRequest request,
-		Long boardId,
-		Integer version
-	);
+	BoardPolicy toUpdatedPolicy(BoardPolicyRequest request, Long boardId, Integer version);
 
 	@Mapping(target = "boardId", source = "boardId")
 	@Mapping(target = "active", constant = "true")
-	BoardCategory toUpdatedCategory(
-		BoardCategoryUpdateRequest request,
-		Long boardId
-	);
+	BoardCategory toUpdatedCategory(BoardCategoryUpdateRequest request, Long boardId);
 }

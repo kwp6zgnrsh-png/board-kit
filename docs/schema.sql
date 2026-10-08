@@ -1,4 +1,5 @@
 -- Community V2 schema draft, 2026-09-19
+-- Last synchronized with the agreed policies: 2026-10-08.
 -- Target: MySQL 8.0.16+ / InnoDB (CHECK constraints must be enforced).
 -- Apply once to an EMPTY database explicitly selected by the caller.
 -- This file does not create/drop a database or disable FK checks.
@@ -20,6 +21,7 @@ CREATE TABLE member (
     deleted_at DATETIME(6) NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uq_member_login_id (login_id),
+    UNIQUE KEY uq_member_display_name (display_name),
     CONSTRAINT ck_member_role CHECK (role IN ('MEMBER', 'ADMIN'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -57,7 +59,6 @@ CREATE TABLE board_policy (
     max_file_size_bytes BIGINT UNSIGNED NOT NULL DEFAULT 0,
     image_required BOOLEAN NOT NULL DEFAULT FALSE,
     thumbnail_enabled BOOLEAN NOT NULL DEFAULT FALSE,
-    representative_image_mode VARCHAR(16) NOT NULL DEFAULT 'FIRST_IMAGE',
     comments_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     comment_replies_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     post_likes_enabled BOOLEAN NOT NULL DEFAULT FALSE,
@@ -71,8 +72,7 @@ CREATE TABLE board_policy (
     CONSTRAINT ck_policy_write CHECK (write_permission IN ('MEMBER', 'ADMIN')),
     CONSTRAINT ck_policy_comment CHECK (comment_permission IN ('MEMBER', 'ADMIN')),
     CONSTRAINT ck_policy_secret CHECK (secret_mode IN ('OFF', 'OPTIONAL', 'REQUIRED')),
-    CONSTRAINT ck_policy_upload CHECK (upload_profile IN ('IMAGE', 'IMAGE_AND_ZIP')),
-    CONSTRAINT ck_policy_representative CHECK (representative_image_mode IN ('FIRST_IMAGE', 'MANUAL')),
+    CONSTRAINT ck_policy_upload CHECK (upload_profile IN ('IMAGE', 'IMAGE_AND_ZIP', 'IMAGE_AND_FILE')),
     CONSTRAINT ck_policy_booleans CHECK (
         categories_enabled IN (0, 1)
         AND category_required IN (0, 1) AND attachments_enabled IN (0, 1)
@@ -86,7 +86,8 @@ CREATE TABLE board_policy (
     CONSTRAINT ck_policy_upload_limits CHECK (
         (attachments_enabled = 0 AND max_file_count = 0 AND max_file_size_bytes = 0)
         OR (attachments_enabled = 1 AND max_file_count > 0 AND max_file_size_bytes > 0)
-    )
+    ),
+    CONSTRAINT ck_policy_thumbnail_enabled CHECK (thumbnail_enabled = 0 OR attachments_enabled = 1)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE board_category (
@@ -108,6 +109,7 @@ CREATE TABLE post (
     category_id BIGINT UNSIGNED NULL,
     title VARCHAR(200) NOT NULL,
     content MEDIUMTEXT NOT NULL,
+    content_document JSON NULL,
     is_secret BOOLEAN NOT NULL DEFAULT FALSE,
     secret_password_hash VARCHAR(255) NULL,
     is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
@@ -136,6 +138,7 @@ CREATE TABLE post_file (
     original_name VARCHAR(255) NOT NULL,
     storage_key VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
     content_type VARCHAR(100) NOT NULL,
+    file_usage VARCHAR(16) NOT NULL DEFAULT 'ATTACHMENT',
     size_bytes BIGINT UNSIGNED NOT NULL,
     thumbnail_key VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
     sort_order INT UNSIGNED NOT NULL DEFAULT 0,
@@ -144,12 +147,15 @@ CREATE TABLE post_file (
     PRIMARY KEY (id),
     UNIQUE KEY uq_file_storage_key (storage_key),
     UNIQUE KEY uq_file_thumbnail_key (thumbnail_key),
-    KEY ix_file_post_order (post_id, deleted_at, sort_order, id),
-    CONSTRAINT fk_file_post FOREIGN KEY (post_id) REFERENCES post (id) ON DELETE RESTRICT ON UPDATE RESTRICT
+    KEY ix_file_post_order (post_id,deleted_at,sort_order,id),
+    CONSTRAINT fk_file_post FOREIGN KEY (post_id) REFERENCES post (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT ck_post_file_size CHECK (size_bytes > 0),
+    CONSTRAINT ck_post_file_usage CHECK (file_usage IN ('BODY_IMAGE', 'ATTACHMENT'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Insert post with representative_file_id = NULL, then insert its files,
--- then select the representative file. Validate file.post_id = post.id.
+-- Insert post with representative_file_id = NULL, then insert its files.
+-- Select the first active BODY_IMAGE by sort_order and id (body-document order).
+-- Validate that the representative file belongs to the same post.
 ALTER TABLE post
     ADD CONSTRAINT fk_post_representative FOREIGN KEY (representative_file_id)
     REFERENCES post_file (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
@@ -255,22 +261,16 @@ CREATE TABLE member_sanction (
     CONSTRAINT ck_sanction_period CHECK (ends_at IS NULL OR ends_at > starts_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Intentionally no FK: orphan files can lack metadata altogether.
--- Tasks retain storage-relative keys even if metadata is removed.
+-- 파일 메타데이터가 없어도 고아 파일을 정리할 수 있도록 FK를 두지 않는다.
+-- target_key는 저장소 루트 기준 상대 경로다.
 CREATE TABLE file_cleanup_task (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    task_type VARCHAR(16) NOT NULL,
-    source_key VARCHAR(1024) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
-    destination_key VARCHAR(1024) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL,
+    target_key VARCHAR(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
     attempts INT UNSIGNED NOT NULL DEFAULT 0,
     next_attempt_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     last_error TEXT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    created_at DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
-    KEY ix_cleanup_due (next_attempt_at, id),
-    CONSTRAINT ck_cleanup_type CHECK (task_type IN ('MOVE', 'DELETE')),
-    CONSTRAINT ck_cleanup_destination CHECK (
-        (task_type = 'MOVE' AND destination_key IS NOT NULL AND destination_key <> source_key)
-        OR (task_type = 'DELETE' AND destination_key IS NULL)
-    )
+    UNIQUE KEY uq_cleanup_target_key (target_key),
+    KEY ix_cleanup_due (next_attempt_at, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

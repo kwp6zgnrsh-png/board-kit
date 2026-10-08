@@ -62,14 +62,14 @@ watch(boardSlug, loadBoard, {
 </script>
 
 <template>
-  <div class="post-create-page">
-    <p v-if="loading" class="state-message">
+  <div class="grid min-w-0 gap-6">
+    <p v-if="loading" class="rounded-md bg-slate-50 p-5 text-sm text-slate-500">
       게시판 정보를 불러오는 중입니다.
     </p>
 
     <p
         v-else-if="errorMessage"
-        class="state-message state-message--error"
+        class="rounded-md border border-red-200 bg-red-50 p-5 text-sm text-red-700"
         role="alert"
     >
       {{ errorMessage }}
@@ -88,23 +88,3 @@ watch(boardSlug, loadBoard, {
     </template>
   </div>
 </template>
-
-<style scoped>
-.post-create-page {
-  display: grid;
-  gap: 1.5rem;
-}
-
-.state-message {
-  margin: 0;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  color: #475569;
-  background: #f1f5f9;
-}
-
-.state-message--error {
-  color: #991b1b;
-  background: #fee2e2;
-}
-</style>

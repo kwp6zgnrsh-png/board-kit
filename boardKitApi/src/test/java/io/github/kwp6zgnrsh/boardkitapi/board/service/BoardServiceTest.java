@@ -1,10 +1,10 @@
 package io.github.kwp6zgnrsh.boardkitapi.board.service;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
+import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.util.unit.DataSize;
 
 import io.github.kwp6zgnrsh.boardkitapi.board.converter.BoardConverter;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.request.BoardCategoryUpdateRequest;
@@ -25,6 +26,7 @@ import io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardCategory;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy;
+import io.github.kwp6zgnrsh.boardkitapi.file.config.FileStorageProperties;
 
 @ExtendWith(MockitoExtension.class)
 class BoardServiceTest {
@@ -39,10 +41,15 @@ class BoardServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		boardService = new BoardService(
-			boardMapper,
-			boardConverter
+		FileStorageProperties properties = new FileStorageProperties(
+			Path.of("build/test-store"),
+			20,
+			DataSize.ofMegabytes(20),
+			DataSize.ofMegabytes(50),
+			Duration.ofHours(24)
 		);
+
+		boardService = new BoardService(boardMapper, boardConverter, properties);
 	}
 
 	@Test
@@ -197,7 +204,6 @@ class BoardServiceTest {
 			0L,
 			false,
 			false,
-			"FIRST_IMAGE",
 			true,
 			true,
 			true,

@@ -1,2 +1,50 @@
+# OS and IDE files
 .DS_Store
-**/.DS_Store
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Uploaded files (relative to the repository root)
+/store/
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+.envrc
+.npmrc
+application-local*.yml
+application-local*.yaml
+application-local*.properties
+!application-local.example.yml
+!application-local.example.yaml
+!application-local.example.properties
+application-secrets*.yml
+application-secrets*.yaml
+application-secrets*.properties
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+.aws/
+.ssh/
+/secrets/
+
+# Runtime logs and local backups
+logs/
+*.log
+*.hprof
+hs_err_pid*
+replay_pid*
+/backups/
+/dumps/
+*.sql.gz
+*.sql.zip
+*.dump

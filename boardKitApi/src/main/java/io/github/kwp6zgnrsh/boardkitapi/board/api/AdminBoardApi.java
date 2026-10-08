@@ -36,7 +36,7 @@ public class AdminBoardApi {
 	@PostMapping
 	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<BoardCreateResponse> createBoard(@Valid @RequestBody BoardCreateRequest request,
-														   @AuthenticationPrincipal LoginMember loginMember) {
+		@AuthenticationPrincipal LoginMember loginMember) {
 		if (loginMember == null || loginMember.id() == null) {
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
 		}
@@ -53,15 +53,13 @@ public class AdminBoardApi {
 	public ResponseEntity<BoardAdminDetailResponse> getBoard(@PathVariable String boardSlug) {
 		BoardAdminDetailResponse response = boardService.getBoardForAdmin(boardSlug);
 
-		return ResponseEntity.ok()
-			.cacheControl(CacheControl.noStore())
-			.body(response);
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(response);
 	}
 
 	@PatchMapping("/{boardSlug}")
 	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<Void> updateBoard(@PathVariable String boardSlug,
-											@Valid @RequestBody BoardUpdateRequest request) {
+		@Valid @RequestBody BoardUpdateRequest request) {
 
 		boardService.updateBoard(boardSlug, request);
 

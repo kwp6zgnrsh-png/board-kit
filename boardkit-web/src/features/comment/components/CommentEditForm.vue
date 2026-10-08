@@ -66,7 +66,7 @@ async function submit() {
 
 <template>
   <form
-      class="grid gap-3 rounded border-2 border-slate-950 bg-blue-50 p-3"
+      class="grid gap-3 rounded border border-slate-200 bg-blue-50 p-3"
       @submit.prevent="submit"
   >
     <BaseTextarea
@@ -79,7 +79,7 @@ async function submit() {
 
     <p
         v-if="errorMessage"
-        class="m-0 rounded border-2 border-red-900 bg-rose-50 p-3 text-sm font-bold text-red-900"
+        class="m-0 rounded border border-red-200 bg-rose-50 p-3 text-sm font-medium text-red-900"
         role="alert"
     >
       {{ errorMessage }}
@@ -89,7 +89,7 @@ async function submit() {
       <BaseButton
           type="button"
           variant="secondary"
-          class="min-h-0! rounded! border-2! border-slate-950! bg-slate-100! px-3! py-1! text-xs! font-black! text-slate-950! shadow-none!"
+          size="sm"
           :disabled="submitting"
           @click="emit('cancel')"
       >
@@ -98,7 +98,7 @@ async function submit() {
 
       <BaseButton
           type="submit"
-          class="min-h-0! rounded! border-2! border-slate-950! bg-blue-100! px-3! py-1! text-xs! font-black! text-slate-950! shadow-none!"
+          size="sm"
           :disabled="submitting"
       >
         {{ submitting ? '수정 중...' : '수정 완료' }}

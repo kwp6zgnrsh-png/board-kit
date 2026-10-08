@@ -24,15 +24,15 @@ const model = defineModel<string | number>({ required: true })
 </script>
 
 <template>
-  <label class="field" :for="id">
-    <span class="field__label">
+  <label class="grid min-w-0 content-start gap-2" :for="id">
+    <span class="text-sm font-medium text-slate-700">
       {{ label }}
-      <span v-if="required" aria-hidden="true" class="field__required">*</span>
+      <span v-if="required" aria-hidden="true" class="ml-0.5 text-red-500">*</span>
     </span>
     <input
       :id="id"
       v-model="model"
-      class="field__control"
+      class="w-full min-w-0 rounded-md border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400 h-10"
       :type="type"
       :placeholder="placeholder"
       :min="min"
@@ -40,47 +40,6 @@ const model = defineModel<string | number>({ required: true })
       :required="required"
       :disabled="disabled"
     />
-    <small v-if="hint" class="field__hint">{{ hint }}</small>
+    <small v-if="hint" class="text-xs leading-5 text-slate-500">{{ hint }}</small>
   </label>
 </template>
-
-<style scoped>
-.field {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.field__label {
-  color: #334155;
-  font-size: 0.875rem;
-  font-weight: 700;
-}
-
-.field__required {
-  color: #dc2626;
-}
-
-.field__control {
-  width: 100%;
-  min-height: 2.75rem;
-  padding: 0.7rem 0.85rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.65rem;
-  color: #0f172a;
-  background: #fff;
-}
-
-.field__control:focus {
-  border-color: #2563eb;
-  outline: 3px solid rgb(37 99 235 / 12%);
-}
-
-.field__control:disabled {
-  color: #94a3b8;
-  background: #f1f5f9;
-}
-
-.field__hint {
-  color: #64748b;
-}
-</style>

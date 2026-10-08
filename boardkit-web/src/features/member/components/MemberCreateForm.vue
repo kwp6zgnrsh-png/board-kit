@@ -91,7 +91,7 @@ async function submit() {
 </script>
 
 <template>
-  <form class="member-create-form" @submit.prevent="submit">
+  <form class="grid w-full max-w-md gap-5 rounded-lg border border-slate-200 bg-white p-6 sm:p-8" @submit.prevent="submit">
     <BaseInput
         id="member-login-id"
         v-model="form.loginId"
@@ -131,7 +131,7 @@ async function submit() {
 
     <p
         v-if="errorMessage"
-        class="member-create-form__error"
+        class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
         role="alert"
     >
       {{ errorMessage }}
@@ -145,81 +145,3 @@ async function submit() {
     </BaseButton>
   </form>
 </template>
-
-<style scoped>
-.member-create-form {
-  display: grid;
-  gap: 1rem;
-  width: min(520px, 100%);
-  padding: 1.5rem;
-  border: 3px solid #0f172a;
-  border-radius: 0.5rem;
-  background: #fff;
-}
-
-.member-create-form__error {
-  margin: 0;
-  padding: 0.75rem 0.9rem;
-  border: 2px solid #7f1d1d;
-  border-radius: 0.35rem;
-  color: #7f1d1d;
-  background: #fee2e2;
-  font-size: 0.8rem;
-  font-weight: 800;
-}
-
-.member-create-form :deep(.field) {
-  gap: 0.4rem;
-}
-
-.member-create-form :deep(.field__label) {
-  color: #0f172a;
-  font-size: 0.8rem;
-  font-weight: 900;
-}
-
-.member-create-form :deep(.field__control) {
-  min-height: 2.75rem;
-  border: 2px solid #0f172a;
-  border-radius: 0.35rem;
-  color: #0f172a;
-  background: #f8fafc;
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.member-create-form :deep(.field__control:focus) {
-  border-color: #0f172a;
-  outline: 3px solid #bfdbfe;
-  background: #fff;
-}
-
-.member-create-form :deep(.field__hint) {
-  color: #64748b;
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.member-create-form :deep(.button.button--primary) {
-  min-height: 2.8rem;
-  border: 3px solid #0f172a;
-  border-radius: 0.35rem;
-  color: #fff;
-  background: #3b82f6;
-  box-shadow: 2px 2px 0 #0f172a;
-  font-size: 0.9rem;
-  font-weight: 900;
-  transition: transform 150ms ease, background 150ms ease;
-}
-
-.member-create-form :deep(.button.button--primary:hover:not(:disabled)) {
-  transform: translateY(-2px);
-  background: #2563eb;
-}
-
-@media (max-width: 640px) {
-  .member-create-form {
-    padding: 1.1rem;
-  }
-}
-</style>

@@ -1,19 +1,20 @@
 package io.github.kwp6zgnrsh.boardkitapi.post.dto.request;
 
+import java.util.List;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import tools.jackson.databind.JsonNode;
 
 public record PostUpdateRequest(
-
-	@NotBlank
-	@Size(max = 200)
+	@NotBlank @Size(max = 200)
 	String title,
 
-	@NotBlank
-	String content,
+	@NotNull
+	JsonNode contentDocument,
 
 	@Positive
 	Long categoryId,
@@ -30,9 +31,10 @@ public record PostUpdateRequest(
 	@NotNull
 	Boolean commentsLocked,
 
-	@NotNull
-	@PositiveOrZero
-	Integer version
+	@NotNull @PositiveOrZero
+	Integer version,
 
+	@NotNull
+	List<@NotNull @Positive Long> retainedFileIds
 ) {
 }

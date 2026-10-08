@@ -2,6 +2,8 @@ package io.github.kwp6zgnrsh.boardkitapi.post.model;
 
 import java.time.LocalDateTime;
 
+import tools.jackson.databind.JsonNode;
+
 public record PostDetail(
 	Long id,
 	Long boardId,
@@ -18,6 +20,8 @@ public record PostDetail(
 	long viewCount,
 	Integer version,
 	LocalDateTime createdAt,
-	LocalDateTime updatedAt
+	LocalDateTime updatedAt,
+	Long representativeFileId,
+	JsonNode contentDocument
 ) {
 }

@@ -6,6 +6,7 @@ import { getBoardDetail } from '@/api/boardApi'
 import { ApiError } from '@/api/http'
 import { getPosts } from '@/api/postApi'
 import BasePagination from '@/components/ui/BasePagination.vue'
+import CommunityIcon from '@/components/ui/CommunityIcon.vue'
 import { getAuthSession } from '@/features/auth/services/authSession'
 import BoardHero from '@/features/board/components/BoardHero.vue'
 import BoardPolicyPanel from '@/features/board/components/BoardPolicyPanel.vue'
@@ -304,165 +305,60 @@ watch(
 </script>
 
 <template>
-  <div class="grid gap-5 lg:gap-6">
-    <div
-      v-if="boardLoading"
-      class="rounded-lg border-[3px] border-slate-950 bg-white px-5 py-16 text-center font-black text-slate-600"
-    >
-      게시판을 불러오는 중입니다.
-    </div>
-
-    <div
-      v-else-if="boardErrorMessage"
-      class="rounded-lg border-[3px] border-red-950 bg-red-100 px-5 py-12 text-center font-black text-red-900"
-      role="alert"
-    >
-      {{ boardErrorMessage }}
-    </div>
-
+  <div class="grid min-w-0 gap-5">
+    <p v-if="boardLoading" class="rounded-md bg-slate-50 px-5 py-14 text-center text-sm text-slate-500">게시판을 불러오는 중입니다.</p>
+    <p v-else-if="boardErrorMessage" class="rounded-md border border-red-200 bg-red-50 px-5 py-12 text-center text-sm text-red-700" role="alert">{{ boardErrorMessage }}</p>
     <template v-else-if="board">
-      <BoardHero
-        :name="board.name"
-        :slug="board.slug"
-        :description="board.description"
-      />
-
-      <div class="grid items-start gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <BoardPolicyPanel :board="board" />
-
-        <section class="min-w-0 overflow-hidden rounded-lg border-[3px] border-slate-950 bg-white">
-          <header
-              class="grid gap-4 border-b-2 border-slate-950 px-4 py-4 sm:px-5"
-          >
-            <div class="flex flex-wrap items-center justify-between gap-4">
-              <div class="flex items-baseline gap-2">
-      <span class="text-sm font-black text-slate-950">
-        {{ hasActiveFilters ? '검색 결과' : '전체' }}
-      </span>
-
-                <strong
-                    v-if="postPage"
-                    class="text-xl font-black text-blue-600"
-                >
-                  {{ postPage.totalElements.toLocaleString() }}
-                </strong>
-
-                <span class="text-sm font-black text-slate-950">
-        개의 글
-      </span>
-              </div>
-
-              <RouterLink
-                  v-if="canWrite"
-                  :to="{
-        name: 'post-create',
-        params: { boardSlug: board.slug },
-      }"
-                  class="inline-flex items-center gap-2 rounded border-[3px] border-slate-950 bg-blue-500 px-4 py-2.5 text-sm font-black text-white no-underline shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5 hover:bg-blue-600"
-              >
-                <span aria-hidden="true">✎</span>
-                글쓰기
-              </RouterLink>
-            </div>
-
-            <form
-                class="grid gap-2"
-                :class="
-                  board.policy.categoriesEnabled
-                    ? 'sm:grid-cols-[minmax(130px,180px)_minmax(130px,180px)_minmax(220px,1fr)_auto]'
-                    : 'sm:grid-cols-[minmax(130px,180px)_minmax(220px,1fr)_auto]'
-                "
-                @submit.prevent="applySearch"
-            >
-              <label
-                  v-if="board.policy.categoriesEnabled"
-                  class="grid gap-1"
-              >
-                <span class="sr-only">카테고리</span>
-                <select
-                    v-model="selectedCategoryId"
-                    class="h-10 rounded border-2 border-slate-950 bg-white px-3 text-sm font-bold text-slate-950 outline-none focus:bg-blue-50"
-                >
-                  <option value="">전체 카테고리</option>
-                  <option
-                      v-for="category in board.categories"
-                      :key="category.id"
-                      :value="String(category.id)"
-                  >
-                    {{ category.name }}
-                  </option>
-                </select>
-              </label>
-
-              <label class="grid gap-1">
-                <span class="sr-only">정렬</span>
-                <select
-                    v-model="selectedSort"
-                    class="h-10 rounded border-2 border-slate-950 bg-white px-3 text-sm font-bold text-slate-950 outline-none focus:bg-blue-50"
-                >
-                  <option value="LATEST">최신순</option>
-                  <option value="OLDEST">오래된순</option>
-                  <option value="VIEWS">조회순</option>
-                </select>
-              </label>
-
-              <label class="grid min-w-0 gap-1">
-                <span class="sr-only">게시글 검색어</span>
-                <input
-                    v-model="searchKeyword"
-                    type="search"
-                    maxlength="100"
-                    placeholder="제목 또는 본문 검색"
-                    class="h-10 min-w-0 rounded border-2 border-slate-950 bg-white px-3 text-sm font-semibold text-slate-950 outline-none placeholder:text-slate-400 focus:bg-blue-50"
-                />
-              </label>
-
-              <div class="flex gap-2">
-                <button
-                    type="submit"
-                    class="h-10 rounded border-2 border-slate-950 bg-yellow-300 px-4 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5 hover:bg-yellow-400"
-                >
-                  검색
-                </button>
-
-                <button
-                    v-if="hasActiveFilters"
-                    type="button"
-                    class="h-10 rounded border-2 border-slate-950 bg-white px-3 text-sm font-black text-slate-950 transition hover:bg-slate-100"
-                    @click="resetFilters"
-                >
-                  초기화
-                </button>
-              </div>
-            </form>
-          </header>
-
-          <p v-if="postsLoading" class="m-4 rounded bg-slate-100 px-4 py-14 text-center text-sm font-bold text-slate-500">
-            게시글을 불러오는 중입니다.
+      <BoardHero :name="board.name" :slug="board.slug" :description="board.description" />
+      <section class="grid min-w-0 gap-4" aria-label="게시글 목록">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <p class="text-sm text-slate-500">
+            {{ hasActiveFilters ? '검색 결과' : '전체 글' }}
+            <span v-if="postPage" class="tabular-nums">{{ postPage.totalElements.toLocaleString() }}개</span>
           </p>
+          <RouterLink v-if="canWrite" :to="{ name: 'post-create', params: { boardSlug: board.slug } }"
+            class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-blue-600 bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+            <CommunityIcon name="write" class="size-4" />글쓰기
+          </RouterLink>
+        </div>
 
-          <p
-            v-else-if="postsErrorMessage"
-            class="m-4 rounded bg-red-100 px-4 py-12 text-center text-sm font-black text-red-900"
-            role="alert"
-          >
-            {{ postsErrorMessage }}
-          </p>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <nav v-if="board.policy.categoriesEnabled" class="flex max-w-full gap-1.5 overflow-x-auto pb-1" aria-label="카테고리 필터">
+            <button type="button" class="h-9 shrink-0 rounded-md border px-5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-blue-600"
+              :class="!selectedCategoryId ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'"
+              :aria-pressed="!selectedCategoryId" @click="selectedCategoryId = ''">전체</button>
+            <button v-for="category in board.categories" :key="category.id" type="button"
+              class="h-9 shrink-0 rounded-md border px-5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-blue-600"
+              :class="selectedCategoryId === String(category.id) ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'"
+              :aria-pressed="selectedCategoryId === String(category.id)" @click="selectedCategoryId = String(category.id)">{{ category.name }}</button>
+          </nav>
+          <label class="ml-auto">
+            <span class="sr-only">게시글 정렬</span>
+            <select v-model="selectedSort" class="h-9 rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-600 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+              <option value="LATEST">최신순</option><option value="OLDEST">오래된순</option><option value="VIEWS">조회순</option>
+            </select>
+          </label>
+        </div>
 
-          <template v-else-if="postPage">
-            <PostList
-              :board-slug="board.slug"
-              :posts="postPage.posts"
-            />
+        <p v-if="postsLoading" class="rounded-md border border-slate-200 py-16 text-center text-sm text-slate-500" role="status">게시글을 불러오는 중입니다.</p>
+        <p v-else-if="postsErrorMessage" class="rounded-md border border-red-200 bg-red-50 py-12 text-center text-sm text-red-700" role="alert">{{ postsErrorMessage }}</p>
+        <template v-else-if="postPage">
+          <PostList :board-slug="board.slug" :posts="postPage.posts" />
+          <BasePagination :page="postPage.page" :total-pages="postPage.totalPages" @change="changePage" />
+        </template>
 
-            <BasePagination
-              :page="postPage.page"
-              :total-pages="postPage.totalPages"
-              @change="changePage"
-            />
-          </template>
-        </section>
-      </div>
+        <form class="mx-auto flex w-full max-w-xl flex-wrap items-center justify-center gap-2 pt-2" @submit.prevent="applySearch">
+          <span class="hidden h-10 items-center rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-600 sm:inline-flex">제목 + 내용</span>
+          <label class="min-w-0 flex-1">
+            <span class="sr-only">게시글 검색어</span>
+            <input v-model="searchKeyword" type="search" maxlength="100" placeholder="검색어를 입력하세요."
+              class="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+          </label>
+          <button type="submit" class="h-10 rounded-md border border-blue-600 bg-blue-600 px-5 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600">검색</button>
+          <button v-if="hasActiveFilters" type="button" class="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-600 hover:bg-slate-50" @click="resetFilters">초기화</button>
+        </form>
+      </section>
+      <BoardPolicyPanel :board="board" />
     </template>
   </div>
 </template>

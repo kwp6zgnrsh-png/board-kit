@@ -9,32 +9,15 @@ defineProps<{
 <template>
   <nav
       v-if="categories.length > 0"
-      class="category-list"
+      class="flex flex-wrap gap-2"
       aria-label="게시판 카테고리"
   >
     <span
         v-for="category in categories"
         :key="category.id"
-        class="category"
+        class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600"
     >
       {{ category.name }}
     </span>
   </nav>
 </template>
-
-<style scoped>
-.category-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.category {
-  padding: 0.45rem 0.75rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 999px;
-  color: #475569;
-  background: #fff;
-  font-size: 0.875rem;
-}
-</style>

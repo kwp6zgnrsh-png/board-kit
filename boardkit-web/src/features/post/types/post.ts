@@ -1,3 +1,5 @@
+import type { JSONContent } from '@tiptap/core'
+
 export type PostSort = 'LATEST' | 'OLDEST' | 'VIEWS'
 
 export interface GetPostsOptions {
@@ -10,7 +12,7 @@ export interface GetPostsOptions {
 
 export interface PostCreateRequest {
     title: string
-    content: string
+    contentDocument: JSONContent
     categoryId: number | null
     isSecret: boolean
     secretPassword: string | null
@@ -48,6 +50,7 @@ export interface PostDetailResponse {
     boardId: number
     title: string
     content: string
+    contentDocument: JSONContent | null
     authorId: number
     authorDisplayName: string
     categoryId: number | null
@@ -59,15 +62,45 @@ export interface PostDetailResponse {
     version: number
     createdAt: string
     updatedAt: string
+    representativeFileId: number | null
+    files: PostFileResponse[]
 }
 
 export interface PostUpdateRequest {
     title: string
-    content: string
+    contentDocument: JSONContent
     categoryId: number | null
     isSecret: boolean
     secretPassword: string | null
     clearSecretPassword: boolean
     commentsLocked: boolean
     version: number
+    retainedFileIds: number[]
+}
+
+export interface PostFileResponse {
+    id: number
+    originalName: string
+    contentType: string
+    fileUsage: 'BODY_IMAGE' | 'ATTACHMENT'
+    sizeBytes: number
+    sortOrder: number
+    thumbnailAvailable: boolean
+}
+
+interface PostEditorImageBase {
+    key: string
+    name: string
+    sizeBytes: number
+    previewUrl: string
+}
+
+export type PostEditorImage = PostEditorImageBase & (
+    | { kind: 'existing'; fileId: number }
+    | { kind: 'new'; file: File }
+)
+
+export interface SelectedPostAttachment {
+    key: string
+    file: File
 }

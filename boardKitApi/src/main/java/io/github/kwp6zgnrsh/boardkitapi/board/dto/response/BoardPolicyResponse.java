@@ -15,7 +15,6 @@ public record BoardPolicyResponse(
 	Long maxFileSizeBytes,
 	boolean imageRequired,
 	boolean thumbnailEnabled,
-	String representativeImageMode,
 
 	boolean commentsEnabled,
 	boolean commentRepliesEnabled,

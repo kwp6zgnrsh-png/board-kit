@@ -4,67 +4,39 @@ import jakarta.validation.constraints.*;
 
 public record BoardPolicyRequest(
 
-	@NotBlank
-	@Pattern(regexp = "PUBLIC|MEMBER|ADMIN")
-	String readPermission,
+	@NotBlank @Pattern(regexp = "PUBLIC|MEMBER|ADMIN") String readPermission,
 
-	@NotBlank
-	@Pattern(regexp = "MEMBER|ADMIN")
-	String writePermission,
+	@NotBlank @Pattern(regexp = "MEMBER|ADMIN") String writePermission,
 
-	@NotBlank
-	@Pattern(regexp = "MEMBER|ADMIN")
-	String commentPermission,
+	@NotBlank @Pattern(regexp = "MEMBER|ADMIN") String commentPermission,
 
-	@NotBlank
-	@Pattern(regexp = "OFF|OPTIONAL|REQUIRED")
-	String secretMode,
+	@NotBlank @Pattern(regexp = "OFF|OPTIONAL|REQUIRED") String secretMode,
 
-	@NotNull
-	Boolean categoriesEnabled,
+	@NotNull Boolean categoriesEnabled,
 
-	@NotNull
-	Boolean categoryRequired,
+	@NotNull Boolean categoryRequired,
 
-	@NotNull
-	Boolean attachmentsEnabled,
+	@NotNull Boolean attachmentsEnabled,
 
-	@NotBlank
-	@Pattern(regexp = "IMAGE|IMAGE_AND_ZIP")
-	String uploadProfile,
+	@NotBlank @Pattern(regexp = "IMAGE|IMAGE_AND_ZIP|IMAGE_AND_FILE") String uploadProfile,
 
-	@NotNull
-	@PositiveOrZero
-	Integer maxFileCount,
+	@NotNull @PositiveOrZero Integer maxFileCount,
 
-	@NotNull
-	@PositiveOrZero
-	Long maxFileSizeBytes,
+	@NotNull @PositiveOrZero Long maxFileSizeBytes,
 
-	@NotNull
-	Boolean imageRequired,
+	@NotNull Boolean imageRequired,
 
-	@NotNull
-	Boolean thumbnailEnabled,
+	@NotNull Boolean thumbnailEnabled,
 
-	@NotBlank
-	@Pattern(regexp = "FIRST_IMAGE|MANUAL")
-	String representativeImageMode,
+	@NotNull Boolean commentsEnabled,
 
-	@NotNull
-	Boolean commentsEnabled,
+	@NotNull Boolean commentRepliesEnabled,
 
-	@NotNull
-	Boolean commentRepliesEnabled,
+	@NotNull Boolean postLikesEnabled,
 
-	@NotNull
-	Boolean postLikesEnabled,
+	@NotNull Boolean commentLikesEnabled,
 
-	@NotNull
-	Boolean commentLikesEnabled,
-
-	@NotNull
-	Boolean officialReplyEnabled
+	@NotNull Boolean officialReplyEnabled
 
 ) {
 }

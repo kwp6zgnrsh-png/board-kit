@@ -42,11 +42,9 @@ public class CommentApi {
 
 	@PostMapping
 	public ResponseEntity<CommentCreateResponse> createComment(@PathVariable String boardSlug,
-															   @PathVariable @Positive Long postId,
-															   @Valid @RequestBody CommentCreateRequest request,
-															   @RequestHeader(value = "X-Post-Password", required = false) String secretPassword,
-															   @AuthenticationPrincipal LoginMember loginMember,
-															   Authentication authentication) {
+		@PathVariable @Positive Long postId, @Valid @RequestBody CommentCreateRequest request,
+		@RequestHeader(value = "X-Post-Password", required = false) String secretPassword,
+		@AuthenticationPrincipal LoginMember loginMember, Authentication authentication) {
 
 		if (loginMember == null || loginMember.id() == null) {
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
@@ -55,14 +53,8 @@ public class CommentApi {
 		Long memberId = requireMemberId(loginMember);
 		boolean adminAccess = hasAuthority(authentication, "ROLE_ADMIN");
 
-		CommentCreateResponse response = commentService.createComment(
-			boardSlug,
-			postId,
-			request,
-			memberId,
-			adminAccess,
-			secretPassword
-		);
+		CommentCreateResponse response = commentService.createComment(boardSlug, postId, request, memberId, adminAccess,
+			secretPassword);
 
 		URI location = URI.create("/api/boards/" + boardSlug + "/posts/" + postId + "/comments/" + response.id());
 
@@ -71,64 +63,38 @@ public class CommentApi {
 
 	@GetMapping
 	public ResponseEntity<CommentPageResponse> getComments(@PathVariable String boardSlug,
-														   @PathVariable @Positive Long postId,
-														   @RequestParam(defaultValue = "1") @Min(1) int page,
-														   @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-														   @RequestHeader(value = "X-Post-Password", required = false) String secretPassword,
-														   @AuthenticationPrincipal LoginMember loginMember,
-														   Authentication authentication) {
+		@PathVariable @Positive Long postId, @RequestParam(defaultValue = "1") @Min(1) int page,
+		@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+		@RequestHeader(value = "X-Post-Password", required = false) String secretPassword,
+		@AuthenticationPrincipal LoginMember loginMember, Authentication authentication) {
 
 		boolean adminAccess = hasAuthority(authentication, "ROLE_ADMIN");
 		boolean memberAccess = adminAccess || hasAuthority(authentication, "ROLE_MEMBER");
 
-		CommentPageResponse response = commentService.getComments(
-			boardSlug,
-			postId,
-			page,
-			size,
-			loginMember == null ? null : loginMember.id(),
-			memberAccess,
-			adminAccess,
-			secretPassword
-		);
+		CommentPageResponse response = commentService.getComments(boardSlug, postId, page, size,
+			loginMember == null ? null : loginMember.id(), memberAccess, adminAccess, secretPassword);
 
-		return ResponseEntity.ok()
-			.cacheControl(CacheControl.noStore())
-			.body(response);
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(response);
 	}
 
 	@PatchMapping("/{commentId}")
-	public ResponseEntity<Void> updateComment(@PathVariable String boardSlug,
-											  @PathVariable @Positive Long postId,
-											  @PathVariable @Positive Long commentId,
-											  @Valid @RequestBody CommentUpdateRequest request,
-											  @RequestHeader(value = "X-Post-Password", required = false) String secretPassword,
-											  @AuthenticationPrincipal LoginMember loginMember,
-											  Authentication authentication) {
+	public ResponseEntity<Void> updateComment(@PathVariable String boardSlug, @PathVariable @Positive Long postId,
+		@PathVariable @Positive Long commentId, @Valid @RequestBody CommentUpdateRequest request,
+		@RequestHeader(value = "X-Post-Password", required = false) String secretPassword,
+		@AuthenticationPrincipal LoginMember loginMember, Authentication authentication) {
 
 		Long memberId = requireMemberId(loginMember);
 		boolean adminAccess = hasAuthority(authentication, "ROLE_ADMIN");
 
-		commentService.updateComment(
-			boardSlug,
-			postId,
-			commentId,
-			request,
-			memberId,
-			adminAccess,
-			secretPassword
-		);
+		commentService.updateComment(boardSlug, postId, commentId, request, memberId, adminAccess, secretPassword);
 
 		return ResponseEntity.noContent().build();
 	}
 
 	@DeleteMapping("/{commentId}")
-	public ResponseEntity<Void> deleteComment(@PathVariable String boardSlug,
-											  @PathVariable @Positive Long postId,
-											  @PathVariable @Positive Long commentId,
-											  @RequestParam @PositiveOrZero Integer version,
-											  @AuthenticationPrincipal LoginMember loginMember,
-											  Authentication authentication) {
+	public ResponseEntity<Void> deleteComment(@PathVariable String boardSlug, @PathVariable @Positive Long postId,
+		@PathVariable @Positive Long commentId, @RequestParam @PositiveOrZero Integer version,
+		@AuthenticationPrincipal LoginMember loginMember, Authentication authentication) {
 
 		Long memberId = requireMemberId(loginMember);
 		boolean adminAccess = hasAuthority(authentication, "ROLE_ADMIN");
@@ -151,9 +117,6 @@ public class CommentApi {
 			return false;
 		}
 
-		return authentication.getAuthorities()
-			.stream()
-			.map(GrantedAuthority::getAuthority)
-			.anyMatch(authority::equals);
+		return authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).anyMatch(authority::equals);
 	}
 }

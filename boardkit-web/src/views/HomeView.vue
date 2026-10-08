@@ -59,21 +59,21 @@ onMounted(async () => {
 
 <template>
   <div class="grid gap-5">
-    <section class="grid gap-4 xl:grid-cols-[minmax(0,2.4fr)_minmax(320px,1fr)]">
+    <section class="grid gap-6">
       <HomeHero />
       <HomeRecentPanel :posts="recentPosts" />
     </section>
 
     <p
       v-if="loading"
-      class="rounded-lg border-[3px] border-slate-950 bg-white px-6 py-16 text-center font-black text-slate-600"
+      class="rounded-lg border border-slate-200 bg-white px-6 py-16 text-center font-semibold text-slate-600"
     >
       커뮤니티 소식을 불러오는 중입니다.
     </p>
 
     <p
       v-else-if="errorMessage"
-      class="rounded-lg border-[3px] border-red-950 bg-red-100 px-6 py-12 text-center font-black text-red-800"
+      class="rounded-lg border border-red-200 bg-red-50 px-6 py-12 text-center font-semibold text-red-800"
       role="alert"
     >
       {{ errorMessage }}
@@ -81,7 +81,7 @@ onMounted(async () => {
 
     <section
       v-else-if="previews.length > 0"
-      class="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+      class="grid gap-5 xl:grid-cols-2"
       aria-label="게시판별 최신 글"
     >
       <HomeBoardCard
@@ -94,13 +94,13 @@ onMounted(async () => {
 
     <section
       v-else
-      class="rounded-lg border-[3px] border-slate-950 bg-white px-6 py-16 text-center"
+      class="rounded-lg border border-slate-200 bg-white px-6 py-16 text-center"
     >
-      <h2 class="m-0 text-2xl font-black text-slate-950">아직 이용할 수 있는 게시판이 없습니다.</h2>
+      <h2 class="m-0 text-2xl font-semibold text-slate-900">아직 이용할 수 있는 게시판이 없습니다.</h2>
       <RouterLink
         v-if="session?.role === 'ADMIN'"
         :to="{ name: 'admin-board-create' }"
-        class="mt-5 inline-flex rounded border-[3px] border-slate-950 bg-blue-500 px-4 py-2 font-black text-white no-underline shadow-[2px_2px_0_#0f172a]"
+        class="mt-5 inline-flex rounded border border-slate-200 bg-blue-600 px-4 py-2 font-semibold text-white no-underline"
       >
         게시판 만들기
       </RouterLink>

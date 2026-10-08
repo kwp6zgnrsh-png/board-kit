@@ -12,9 +12,7 @@ public final class BoardReadAccess {
 			case "PUBLIC" -> true;
 			case "MEMBER" -> memberAccess || adminAccess;
 			case "ADMIN" -> adminAccess;
-			default -> throw new IllegalStateException(
-				"지원하지 않는 읽기 권한입니다: " + readPermission
-			);
+			default -> throw new IllegalStateException("지원하지 않는 읽기 권한입니다: " + readPermission);
 		};
 	}
 

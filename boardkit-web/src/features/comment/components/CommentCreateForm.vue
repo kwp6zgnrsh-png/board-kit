@@ -58,7 +58,7 @@ async function submit() {
 
 <template>
   <form
-      class="grid gap-3 border-t-2 border-slate-950 bg-sky-50 p-4 [&_.field__label]:font-black! [&_.field__label]:text-slate-950! [&_.field__control]:rounded! [&_.field__control]:border-2! [&_.field__control]:border-slate-950!"
+      class="grid gap-3 border-t border-slate-200 bg-sky-50 p-4"
       @submit.prevent="submit"
   >
     <BaseTextarea
@@ -72,7 +72,7 @@ async function submit() {
 
     <p
         v-if="errorMessage"
-        class="m-0 rounded border-2 border-red-900 bg-rose-50 px-4 py-3 text-sm font-bold text-red-900"
+        class="m-0 rounded border border-red-200 bg-rose-50 px-4 py-3 text-sm font-medium text-red-900"
         role="alert"
     >
       {{ errorMessage }}
@@ -81,7 +81,7 @@ async function submit() {
     <div class="flex justify-end">
       <BaseButton
           type="submit"
-          class="min-h-0! rounded! border-2! border-slate-950! bg-blue-100! px-3! py-1! text-xs! font-black! text-slate-950! shadow-none!"
+          size="sm"
           :disabled="submitting"
       >
         {{ submitting ? '등록 중...' : parentId ? '답글 등록' : '댓글 등록' }}

@@ -1,12 +1,12 @@
 package io.github.kwp6zgnrsh.boardkitapi.board.model;
 
+import java.time.LocalDateTime;
+
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Getter
 @Builder
@@ -35,7 +35,6 @@ public class BoardPolicy {
 	private Long maxFileSizeBytes;
 	private boolean imageRequired;
 	private boolean thumbnailEnabled;
-	private String representativeImageMode;
 
 	// 댓글·좋아요·공식 답변
 	private boolean commentsEnabled;

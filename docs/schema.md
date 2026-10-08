@@ -1,12 +1,14 @@
 # 커뮤니티 V2 — ERD·컬럼 초안
 
 작성일: 2026-09-19
+정책·스키마 갱신일: 2026-10-08
 
 ## 파일
 
 - `schema.sql`: MySQL 8.0.16+ / InnoDB용 DDL. 빈 DB를 명시적으로 선택한 뒤 한 번 실행하는 초기 스키마다.
 - `erd.mmd`: Mermaid 원문. 노션의 Mermaid 코드 블록에 내용을 그대로 붙여 넣는다.
 - 이 문서는 기존 프로젝트에 적용한 마이그레이션이 아니라 V2 설계 초안이다.
+- 확정한 업무 정책과 아직 초안인 컬럼 길이·기본값·인덱스를 구분한다. 실제 DB의 스키마와 일치하는지는 별도로 확인해야 한다.
 
 ## 확정한 설계
 
@@ -14,37 +16,78 @@
 - `secret_mode=OFF`는 새 비밀글 작성과 기존 일반 글의 비밀글 전환을 금지한다. 정책 변경만으로 기존 비밀글의 비밀 여부나 비밀번호 해시를 변경하지 않으며, 기존 비밀글은 비밀 설정을 유지한 채 수정할 수 있다.
 
 - 회원·관리자 계정을 `member`로 통합하고 `role`로 구분한다. 게시판 담당자 테이블은 두지 않는다.
+- 로그인 ID와 닉네임은 각각 유일하다. 닉네임은 현재 구현에서 앞뒤 공백을 제거한 뒤 1~10자로 검사한다. DB의 `display_name` 길이 50은 저장 컬럼 초안이며 입력 제한과 구분한다.
 - 회원 탈퇴·게시글 삭제 여부는 각 테이블의 `deleted_at`으로 판단한다. NULL이면 미삭제, 값이 있으면 해당 시점에 탈퇴·삭제 처리된 기록이다.
 - 게시판과 게시글을 분리하고 정책으로 게시판을 구성한다. 갤러리 전용 모델은 없다.
+- 게시판 slug는 생성 후 변경하지 않는다. 게시판 삭제는 `status=ARCHIVED`로 처리하며 게시글·댓글·파일을 연쇄 삭제하지 않는다.
+- 비밀글은 게시판 읽기 권한을 통과한 작성자·관리자 또는 비밀번호를 아는 사용자가 열람할 수 있다. 비밀번호 없는 비밀글은 게시판 읽기 권한을 가진 누구나 열람할 수 있다.
 - 360×360 썸네일은 원본당 최대 하나이며 `post_file.thumbnail_key`에 위치를 저장한다.
 - 별도 신고·제재 이력 테이블을 사용한다. 신고 횟수는 `report`에서 집계한다.
 - 관리자 공식 답변은 게시글당 하나다. 문의의 접수·처리 중·완료 상태는 두지 않는다.
-- 파일 정리 작업은 DB에 기록하여 재시도한다. 고아 파일 처리 때문에 파일 FK를 두지 않는다.
+- 파일 정리 작업은 DB에 기록하여 재시도한다. 파일 메타데이터가 없는 고아 파일도 처리하도록 `file_cleanup_task`에는 파일 메타데이터 FK를 두지 않는다. `post_file.post_id` FK는 유지한다.
 - 운영 통계는 게시글·댓글 등 기존 기록에서 집계한다.
+- 파일은 `boardKit/store` 아래 `temp`, `posts`, `thumbnails`에 로컬 저장한다.
+- DB의 파일 키는 저장소 루트 기준 상대 경로만 저장한다.
+- 게시글과 파일은 하나의 multipart 요청으로 등록하며 별도 임시 업로드 API와 임시 업로드 테이블은 사용하지 않는다.
+
+### 본문과 파일
+
+- 본문은 Tiptap JSON인 `post.content_document`에 저장한다. `post.content`는 서버가 JSON에서 추출한 검색용 일반 텍스트다.
+- 현재 지원하는 본문 요소는 `doc`, `paragraph`, `text`, `hardBreak`, `image`다. StarterKit의 글자·문단 서식은 추후 적용한다.
+- 텍스트 없이 본문 이미지만 있는 글도 허용한다. 빈 본문에 다운로드 첨부파일만 있는 글은 허용하지 않는다.
+- JSON 본문이 없는 기존 글은 `BODY_IMAGE` 파일을 `sort_order`, `id` 순서로 상단에 표시하고 기존 문자열 본문을 이어서 표시한다. 수정 저장 시 JSON 본문으로 전환한다.
+- 이미지 버튼은 JPG/JPEG/PNG/GIF 선택 모달을 연다. 처음 적용한 이미지는 본문 상단에 세로 배치하며 이미지 사이에 텍스트를 입력할 수 있다. 커서 위치에 이미지 삽입 버튼은 사용하지 않는다.
+- 모달에서는 이미지 미리보기를 드래그해 순서를 바꾸거나 이미지를 삭제한다. 재정렬 시 문단 위치를 유지하고 기존 이미지 자리의 사진만 교체한다. 기존 이미지 자리보다 추가 이미지가 많으면 마지막 이미지 자리 뒤에 이어서 배치한다.
+- 모달은 임시 편집 상태를 사용한다. 적용하면 작성·수정 화면의 본문에 반영하고 취소하면 적용 전 상태를 유지한다.
+- 모달에서는 브라우저 Object URL로 미리보기만 생성한다. 실제 파일 업로드는 게시글 등록·수정 요청 시 수행한다. 적용한 이미지의 URL은 실행 취소 복구를 위해 폼을 떠날 때 해제한다.
+- 파일 버튼은 다운로드 첨부파일을 선택한다. 버튼 표시·추가 허용 여부는 게시판의 `attachments_enabled`와 `upload_profile`을 따른다. 파일 버튼으로 선택한 이미지는 본문에 자동 삽입하지 않는다.
+- 허용 형식 묶음은 `IMAGE`(JPG/JPEG/PNG/GIF), `IMAGE_AND_ZIP`(이미지·ZIP), `IMAGE_AND_FILE`(이미지·UTF-8 TXT·ZIP·PDF)이다. 개별 확장자 선택은 사용하지 않는다.
+- `post_file.file_usage`는 `BODY_IMAGE` 또는 `ATTACHMENT`다. MIME 타입과 용도는 별개이며 다운로드 목록은 `ATTACHMENT` 파일로 구성한다.
+- `image_required` 조건은 본문 이미지로만 충족한다. 다운로드용 이미지 첨부는 조건을 충족하지 않는다.
+- 요청의 `contentDocument`에서 새 이미지는 전체 multipart `files` 배열의 0부터 시작하는 `fileIndex`, 기존 이미지는 `fileId`로 참조한다. 둘 중 정확히 하나만 사용한다.
+- 저장된 JSON은 이미지의 `fileId`만 참조하며 `fileIndex`, 브라우저 미리보기 URL, 클라이언트 이미지 키는 저장하지 않는다.
+- 수정 요청의 `retainedFileIds`는 유지할 기존 본문 이미지와 다운로드 첨부파일의 전체 ID 목록이다. 기존 파일은 재업로드하지 않으며 목록에서 빠진 파일은 soft delete하고 cleanup task를 등록한다.
+- 본문 이미지 순서는 JSON을 기준으로 검증하며 서버가 이미지의 `sort_order`에 반영한다. 별도 이미지 위치·순서 요청 필드는 사용하지 않는다.
+- 같은 이미지 내용을 가진 서로 다른 업로드 파일은 각각 허용한다. 동일한 업로드 파일 참조를 본문에 반복하거나 이미지가 아닌 파일을 본문 이미지로 지정하는 요청은 거절한다.
+- 대표 이미지는 같은 게시글의 삭제되지 않은 `BODY_IMAGE` 중 `sort_order`, `id` 순서의 첫 파일이다. 추가·삭제·재정렬 시 다시 선정하며 본문 이미지가 없으면 NULL이다. 다운로드용 이미지는 대표 이미지 대상에서 제외한다.
+- 썸네일은 원본 중앙을 잘라 360×360 PNG로 생성한다. GIF의 썸네일은 정적 이미지다. 썸네일 생성 실패는 게시글 등록·수정 실패로 처리한다.
+- 파일 조회는 게시판 읽기 권한·비밀글 접근·같은 게시글 소속·삭제 여부를 검사하며 조회수를 증가시키지 않는다. 다운로드 응답 여부는 파일 용도로 결정한다.
+- 수정 화면의 기존 이미지 로딩 실패 시 저장을 막는다. 상세 화면은 이미지 로딩 실패를 표시하고 나머지 본문은 유지한다.
+
+### 파일 정리
+
+- 업로드 중 생성한 임시 파일은 요청 완료 후 남기지 않는다. 정리에 실패한 파일은 `file_cleanup_task`에 기록한다.
+- `temp`, `posts`, `thumbnails`에서 최소 경과 시간(현재 설정 24시간) 이상인 파일을 스캔한다. `trash` 디렉토리와 격리·이동 과정은 사용하지 않는다.
+- 삭제 직전 파일 크기·수정 시간 불변과 최소 경과 시간을 재확인하고, `post_file` 참조와 대기 중인 cleanup task가 없을 때 고아 파일을 직접 삭제한다. 삭제 실패 시 재시도 작업을 등록한다.
+- 고아 검사에서는 삭제 표시된 `post_file`의 원본·썸네일 키 참조도 포함한다. 삭제 표시된 파일은 DB 기록이 없는 고아 파일과 구분한다.
+- 일반 게시글 삭제는 게시글과 `post_file.deleted_at`을 같은 트랜잭션에서 기록한다. 물리 파일 삭제 시점·보관 기간은 별도 정책으로 관리하며 아직 확정하지 않았다.
+- 수정 시 명시적으로 제거한 파일은 삭제 표시·대표 이미지 갱신·cleanup task 등록을 같은 트랜잭션에서 처리한다. 일반 게시글 삭제 후 보관 정책과 구분한다.
+- cleanup task는 DELETE만 사용한다. 파일이 이미 없으면 삭제 성공으로 처리한다. 성공하면 작업 행을 제거하고 실패하면 `attempts`, `next_attempt_at`, `last_error`를 갱신한다.
+- 현재 재시도 간격은 60초부터 지수 증가하며 최대 24시간이다. 파일 삭제 실패는 작업에 기록한 뒤 다음 작업을 처리한다. DB의 작업 기록·완료 처리 자체가 실패하면 해당 실행은 오류로 종료될 수 있다.
 
 ## 초안으로 선택한 세부 사항
 
-- 문자열 길이·인덱스·기본값과 아래 상태값은 구현 전 검토할 제안이다.
+- 별도로 확정한 정책을 제외한 문자열 저장 길이·인덱스·DB 기본값은 초안이다. 아래 enum 표기는 현재 정책 및 구현에서 사용하는 값이다.
 - 모든 ID는 `BIGINT UNSIGNED`. 시간은 `DATETIME(6)`이며 UTC로 저장·해석한다. 애플리케이션 DB 연결에도 같은 시간대 규칙을 적용한다.
 - 기본 문자열 비교는 `utf8mb4_0900_ai_ci`이므로 로그인 ID·slug는 대소문자 및 악센트를 구분하지 않는다. 파일 저장 키는 `utf8mb4_bin`으로 구분한다.
 - `member.role`: MEMBER / ADMIN
-- `board.status`: DRAFT / ACTIVE / ARCHIVED
+- `board.status`: DRAFT / ACTIVE / ARCHIVED. 현재 생성 API는 ACTIVE로 저장하고 삭제는 ARCHIVED로 처리한다. DRAFT 기본값은 DDL 초안이며 현재 API 흐름에서 사용하지 않는다.
 - `board.display_type`: LIST / CARD — 화면 형태이며 게시판 업무 유형이 아니다.
 - 읽기 권한: PUBLIC / MEMBER / ADMIN. 작성·댓글 권한: MEMBER / ADMIN.
-- `secret_mode`: OFF / OPTIONAL / REQUIRED. 비밀번호 접근을 지원한다는 전제로 해시 컬럼을 포함했다. 작성자·관리자 전용으로 확정하면 해시 컬럼을 제거할 수 있다.
-- `upload_profile`: IMAGE / IMAGE_AND_ZIP. 개별 확장자 선택이 아닌 서버 정의 형식 묶음이다.
-- `representative_image_mode`: FIRST_IMAGE / MANUAL
+- `secret_mode`: OFF / OPTIONAL / REQUIRED. 비밀번호 접근을 지원하며 비밀번호는 해시로 저장한다. OFF 전환 시 기존 비밀번호를 초기화하지 않는다.
+- `upload_profile`: IMAGE / IMAGE_AND_ZIP / IMAGE_AND_FILE. 각 묶음의 허용 형식은 위 본문과 파일 정책을 따른다.
 - `report.reason`: SPAM / ABUSE / OTHER. `report.status`: PENDING / ACCEPTED / REJECTED.
-- 댓글은 최상위 댓글과 대댓글의 2단계로 가정한다. 최대 글자 수·깊이 설정 컬럼은 아직 추가하지 않았다.
+- 댓글은 최상위 댓글과 대댓글의 2단계다. 본문 최대 2,000자는 서버에서 검증하며 최대 글자 수·깊이 설정 컬럼은 두지 않는다.
 - 신고는 회원당 같은 대상에 한 번만 가능하다. 처리 후에도 재신고는 허용하지 않는 유일성 제약이다.
-- 정리 작업은 MOVE / DELETE. 작업 성공 후 행을 제거하는 방식이다. MOVE 이후 보관 기간은 별도 설정이며 아직 정하지 않았다.
-- 썸네일의 정확한 정사각형 자르기/여백 처리 및 생성 실패 정책은 미정이다.
+- 일반 게시글 삭제 후 파일의 물리 삭제 시점·보관 기간은 미정이다. 썸네일 처리와 cleanup task 동작은 위 확정 정책을 따른다.
 
 ## DB 제약과 애플리케이션 책임
 
 ### DB에서 보장
 
 - 모든 FK는 RESTRICT이며 자동 연쇄 삭제하지 않는다. 실제 삭제 시 참조를 정리하는 별도 절차가 필요하다.
+- `member.login_id`, `member.display_name` 각각 UNIQUE: 동시 회원가입에서도 로그인 ID·닉네임 중복을 막는다.
+- `post_file.file_usage` CHECK: BODY_IMAGE / ATTACHMENT 중 하나다. 파일이 실제 이미지인지는 서버에서 별도로 검증한다.
 - `post_reply.post_id` UNIQUE: 게시글당 공식 답변 하나.
 - 좋아요 테이블의 대상 ID + 회원 ID 복합 PK: 중복 좋아요 방지.
 - 신고 대상은 post_id / comment_id 중 정확히 하나. 각 대상과 신고자의 복합 UNIQUE로 중복 신고 방지.
@@ -56,22 +99,27 @@
 - 게시판과 정책을 같은 트랜잭션으로 생성한다. DB의 1:0..1 관계에 업무상 필수 정책을 보완한다.
 - 작성·조회 권한 조합, 비밀글 정책, 회원 제재 여부를 검사한다.
 - 카테고리는 게시글과 같은 게시판에 속해야 한다.
-- 대표 파일은 같은 게시글의 삭제되지 않은 이미지여야 한다. 게시글을 대표 파일 NULL로 생성하고 파일 저장 후 대표 파일을 지정한다.
+- 대표 파일은 같은 게시글의 삭제되지 않은 BODY_IMAGE여야 한다. 게시글을 대표 파일 NULL로 생성하고 파일 저장 후 본문 순서상 첫 이미지로 지정한다.
+- JSON 본문의 구조·지원 요소·텍스트 유무 또는 이미지 유무를 검증한다. 새 이미지의 fileIndex는 전체 multipart 파일 배열을 기준으로 검사한다. 기존 이미지의 fileId는 같은 게시글의 활성 파일이며 retainedFileIds에도 있어야 한다.
+- 파일의 개수·파일당 크기·실제 형식·확장자 일치·게시판 허용 묶음을 검증한다. TXT는 UTF-8과 허용된 제어 문자만 받는다. PDF는 현재 헤더 시그니처를 검사하며 문서 전체 구조 검증까지 수행하지 않는다.
+- 파일당 최대 크기는 board_policy.max_file_size_bytes로 제한하며 게시글 전체 파일 용량은 서버 설정으로 제한한다. 수정 시 새 파일이 있으면 유지할 기존 파일 개수·용량을 합산한다.
+- 새 파일을 추가하지 않는 수정은 기존 파일을 유지할 수 있다. 정책 변경만으로 기존 파일을 제거하지 않으며, 현재 구현은 새 파일 추가 시 현재 형식·개수·용량 정책을 적용한다.
 - 부모 댓글은 같은 게시글의 최상위 댓글이어야 한다. 부모 변경·자기 참조·순환 연결을 허용하지 않는다.
 - 공식 답변·신고 처리·제재는 ADMIN 권한으로만 실행한다.
-- 게시판의 댓글 사용 여부와 개별 게시글의 댓글 잠금을 모두 검사한다. 댓글 기능 비활성화 시 기존 댓글과 좋아요 표시 정책을 따로 적용한다.
+- 댓글 작성·수정 시 현재 댓글 권한·댓글 사용 여부·게시글 댓글 잠금을 검사한다. 댓글 기능을 꺼도 기존 댓글은 표시한다. 부모 댓글 삭제 시 삭제 안내를 남기고 기존 대댓글은 표시하되 해당 부모에 새 대댓글을 추가하지 않는다.
+- 댓글 페이지는 부모와 대댓글을 합산해 50개씩 구성하며, 페이지를 넘긴 대댓글도 다음 페이지에 바로 표시한다. 댓글 좋아요 기능은 별도 구현 범위다.
 - 정책 변경으로 기존 비밀글의 보호나 기존 첨부파일 참조가 사라지지 않게 한다. 썸네일 재생성·삭제는 명시적 작업으로 처리한다.
 - 정책 version / 게시글 version / 댓글 version은 UPDATE 조건에서 비교하고 성공 시 증가시킨다. 컬럼만으로 낙관적 잠금이 동작하지 않는다.
 - `post.updated_at`은 조회수 증가로 바뀌지 않도록 자동 갱신을 사용하지 않는다. 게시글 편집 시 서비스의 UPDATE에서 명시적으로 갱신한다.
 - 현재 회원 제재 여부는 `member_sanction`에서 `revoked_at IS NULL`, `starts_at <= 현재 시각`, `ends_at IS NULL OR ends_at > 현재 시각`을 모두 만족하는 기록의 존재 여부로 판단한다. 탈퇴 여부는 `member.deleted_at`으로 별도 검사한다.
-- 파일 삭제 표시·대표 파일 해제 또는 교체·정리 작업 등록을 함께 커밋한다. 롤백된 신규 파일 정리 작업은 독립 트랜잭션 등으로 기록한다.
-- 고아 파일 탐색은 업로드 유예 시간과 활성 참조·대기 작업 확인이 필요하다. 파일 작업은 재시도해도 안전하게 구현한다.
+- 수정 중 제거한 파일의 삭제 표시·대표 파일 교체 또는 해제·정리 작업 등록을 함께 커밋한다. DB 롤백 시 새로 만든 파일만 정리하고 정리 실패 작업은 독립 트랜잭션으로 기록한다. DB 트랜잭션이 파일시스템 변경을 자동 롤백하지는 않는다.
+- 고아 파일 탐색은 업로드 유예 시간과 삭제 표시된 기록을 포함한 DB 참조·대기 작업 확인이 필요하다. 파일 작업은 재시도해도 안전하게 구현한다.
 
 ## 검증 범위
 
-- DDL과 Mermaid의 13개 테이블· 118개 컬럼 · 23개 FK 참조를 정적으로 대조했다.
-- 설치된 MySQL 8.1.0으로 별도 임시 인스턴스 검증을 시도했으나, 데이터 디렉토리 초기화 중 서버 프로세스가 signal 11로 종료됐다. DDL 실행 및 DB 제약 동작 검증은 완료하지 못했다.
-- 기존 프로젝트 DB에는 접속하거나 변경하지 않았다. 실제 적용 전 별도 빈 DB에서 실행 검증이 필요하다.
+- 2026-10-08 DDL·별도 Mermaid·본문 내 Mermaid·Markdown 컬럼 목록의 13개 테이블·117개 컬럼과 NULL 허용 여부가 일치함을 정적으로 확인했다. 두 Mermaid의 내용·SQL과 ERD의 컬럼 타입·단일 컬럼 UNIQUE 표시·DDL의 23개 FK 대상 컬럼과 제약 이름 중복 여부도 확인했다.
+- 이전 검증 기록에서는 MySQL 8.1.0 임시 인스턴스의 데이터 디렉토리 초기화 중 서버 프로세스가 signal 11로 종료됐다. 갱신한 초기 DDL의 MySQL 실행 및 DB 제약 동작 검증은 이번에도 수행하지 않았다.
+- 이번 문서 갱신에서는 기존 프로젝트 DB에 접속하거나 변경하지 않았다. 실제 적용 전 별도 빈 DB에서 초기 DDL 실행 검증이 필요하다. 기존 DB에는 schema.sql을 다시 실행하지 않는다.
 - MySQL 문법 참고: [CHECK 제약](https://dev.mysql.com/doc/refman/8.0/en/create-table-check-constraints.html), [FK 제약](https://dev.mysql.com/doc/refman/8.0/en/create-table-foreign-keys.html).
 
 ## 컬럼 목록
@@ -84,7 +132,7 @@
 - id (PK)
 - login_id (UK)
 - password_hash
-- display_name
+- display_name (UK)
 - role
 - created_at
 - updated_at
@@ -118,7 +166,6 @@
 - max_file_size_bytes
 - image_required
 - thumbnail_enabled
-- representative_image_mode
 - comments_enabled
 - comment_replies_enabled
 - post_likes_enabled
@@ -143,6 +190,7 @@
 - category_id (FK → board_category.id, NULL 허용)
 - title
 - content
+- content_document (NULL 허용)
 - is_secret
 - secret_password_hash (NULL 허용)
 - is_pinned
@@ -161,6 +209,7 @@
 - original_name
 - storage_key (UK)
 - content_type
+- file_usage
 - size_bytes
 - thumbnail_key (UK, NULL 허용)
 - sort_order
@@ -228,9 +277,7 @@
 ### file_cleanup_task
 
 - id (PK)
-- task_type
-- source_key
-- destination_key (NULL 허용)
+- target_key (UK)
 - attempts
 - next_attempt_at
 - last_error (NULL 허용)
@@ -240,7 +287,7 @@
 
 - `report`: UNIQUE(reporter_id, post_id), UNIQUE(reporter_id, comment_id)
 - `report`: 두 대상 컬럼 중 하나만 값이 있어야 한다.
-- 파일 정리 작업: MOVE는 목적지가 필요하며 DELETE는 목적지가 없어야 한다.
+- 파일 정리 작업의 target_key는 중복 등록할 수 없다.
 
 ## Mermaid
 
@@ -252,7 +299,7 @@ erDiagram
         bigint id PK
         varchar(50) login_id UK
         varchar(255) password_hash
-        varchar(50) display_name
+        varchar(50) display_name UK
         varchar(16) role
         datetime(6) created_at
         datetime(6) updated_at
@@ -286,7 +333,6 @@ erDiagram
         bigint max_file_size_bytes
         boolean image_required
         boolean thumbnail_enabled
-        varchar(16) representative_image_mode
         boolean comments_enabled
         boolean comment_replies_enabled
         boolean post_likes_enabled
@@ -311,6 +357,7 @@ erDiagram
         bigint category_id FK "nullable"
         varchar(200) title
         mediumtext content
+        json content_document "nullable"
         boolean is_secret
         varchar(255) secret_password_hash "nullable"
         boolean is_pinned
@@ -329,6 +376,7 @@ erDiagram
         varchar(255) original_name
         varchar(512) storage_key UK
         varchar(100) content_type
+        varchar(16) file_usage
         bigint size_bytes
         varchar(512) thumbnail_key UK "nullable"
         int sort_order
@@ -396,9 +444,7 @@ erDiagram
 
     FILE_CLEANUP_TASK {
         bigint id PK
-        varchar(16) task_type
-        varchar(1024) source_key
-        varchar(1024) destination_key "nullable"
+        varchar(512) target_key UK
         int attempts
         datetime(6) next_attempt_at
         text last_error "nullable"

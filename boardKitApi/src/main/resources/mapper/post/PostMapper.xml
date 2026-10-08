@@ -12,6 +12,7 @@
             category_id,
             title,
             content,
+            content_document,
             is_secret,
             secret_password_hash,
             is_pinned,
@@ -25,6 +26,7 @@
             #{categoryId},
             #{title},
             #{content},
+            #{contentDocument,jdbcType=VARCHAR},
             #{isSecret},
             #{secretPasswordHash},
             #{isPinned},
@@ -120,7 +122,9 @@
             p.view_count AS viewCount,
             p.version,
             p.created_at AS createdAt,
-            p.updated_at AS updatedAt
+            p.updated_at AS updatedAt,
+            p.representative_file_id AS representativeFileId,
+            p.content_document AS contentDocument
         FROM post p
             INNER JOIN member m
                 ON m.id = p.author_id
@@ -144,6 +148,7 @@
         SET category_id = #{categoryId},
             title = #{title},
             content = #{content},
+            content_document = #{contentDocument,jdbcType=VARCHAR},
             is_secret = #{isSecret},
             secret_password_hash = #{secretPasswordHash},
             comments_locked = #{commentsLocked},
@@ -192,4 +197,29 @@
             AND board_id = #{boardId}
             AND deleted_at IS NULL
     </select>
+
+    <update id="refreshRepresentativeImage">
+        UPDATE post p
+        SET p.representative_file_id = (
+            SELECT pf.id
+            FROM post_file pf
+            WHERE pf.post_id = p.id
+                AND pf.deleted_at IS NULL
+                AND pf.content_type IN ('image/jpeg', 'image/png', 'image/gif')
+                AND pf.file_usage = 'BODY_IMAGE'
+            ORDER BY pf.sort_order ASC, pf.id ASC
+            LIMIT 1
+        )
+        WHERE p.id = #{postId}
+            AND p.board_id = #{boardId}
+            AND p.deleted_at IS NULL
+    </update>
+
+    <update id="updateContentDocument">
+        UPDATE post
+        SET content_document = #{contentDocument,jdbcType=VARCHAR}
+        WHERE id = #{postId}
+            AND board_id = #{boardId}
+            AND deleted_at IS NULL
+    </update>
 </mapper>

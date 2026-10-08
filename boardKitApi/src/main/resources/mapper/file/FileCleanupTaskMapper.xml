@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.github.kwp6zgnrsh.boardkitapi.file.mapper.FileCleanupTaskMapper">
+    <insert id="enqueueDeletes">
+        INSERT INTO file_cleanup_task (target_key)
+        VALUES
+        <foreach collection="targetKeys" item="key" separator=",">
+            (#{key})
+        </foreach>
+        ON DUPLICATE KEY UPDATE target_key = target_key
+    </insert>
+
+    <select id="selectDueTasks"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.file.model.FileCleanupTask">
+        SELECT
+            id,
+            target_key AS targetKey,
+            attempts,
+            next_attempt_at AS nextAttemptAt,
+            last_error AS lastError,
+            created_at AS createdAt
+        FROM file_cleanup_task
+        WHERE next_attempt_at <![CDATA[<=]]> CURRENT_TIMESTAMP(6)
+        ORDER BY next_attempt_at, id
+        LIMIT #{limit}
+    </select>
+
+    <delete id="deleteTask">
+        DELETE FROM file_cleanup_task
+        WHERE id = #{taskId}
+    </delete>
+
+    <update id="recordFailure">
+        UPDATE file_cleanup_task
+        SET attempts = attempts + 1,
+            next_attempt_at =
+                TIMESTAMPADD(SECOND, #{retryDelaySeconds}, CURRENT_TIMESTAMP(6)),
+            last_error = #{lastError}
+        WHERE id = #{taskId}
+    </update>
+
+    <select id="existsReferenceOrCleanupTask" resultType="boolean">
+        SELECT
+            EXISTS (
+                SELECT 1
+                FROM post_file pf
+                WHERE pf.storage_key = #{targetKey}
+                    OR pf.thumbnail_key = #{targetKey}
+            )
+        OR EXISTS (
+            SELECT 1
+            FROM file_cleanup_task fct
+            WHERE fct.target_key = #{targetKey}
+        )
+    </select>
+</mapper>

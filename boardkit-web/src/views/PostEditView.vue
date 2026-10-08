@@ -86,14 +86,14 @@ watch([boardSlug, postId], ([slug, id]) => loadPage(slug, id), {
 
 <template>
   <div class="grid min-w-0 gap-5">
-    <p v-if="loading" class="m-0 rounded-lg border-[3px] border-slate-950 bg-slate-100 p-5 font-bold text-slate-700">게시글을 불러오는 중입니다.</p>
-    <p v-else-if="errorMessage" class="m-0 rounded-lg border-[3px] border-red-900 bg-rose-50 p-5 font-bold text-red-900" role="alert">{{ errorMessage }}</p>
+    <p v-if="loading" class="m-0 rounded-lg border border-slate-200 bg-slate-100 p-5 font-medium text-slate-700">게시글을 불러오는 중입니다.</p>
+    <p v-else-if="errorMessage" class="m-0 rounded-lg border border-red-200 bg-rose-50 p-5 font-medium text-red-900" role="alert">{{ errorMessage }}</p>
 
     <template v-else-if="board && post">
       <BoardHeader
           :name="`${board.name} 글 수정`"
           :description="board.description"
-          class="rounded-lg border-[3px] border-slate-950 bg-sky-100 p-5 shadow-[2px_3px_0_#0f172a] sm:p-6"
+          class="pb-1"
       />
       <PostEditForm
           :key="`${post.id}-${post.version}`"
@@ -103,4 +103,3 @@ watch([boardSlug, postId], ([slug, id]) => loadPage(slug, id), {
     </template>
   </div>
 </template>
-

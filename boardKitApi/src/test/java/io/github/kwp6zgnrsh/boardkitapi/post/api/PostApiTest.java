@@ -6,6 +6,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -20,6 +21,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -46,28 +48,49 @@ import io.github.kwp6zgnrsh.boardkitapi.post.service.PostService;
 class PostApiTest {
 
 	private static final String VALID_REQUEST = """
-        {
-          "title": "게시글 제목",
-          "content": "게시글 본문",
-          "categoryId": null,
-          "isSecret": false,
-          "secretPassword": null,
-          "commentsLocked": false
-        }
-        """;
+	{
+	  "title": "게시글 제목",
+	  "contentDocument": {
+	    "type": "doc",
+	    "content": [
+	      {
+	        "type": "paragraph",
+	        "content": [
+	          {"type": "text", "text": "게시글 본문"}
+	        ]
+	      }
+	    ]
+	  },
+	  "categoryId": null,
+	  "isSecret": false,
+	  "secretPassword": null,
+	  "commentsLocked": false
+	}
+	""";
 
 	private static final String VALID_UPDATE_REQUEST = """
-    {
-      "title": "수정 제목",
-      "content": "수정 본문",
-      "categoryId": null,
-      "isSecret": false,
-      "secretPassword": null,
-      "clearSecretPassword": false,
-      "commentsLocked": false,
-      "version": 0
-    }
-    """;
+	{
+	  "title": "수정 제목",
+	  "contentDocument": {
+	    "type": "doc",
+	    "content": [
+	      {
+	        "type": "paragraph",
+	        "content": [
+	          {"type": "text", "text": "수정 본문"}
+	        ]
+	      }
+	    ]
+	  },
+	  "categoryId": null,
+	  "isSecret": false,
+	  "secretPassword": null,
+	  "clearSecretPassword": false,
+	  "commentsLocked": false,
+	  "version": 0,
+	  "retainedFileIds": []
+	}
+	""";
 
 	private static final PostListRequest DEFAULT_LIST_REQUEST =
 		new PostListRequest(null, null, PostSort.LATEST);
@@ -117,27 +140,22 @@ class PostApiTest {
 		when(postService.createPost(
 			eq("free"),
 			any(PostCreateRequest.class),
+			eq(List.of()),
 			eq(10L),
 			eq(false)
 		)).thenReturn(new PostCreateResponse(100L));
 
-		mockMvc.perform(post("/api/boards/free/posts")
-				.with(csrf())
-				.with(authentication(
-					createAuthentication(10L, "ROLE_MEMBER")
-				))
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(VALID_REQUEST))
+		mockMvc.perform(multipart("/api/boards/free/posts")
+				.file(requestPart(VALID_REQUEST))
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isCreated())
-			.andExpect(header().string(
-				"Location",
-				"/api/boards/free/posts/100"
-			))
+			.andExpect(header().string("Location", "/api/boards/free/posts/100"))
 			.andExpect(jsonPath("$.id").value(100));
 
 		verify(postService).createPost(
 			eq("free"),
 			any(PostCreateRequest.class),
+			eq(List.of()),
 			eq(10L),
 			eq(false)
 		);
@@ -149,23 +167,24 @@ class PostApiTest {
 		when(postService.createPost(
 			eq("free"),
 			any(PostCreateRequest.class),
+			eq(List.of()),
 			eq(1L),
 			eq(true)
 		)).thenReturn(new PostCreateResponse(101L));
 
-		mockMvc.perform(post("/api/boards/free/posts")
+		mockMvc.perform(multipart("/api/boards/free/posts")
+				.file(requestPart(VALID_REQUEST))
 				.with(csrf())
 				.with(authentication(
 					createAuthentication(1L, "ROLE_ADMIN")
-				))
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(VALID_REQUEST))
+				)))
 			.andExpect(status().isCreated())
-			.andExpect(jsonPath("$.id").value(101));
+			.andExpect(jsonPath("$.id").value(101));;
 
 		verify(postService).createPost(
 			eq("free"),
 			any(PostCreateRequest.class),
+			eq(List.of()),
 			eq(1L),
 			eq(true)
 		);
@@ -174,10 +193,9 @@ class PostApiTest {
 	@Test
 	@DisplayName("비로그인 사용자는 게시글을 작성할 수 없다")
 	void rejectPostCreationWithoutAuthentication() throws Exception {
-		mockMvc.perform(post("/api/boards/free/posts")
-				.with(csrf())
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(VALID_REQUEST))
+		mockMvc.perform(multipart("/api/boards/free/posts")
+				.file(requestPart(VALID_REQUEST))
+				.with(csrf()))
 			.andExpect(status().isUnauthorized());
 
 		verifyNoInteractions(postService);
@@ -188,14 +206,13 @@ class PostApiTest {
 	void rejectInvalidPostCreationRequest() throws Exception {
 		String invalidRequest = VALID_REQUEST.replace("게시글 제목", "");
 
-		mockMvc.perform(post("/api/boards/free/posts")
+		mockMvc.perform(multipart("/api/boards/free/posts")
+				.file(requestPart(invalidRequest))
 				.with(csrf())
 				.with(authentication(
 					createAuthentication(10L, "ROLE_MEMBER")
-				))
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(invalidRequest))
-			.andExpect(status().isBadRequest());
+				))).andExpect(status().isBadRequest());
+
 
 		verifyNoInteractions(postService);
 	}
@@ -268,8 +285,7 @@ class PostApiTest {
 			0
 		);
 
-		PostListRequest request =
-			new PostListRequest("spring", 2L, PostSort.VIEWS);
+		PostListRequest request = new PostListRequest("spring", 2L, PostSort.VIEWS);
 
 		when(postService.getPosts(
 			"admin",
@@ -419,25 +435,27 @@ class PostApiTest {
 			6L,
 			0,
 			createdAt,
-			createdAt
+			createdAt,
+			null,
+			List.of(),
+			null
 		);
 	}
 
 	@Test
 	@DisplayName("로그인한 작성자의 게시글 수정 요청은 204를 반환한다")
 	void updatePostWithMemberAuthentication() throws Exception {
-		mockMvc.perform(patch("/api/boards/free/posts/100")
-				.with(authentication(
-					createAuthentication(10L, "ROLE_MEMBER")
-				))
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(VALID_UPDATE_REQUEST))
+		mockMvc.perform(multipart(HttpMethod.PATCH, "/api/boards/free/posts/100")
+				.file(requestPart(VALID_UPDATE_REQUEST))
+				.with(csrf())
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isNoContent());
 
 		verify(postService).updatePost(
 			eq("free"),
 			eq(100L),
 			any(PostUpdateRequest.class),
+			eq(List.of()),
 			eq(10L),
 			eq(false)
 		);
@@ -448,12 +466,10 @@ class PostApiTest {
 	void rejectInvalidPostUpdateRequest() throws Exception {
 		String invalidRequest = VALID_UPDATE_REQUEST.replace("수정 제목", "");
 
-		mockMvc.perform(patch("/api/boards/free/posts/100")
-				.with(authentication(
-					createAuthentication(10L, "ROLE_MEMBER")
-				))
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(invalidRequest))
+		mockMvc.perform(multipart(HttpMethod.PATCH, "/api/boards/free/posts/100")
+				.file(requestPart(invalidRequest))
+				.with(csrf())
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isBadRequest());
 
 		verifyNoInteractions(postService);
@@ -468,6 +484,62 @@ class PostApiTest {
 			.andExpect(status().isUnauthorized());
 
 		verifyNoInteractions(postService);
+	}
+
+	@Test
+	@DisplayName("본문 문서와 파일을 포함한 게시글 수정 요청을 서비스에 전달한다")
+	void updatePostWithMultipartFile() throws Exception {
+		String requestJson = """
+		{
+		  "title": "수정 제목",
+		  "contentDocument": {
+		    "type": "doc",
+		    "content": [
+		      {
+		        "type": "paragraph",
+		        "content": [
+		          {"type": "text", "text": "수정 본문"}
+		        ]
+		      },
+		      {"type": "image", "attrs": {"fileIndex": 0}}
+		    ]
+		  },
+		  "categoryId": null,
+		  "isSecret": false,
+		  "secretPassword": null,
+		  "clearSecretPassword": false,
+		  "commentsLocked": false,
+		  "version": 0,
+		  "retainedFileIds": []
+		}
+		""";
+		MockMultipartFile image = new MockMultipartFile(
+			"files", "new.png", MediaType.IMAGE_PNG_VALUE, new byte[] {1, 2, 3}
+		);
+
+		mockMvc.perform(multipart(HttpMethod.PATCH, "/api/boards/free/posts/100")
+				.file(requestPart(requestJson))
+				.file(image)
+				.with(csrf())
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
+			.andExpect(status().isNoContent());
+
+		verify(postService).updatePost(
+			eq("free"),
+			eq(100L),
+			argThat(request ->
+				request.retainedFileIds().isEmpty()
+					&& request.contentDocument().path("content").size() == 2
+					&& request.contentDocument().path("content").get(1)
+					.path("attrs").path("fileIndex").intValue() == 0
+			),
+			argThat(uploaded ->
+				uploaded.size() == 1
+					&& "new.png".equals(uploaded.getFirst().getOriginalFilename())
+			),
+			eq(10L),
+			eq(false)
+		);
 	}
 
 	@Test
@@ -515,11 +587,41 @@ class PostApiTest {
 		verifyNoInteractions(postService);
 	}
 
+	@Test
+	@DisplayName("본문 문서가 없으면 서비스 호출 전에 거절한다")
+	void rejectCreationWithoutContentDocument() throws Exception {
+		String request = """
+		{
+		  "title": "게시글 제목",
+		  "categoryId": null,
+		  "isSecret": false,
+		  "secretPassword": null,
+		  "commentsLocked": false
+		}
+		""";
+
+		mockMvc.perform(multipart("/api/boards/free/posts")
+				.file(requestPart(request))
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
+			.andExpect(status().isBadRequest());
+
+		verifyNoInteractions(postService);
+	}
+
 	private Authentication createAuthentication(Long memberId, String authority) {
 		return new UsernamePasswordAuthenticationToken(
 			new LoginMember(memberId),
 			null,
 			List.of(new SimpleGrantedAuthority(authority))
+		);
+	}
+
+	private MockMultipartFile requestPart(String json) {
+		return new MockMultipartFile(
+			"request",
+			"request.json",
+			MediaType.APPLICATION_JSON_VALUE,
+			json.getBytes(StandardCharsets.UTF_8)
 		);
 	}
 }

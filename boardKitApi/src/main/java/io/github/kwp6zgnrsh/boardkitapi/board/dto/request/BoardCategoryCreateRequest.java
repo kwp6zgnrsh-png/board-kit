@@ -4,13 +4,9 @@ import jakarta.validation.constraints.*;
 
 public record BoardCategoryCreateRequest(
 
-	@NotBlank
-	@Size(max = 50)
-	String name,
+	@NotBlank @Size(max = 50) String name,
 
-	@NotNull
-	@PositiveOrZero
-	Integer sortOrder
+	@NotNull @PositiveOrZero Integer sortOrder
 
 ) {
 }

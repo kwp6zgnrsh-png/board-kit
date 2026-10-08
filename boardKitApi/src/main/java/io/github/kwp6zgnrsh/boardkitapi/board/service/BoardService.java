@@ -27,6 +27,7 @@ import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardCategory;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy;
 import io.github.kwp6zgnrsh.boardkitapi.board.policy.BoardReadAccess;
+import io.github.kwp6zgnrsh.boardkitapi.file.config.FileStorageProperties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -40,10 +41,11 @@ public class BoardService {
 
 	private final BoardMapper boardMapper;
 	private final BoardConverter boardConverter;
+	private final FileStorageProperties fileStorageProperties;
 
 	@Transactional
 	public BoardCreateResponse createBoard(@NotNull @Valid BoardCreateRequest request,
-										   @NotNull @Positive Long adminId) {
+		@NotNull @Positive Long adminId) {
 
 		BoardPolicyRequest policyRequest = request.policy();
 		validatePolicy(policyRequest);
@@ -60,20 +62,14 @@ public class BoardService {
 			throw new IllegalStateException("게시판 저장에 실패했습니다.");
 		}
 
-		BoardPolicy policy = boardConverter.toPolicy(
-			policyRequest,
-			board.getId()
-		);
+		BoardPolicy policy = boardConverter.toPolicy(policyRequest, board.getId());
 
 		if (boardMapper.insertPolicy(policy) != 1) {
 			throw new IllegalStateException("게시판 정책 저장에 실패했습니다.");
 		}
 
 		for (BoardCategoryCreateRequest categoryRequest : request.categories()) {
-			BoardCategory category = boardConverter.toCategory(
-				categoryRequest,
-				board.getId()
-			);
+			BoardCategory category = boardConverter.toCategory(categoryRequest, board.getId());
 
 			if (boardMapper.insertCategory(category) != 1) {
 				throw new IllegalStateException("카테고리 저장에 실패했습니다.");
@@ -85,24 +81,15 @@ public class BoardService {
 
 	@Transactional(readOnly = true)
 	public List<BoardSummaryResponse> getAccessibleBoards(boolean memberAccess, boolean adminAccess) {
-		return boardMapper.selectAccessibleBoards(
-			memberAccess,
-			adminAccess
-		);
+		return boardMapper.selectAccessibleBoards(memberAccess, adminAccess);
 	}
 
 	@Transactional(readOnly = true)
 	public BoardDetailResponse getBoardDetail(String slug, boolean memberAccess, boolean adminAccess) {
-		Board board = boardMapper
-			.selectActiveBoardBySlug(slug)
-			.orElseThrow(BoardNotFoundException::new);
+		Board board = boardMapper.selectActiveBoardBySlug(slug).orElseThrow(BoardNotFoundException::new);
 
-		BoardPolicy policy = boardMapper
-			.selectPolicyByBoardId(board.getId())
-			.orElseThrow(() -> new IllegalStateException(
-				"게시판 정책을 찾을 수 없습니다. boardId=" + board.getId()
-			));
-
+		BoardPolicy policy = boardMapper.selectPolicyByBoardId(board.getId())
+			.orElseThrow(() -> new IllegalStateException("게시판 정책을 찾을 수 없습니다. boardId=" + board.getId()));
 
 		BoardReadAccess.validate(policy.getReadPermission(), memberAccess, adminAccess);
 
@@ -119,9 +106,7 @@ public class BoardService {
 
 	@Transactional(readOnly = true)
 	public BoardAdminDetailResponse getBoardForAdmin(@NotBlank String slug) {
-		Board board = boardMapper
-			.selectActiveBoardBySlug(slug)
-			.orElseThrow(BoardNotFoundException::new);
+		Board board = boardMapper.selectActiveBoardBySlug(slug).orElseThrow(BoardNotFoundException::new);
 
 		BoardPolicy policy = requirePolicy(board.getId());
 
@@ -131,14 +116,11 @@ public class BoardService {
 	}
 
 	@Transactional
-	public void updateBoard(@NotBlank String slug,
-						    @NotNull @Valid BoardUpdateRequest request) {
+	public void updateBoard(@NotBlank String slug, @NotNull @Valid BoardUpdateRequest request) {
 
 		validatePolicy(request.policy());
 
-		Board board = boardMapper
-			.selectActiveBoardBySlugForUpdate(slug)
-			.orElseThrow(BoardNotFoundException::new);
+		Board board = boardMapper.selectActiveBoardBySlugForUpdate(slug).orElseThrow(BoardNotFoundException::new);
 
 		BoardPolicy currentPolicy = requirePolicy(board.getId());
 
@@ -169,9 +151,7 @@ public class BoardService {
 
 	@Transactional
 	public void archiveBoard(@NotBlank String slug) {
-		Board board = boardMapper
-			.selectActiveBoardBySlugForUpdate(slug)
-			.orElseThrow(BoardNotFoundException::new);
+		Board board = boardMapper.selectActiveBoardBySlugForUpdate(slug).orElseThrow(BoardNotFoundException::new);
 
 		if (boardMapper.archiveBoard(board.getId()) != 1) {
 			throw new BoardNotFoundException();
@@ -210,8 +190,7 @@ public class BoardService {
 		}
 	}
 
-	private void updateCategories(Long boardId,
-								  List<BoardCategoryUpdateRequest> requests) {
+	private void updateCategories(Long boardId, List<BoardCategoryUpdateRequest> requests) {
 
 		List<Long> retainedIds = requests.stream()
 			.map(BoardCategoryUpdateRequest::id)
@@ -242,22 +221,33 @@ public class BoardService {
 			throw new InvalidBoardRequestException("이미지 필수 설정은 첨부파일 사용 시에만 가능합니다.");
 		}
 
-		if (policy.attachmentsEnabled()) {
-			if (policy.maxFileCount() <= 0 || policy.maxFileSizeBytes() <= 0) {
-				throw new InvalidBoardRequestException("첨부파일 사용 시 최대 개수와 파일당 용량은 0보다 커야 합니다.");
-			}
-		} else {
+		if (policy.thumbnailEnabled() && !policy.attachmentsEnabled()) {
+			throw new InvalidBoardRequestException("썸네일은 첨부파일 사용 시에만 활성화할 수 있습니다.");
+		}
+
+		if (!policy.attachmentsEnabled()) {
 			if (policy.maxFileCount() != 0 || policy.maxFileSizeBytes() != 0L) {
 				throw new InvalidBoardRequestException("첨부파일 미사용 시 최대 개수와 파일당 용량은 0이어야 합니다.");
 			}
+			return;
+		}
+
+		if (policy.maxFileCount() <= 0 || policy.maxFileSizeBytes() <= 0) {
+			throw new InvalidBoardRequestException("첨부파일 사용 시 최대 개수와 파일당 용량은 0보다 커야 합니다.");
+		}
+
+		if (policy.maxFileCount() > fileStorageProperties.maxFileCount()) {
+			throw new InvalidBoardRequestException(
+				"첨부파일 최대 개수는 " + fileStorageProperties.maxFileCount() + "개 이하여야 합니다.");
+		}
+
+		if (policy.maxFileSizeBytes() > fileStorageProperties.maxFileSize().toBytes()) {
+			throw new InvalidBoardRequestException("파일당 최대 용량은 서버 업로드 제한 이하여야 합니다.");
 		}
 	}
 
 	private BoardPolicy requirePolicy(Long boardId) {
-		return boardMapper
-			.selectPolicyByBoardId(boardId)
-			.orElseThrow(() -> new IllegalStateException(
-				"게시판 정책을 찾을 수 없습니다. boardId=" + boardId
-			));
+		return boardMapper.selectPolicyByBoardId(boardId)
+			.orElseThrow(() -> new IllegalStateException("게시판 정책을 찾을 수 없습니다. boardId=" + boardId));
 	}
 }

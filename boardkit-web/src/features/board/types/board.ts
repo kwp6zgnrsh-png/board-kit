@@ -2,8 +2,7 @@ export type BoardDisplayType = 'LIST' | 'CARD'
 export type ReadPermission = 'PUBLIC' | 'MEMBER' | 'ADMIN'
 export type WritePermission = 'MEMBER' | 'ADMIN'
 export type SecretMode = 'OFF' | 'OPTIONAL' | 'REQUIRED'
-export type UploadProfile = 'IMAGE' | 'IMAGE_AND_ZIP'
-export type RepresentativeImageMode = 'FIRST_IMAGE' | 'MANUAL'
+export type UploadProfile = 'IMAGE' | 'IMAGE_AND_ZIP' | 'IMAGE_AND_FILE'
 export type BoardPolicyResponse = BoardPolicyRequest
 
 export interface BoardPolicyRequest {
@@ -19,7 +18,6 @@ export interface BoardPolicyRequest {
   maxFileSizeBytes: number
   imageRequired: boolean
   thumbnailEnabled: boolean
-  representativeImageMode: RepresentativeImageMode
   commentsEnabled: boolean
   commentRepliesEnabled: boolean
   postLikesEnabled: boolean

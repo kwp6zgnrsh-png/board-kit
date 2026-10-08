@@ -12,6 +12,7 @@ import type {PostDetailResponse,} from '@/features/post/types/post'
 import { deletePost, getPostDetail } from '@/api/postApi'
 import { getAuthSession } from '@/features/auth/services/authSession'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import PostContent from '@/features/post/components/PostContent.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -227,14 +228,14 @@ watch(
   <div class="grid min-w-0 gap-5">
     <p
         v-if="loading && !board"
-        class="m-0 rounded-lg border-[3px] border-slate-950 bg-slate-100 p-5 font-bold text-slate-700"
+        class="m-0 rounded-lg border border-slate-200 bg-slate-100 p-5 font-medium text-slate-700"
     >
       게시글을 불러오는 중입니다.
     </p>
 
     <p
         v-else-if="errorMessage && !board"
-        class="m-0 rounded-lg border-[3px] border-red-900 bg-rose-50 p-5 font-bold text-red-900"
+        class="m-0 rounded-lg border border-red-200 bg-rose-50 p-5 font-medium text-red-900"
         role="alert"
     >
       {{ errorMessage }}
@@ -242,14 +243,14 @@ watch(
 
     <template v-else-if="board">
       <BoardHero
-          name="POST DETAIL"
+          :name="board.name"
           :slug="board.slug"
-          :description="`${board.name} · 게시글을 읽고 대화에 참여해 보세요.`"
+          :description="board.description"
       />
 
       <p
           v-if="loading"
-          class="m-0 rounded-lg border-[3px] border-slate-950 bg-slate-100 p-5 font-bold text-slate-700"
+          class="m-0 rounded-lg border border-slate-200 bg-slate-100 p-5 font-medium text-slate-700"
       >
         게시글을 불러오는 중입니다.
       </p>
@@ -263,7 +264,7 @@ watch(
 
       <p
           v-else-if="errorMessage"
-          class="m-0 rounded-lg border-[3px] border-red-900 bg-rose-50 p-5 font-bold text-red-900"
+          class="m-0 rounded-lg border border-red-200 bg-rose-50 p-5 font-medium text-red-900"
           role="alert"
       >
         {{ errorMessage }}
@@ -271,62 +272,63 @@ watch(
 
       <div
           v-else-if="post"
-          class="grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]"
+          class="grid min-w-0 items-start gap-3 xl:grid-cols-[minmax(0,1fr)_200px]"
       >
         <div class="grid min-w-0 content-start gap-3">
-          <article class="grid min-w-0 gap-0 rounded-lg border-[3px] border-slate-950 bg-white px-4 shadow-[2px_3px_0_#0f172a] sm:px-6">
-            <div class="flex min-h-14 items-center gap-3 border-b border-slate-300 py-2 text-lg font-black text-slate-950">
-              <span class="grid size-9 shrink-0 place-items-center rounded border-2 border-slate-950 bg-sky-100 text-xl leading-none" aria-hidden="true">▤</span>
-              <strong>{{ board.name }} 게시글</strong>
-            </div>
-
-            <header class="grid gap-3 border-b border-slate-300 py-4">
-              <div class="flex flex-wrap items-center gap-2 text-sm font-extrabold text-slate-700">
-                <span class="rounded border-2 border-blue-700 bg-blue-600 px-2 py-0.5 font-black text-white">{{ board.name }}</span>
-                <span v-if="post.pinned" class="rounded border-2 border-slate-950 bg-yellow-300 px-2 py-0.5 font-black text-slate-950">고정</span>
-                <span v-if="post.secret" class="rounded border-2 border-slate-950 bg-pink-300 px-2 py-0.5 font-black text-slate-950">비밀글</span>
-                <span v-if="post.categoryName" class="rounded border-2 border-slate-950 bg-emerald-100 px-2 py-0.5 font-black text-slate-950">
+          <article class="grid min-w-0 gap-0 rounded-lg border border-slate-200 bg-white px-4 sm:px-6">
+            <header class="grid gap-3 border-b border-slate-200 py-4">
+              <div class="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600">
+                <span class="rounded bg-blue-50 px-2 py-1 font-medium text-blue-600">{{ board.name }}</span>
+                <span v-if="post.pinned" class="rounded bg-slate-100 px-2 py-1 font-medium text-slate-600">고정</span>
+                <span v-if="post.secret" class="rounded bg-slate-100 px-2 py-1 font-medium text-slate-600">비밀글</span>
+                <span v-if="post.categoryName" class="rounded bg-slate-100 px-2 py-1 font-medium text-slate-600">
                   {{ post.categoryName }}
                 </span>
               </div>
 
-              <h1 class="m-0 text-2xl leading-tight font-black break-words text-slate-950 sm:text-3xl">{{ post.title }}</h1>
+              <h1 class="m-0 text-xl leading-relaxed font-semibold break-words text-slate-900 sm:text-2xl">{{ post.title }}</h1>
 
               <dl class="m-0 flex flex-wrap gap-x-6 gap-y-2 text-sm">
                 <div class="flex gap-2">
-                  <dt class="font-bold text-slate-500">작성자</dt>
-                  <dd class="m-0 font-extrabold text-slate-950">{{ post.authorDisplayName }}</dd>
+                  <dt class="font-medium text-slate-500">작성자</dt>
+                  <dd class="m-0 font-medium text-slate-700">{{ post.authorDisplayName }}</dd>
                 </div>
 
                 <div class="flex gap-2">
-                  <dt class="font-bold text-slate-500">작성일</dt>
-                  <dd class="m-0 font-extrabold text-slate-950">{{ formatDate(post.createdAt) }}</dd>
+                  <dt class="font-medium text-slate-500">작성일</dt>
+                  <dd class="m-0 font-medium text-slate-700">{{ formatDate(post.createdAt) }}</dd>
                 </div>
 
                 <div class="flex gap-2">
-                  <dt class="font-bold text-slate-500">조회</dt>
-                  <dd class="m-0 font-extrabold text-slate-950">{{ post.viewCount }}</dd>
+                  <dt class="font-medium text-slate-500">조회</dt>
+                  <dd class="m-0 font-medium text-slate-700">{{ post.viewCount }}</dd>
                 </div>
               </dl>
             </header>
 
-            <div class="min-h-36 py-5 leading-8 whitespace-pre-wrap text-slate-800 [overflow-wrap:anywhere] max-sm:min-h-24">
-              {{ post.content }}
-            </div>
+            <PostContent
+                :key="`${board.slug}:${post.id}:${post.version}`"
+                :board-slug="board.slug"
+                :post-id="post.id"
+                :content="post.content"
+                :content-document="post.contentDocument"
+                :files="post.files"
+                :secret-password="secretPostPassword"
+            />
 
             <p
                 v-if="deleteErrorMessage"
-                class="m-0 rounded-lg border-2 border-red-900 bg-rose-50 p-4 font-bold text-red-900"
+                class="m-0 rounded-lg border border-red-200 bg-rose-50 p-4 font-medium text-red-900"
                 role="alert"
             >
               {{ deleteErrorMessage }}
             </p>
 
-            <footer class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-300 py-3 max-sm:justify-stretch">
+            <footer class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 py-3 max-sm:justify-stretch">
               <div v-if="canEdit || canDelete" class="flex flex-wrap gap-3 max-sm:flex-1 max-sm:[&>*]:flex-1">
                 <RouterLink
                     v-if="canEdit"
-                    class="inline-flex min-h-11 items-center justify-center rounded border-2 border-slate-950 bg-blue-200 px-4 text-sm font-black text-slate-950 no-underline shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                    class="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                     :to="{
                       name: 'post-edit',
                       params: { boardSlug, postId: post.id },
@@ -337,7 +339,6 @@ watch(
                 </RouterLink>
                 <BaseButton
                     variant="danger"
-                    class="min-h-11 rounded! border-2! border-slate-950! bg-rose-200! px-4 text-sm! font-black! shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5"
                     :disabled="deleting"
                     @click="removePost"
                 >
@@ -351,7 +352,7 @@ watch(
                     params: { boardSlug },
                     query: route.query,
                   }"
-                  class="inline-flex min-h-11 items-center justify-center rounded border-2 border-slate-950 bg-blue-600 px-4 text-sm font-black text-white no-underline shadow-[2px_2px_0_#0f172a] transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-blue-600 max-sm:flex-1"
+                  class="inline-flex h-9 items-center justify-center rounded-md border border-blue-600 bg-blue-600 px-4 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 max-sm:flex-1"
               >
                 ← 목록으로
               </RouterLink>

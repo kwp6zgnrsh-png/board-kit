@@ -3,7 +3,7 @@ erDiagram
         bigint id PK
         varchar(50) login_id UK
         varchar(255) password_hash
-        varchar(50) display_name
+        varchar(50) display_name UK
         varchar(16) role
         datetime(6) created_at
         datetime(6) updated_at
@@ -37,7 +37,6 @@ erDiagram
         bigint max_file_size_bytes
         boolean image_required
         boolean thumbnail_enabled
-        varchar(16) representative_image_mode
         boolean comments_enabled
         boolean comment_replies_enabled
         boolean post_likes_enabled
@@ -62,6 +61,7 @@ erDiagram
         bigint category_id FK "nullable"
         varchar(200) title
         mediumtext content
+        json content_document "nullable"
         boolean is_secret
         varchar(255) secret_password_hash "nullable"
         boolean is_pinned
@@ -80,6 +80,7 @@ erDiagram
         varchar(255) original_name
         varchar(512) storage_key UK
         varchar(100) content_type
+        varchar(16) file_usage
         bigint size_bytes
         varchar(512) thumbnail_key UK "nullable"
         int sort_order
@@ -93,6 +94,7 @@ erDiagram
         bigint author_id FK
         bigint parent_id FK "nullable"
         text content
+        int version
         datetime(6) created_at
         datetime(6) updated_at
         datetime(6) deleted_at "nullable"
@@ -146,9 +148,7 @@ erDiagram
 
     FILE_CLEANUP_TASK {
         bigint id PK
-        varchar(16) task_type
-        varchar(1024) source_key
-        varchar(1024) destination_key "nullable"
+        varchar(512) target_key UK
         int attempts
         datetime(6) next_attempt_at
         text last_error "nullable"

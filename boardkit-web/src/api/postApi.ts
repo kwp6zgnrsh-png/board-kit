@@ -1,4 +1,4 @@
-import { apiRequest } from '@/api/http'
+import { apiBlobRequest, apiRequest } from '@/api/http'
 import type {
     GetPostsOptions,
     PostCreateRequest,
@@ -11,12 +11,13 @@ import type {
 export function createPost(
     boardSlug: string,
     request: PostCreateRequest,
+    files: File[] = [],
 ): Promise<PostCreateResponse> {
     return apiRequest<PostCreateResponse>(
         `/api/boards/${encodeURIComponent(boardSlug)}/posts`,
         {
             method: 'POST',
-            body: JSON.stringify(request),
+            body: createMultipartBody(request, files),
         },
     )
 }
@@ -72,12 +73,13 @@ export function updatePost(
     boardSlug: string,
     postId: number,
     request: PostUpdateRequest,
+    files: File[] = [],
 ): Promise<void> {
     return apiRequest<void>(
         `/api/boards/${encodeURIComponent(boardSlug)}/posts/${postId}`,
         {
             method: 'PATCH',
-            body: JSON.stringify(request),
+            body: createMultipartBody(request, files),
         },
     )
 }
@@ -96,5 +98,60 @@ export function deletePost(
         {
             method: 'DELETE',
         },
+    )
+}
+
+function createMultipartBody(
+    request: object,
+    files: File[],
+): FormData {
+    const formData = new FormData()
+
+    formData.append(
+        'request',
+        new Blob(
+            [JSON.stringify(request)],
+            { type: 'application/json' },
+        ),
+        'request.json',
+    )
+
+    for (const file of files) {
+        formData.append('files', file)
+    }
+
+    return formData
+}
+
+export interface GetPostFileOptions {
+    thumbnail?: boolean
+    secretPassword?: string
+}
+
+export function getPostFileBlob(
+    boardSlug: string,
+    postId: number,
+    fileId: number,
+    options: GetPostFileOptions = {},
+): Promise<Blob> {
+    const params = new URLSearchParams()
+    const headers = new Headers()
+
+    if (options.thumbnail) {
+        params.set('thumbnail', 'true')
+    }
+
+    if (options.secretPassword !== undefined) {
+        headers.set('X-Post-Password', options.secretPassword)
+    }
+
+    const query = params.size > 0
+        ? `?${params.toString()}`
+        : ''
+
+    return apiBlobRequest(
+        `/api/boards/${encodeURIComponent(boardSlug)}` +
+        `/posts/${postId}/files/${fileId}${query}`,
+        { headers },
     )
 }

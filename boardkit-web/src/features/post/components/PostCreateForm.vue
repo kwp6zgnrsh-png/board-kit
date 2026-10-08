@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 
 import { createPost } from '@/api/postApi'
 import { ApiError } from '@/api/http'
@@ -7,8 +7,13 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseCheckbox from '@/components/ui/BaseCheckbox.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
-import BaseTextarea from '@/components/ui/BaseTextarea.vue'
+import type { JSONContent } from '@tiptap/core'
+import PostContentEditor from './PostContentEditor.vue'
+import { buildPostUpload, getBodyImageKeys } from '@/features/post/editor/postDocument'
 import type { BoardDetailResponse } from '@/features/board/types/board'
+import PostImageModal from './PostImageModal.vue'
+import PostAttachmentPicker from './PostAttachmentPicker.vue'
+import type { PostEditorImage, SelectedPostAttachment } from '@/features/post/types/post'
 
 const props = defineProps<{
   board: BoardDetailResponse
@@ -16,11 +21,29 @@ const props = defineProps<{
 
 const form = reactive({
   title: '',
-  content: '',
   categoryId: '',
   isSecret: props.board.policy.secretMode === 'REQUIRED',
   secretPassword: '',
   commentsLocked: false,
+})
+
+const images = ref<PostEditorImage[]>([])
+const attachments = ref<SelectedPostAttachment[]>([])
+const imageModalOpen = ref(false)
+
+const contentDocument = ref<JSONContent>({
+  type: 'doc',
+  content: [{ type: 'paragraph' }],
+})
+
+const contentEditor = ref<InstanceType<typeof PostContentEditor> | null>(null)
+
+const bodyImages = computed(() => {
+  const imageByKey = new Map(images.value.map(image => [image.key, image]))
+
+  return getBodyImageKeys(contentDocument.value)
+      .map(key => imageByKey.get(key))
+      .filter((image): image is PostEditorImage => image !== undefined)
 })
 
 const submitting = ref(false)
@@ -40,64 +63,79 @@ const categoryOptions = computed(() => [
   })),
 ])
 
-const imageUploadRequired = computed(
-    () => props.board.policy.imageRequired,
-)
+function applyImages(nextImages: PostEditorImage[]) {
+  const registered = new Map(images.value.map(image => [image.key, image]))
 
-function validateForm(): boolean {
-  if (!form.title.trim()) {
-    errorMessage.value = '제목을 입력하세요.'
-    return false
+  for (const image of nextImages) {
+    registered.set(image.key, image)
   }
 
-  if (!form.content.trim()) {
-    errorMessage.value = '본문을 입력하세요.'
-    return false
-  }
+  // 실행 취소로 복구할 수 있도록 적용했던 파일과 URL을 보관한다.
+  images.value = [...registered.values()]
 
-  if (
-      props.board.policy.categoryRequired &&
-      !form.categoryId
-  ) {
-    errorMessage.value = '카테고리를 선택하세요.'
-    return false
-  }
+  const applied = contentEditor.value?.applyImages(nextImages) ?? false
+  imageModalOpen.value = false
 
-  if (imageUploadRequired.value) {
-    errorMessage.value =
-        '이 게시판은 이미지 첨부가 필요합니다. 파일 기능 구현 후 작성할 수 있습니다.'
-    return false
+  if (!applied) {
+    errorMessage.value = '이미지를 본문에 적용하지 못했습니다. 다시 시도해 주세요.'
   }
-
-  return true
 }
 
+onBeforeUnmount(() => {
+  const urls = new Set(images.value.map(image => image.previewUrl))
+
+  for (const url of urls) {
+    URL.revokeObjectURL(url)
+  }
+})
+
 async function submit() {
+  if (submitting.value) return
+
   errorMessage.value = ''
   createdPostId.value = null
 
-  if (!validateForm()) {
-    return
-  }
-
-  submitting.value = true
-
   try {
-    const response = await createPost(props.board.slug, {
-      title: form.title.trim(),
-      content: form.content.trim(),
-      categoryId: form.categoryId
-          ? Number(form.categoryId)
-          : null,
-      isSecret: form.isSecret,
-      secretPassword:
-          form.isSecret && form.secretPassword.trim()
-              ? form.secretPassword
-              : null,
-      commentsLocked:
-          props.board.policy.commentsEnabled &&
-          form.commentsLocked,
-    })
+    if (!form.title.trim()) {
+      throw new Error('제목을 입력하세요.')
+    }
+    if (props.board.policy.categoryRequired && !form.categoryId) {
+      throw new Error('카테고리를 선택하세요.')
+    }
+
+    const upload = buildPostUpload(contentDocument.value, images.value, attachments.value,)
+
+    if (!upload.hasText && upload.imageCount === 0) {
+      throw new Error('본문에 내용이나 이미지를 넣어 주세요.')
+    }
+    if (props.board.policy.imageRequired && upload.imageCount === 0) {
+      throw new Error('본문에 이미지를 한 개 이상 넣어 주세요.')
+    }
+    if (upload.files.length > 0 && !props.board.policy.attachmentsEnabled) {
+      throw new Error('첨부파일을 사용할 수 없는 게시판입니다.')
+    }
+    if (upload.files.length > props.board.policy.maxFileCount) {
+      throw new Error(`이미지와 첨부파일은 합해서 최대 ${props.board.policy.maxFileCount}개까지 등록할 수 있습니다.`,)
+    }
+
+    submitting.value = true
+
+    const response = await createPost(
+        props.board.slug,
+        {
+          title: form.title.trim(),
+          contentDocument: upload.contentDocument,
+          categoryId: form.categoryId ? Number(form.categoryId) : null,
+          isSecret: form.isSecret,
+          secretPassword:
+              form.isSecret && form.secretPassword.trim()
+                  ? form.secretPassword
+                  : null,
+          commentsLocked:
+              props.board.policy.commentsEnabled && form.commentsLocked,
+        },
+        upload.files,
+    )
 
     createdPostId.value = response.id
   } catch (error) {
@@ -106,10 +144,7 @@ async function submit() {
     } else if (error instanceof ApiError && error.status === 403) {
       errorMessage.value = '게시글 작성 권한이 없습니다.'
     } else {
-      errorMessage.value =
-          error instanceof Error
-              ? error.message
-              : '게시글 작성에 실패했습니다.'
+      errorMessage.value = error instanceof Error ? error.message : '게시글 작성에 실패했습니다.'
     }
   } finally {
     submitting.value = false
@@ -118,7 +153,7 @@ async function submit() {
 </script>
 
 <template>
-  <form class="post-form" @submit.prevent="submit">
+  <form class="grid min-w-0 gap-6 rounded-lg border border-slate-200 bg-white p-5 sm:p-6" @submit.prevent="submit">
     <BaseInput
         id="post-title"
         v-model="form.title"
@@ -135,17 +170,37 @@ async function submit() {
         :options="categoryOptions"
     />
 
-    <BaseTextarea
-        id="post-content"
-        v-model="form.content"
-        label="본문"
-        placeholder="게시글 내용을 입력하세요."
-        :rows="12"
-    />
+    <section class="grid gap-4 rounded border border-slate-200 bg-white p-4">
+      <div v-if="board.policy.attachmentsEnabled" class="flex flex-wrap items-start gap-3">
+        <button
+            type="button"
+            :disabled="submitting"
+            class="rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-blue-50 disabled:opacity-50"
+            @click="imageModalOpen = true"
+        >
+          이미지
+        </button>
+
+        <PostAttachmentPicker
+            v-model="attachments"
+            :upload-profile="board.policy.uploadProfile"
+            :other-file-count="bodyImages.length"
+            :max-file-count="board.policy.maxFileCount"
+            :max-file-size-bytes="board.policy.maxFileSizeBytes"
+            :disabled="submitting"
+            @error="errorMessage = $event"
+        />
+      </div>
+      <PostContentEditor
+          ref="contentEditor"
+          v-model="contentDocument"
+          :disabled="submitting"
+      />
+    </section>
 
     <section
         v-if="board.policy.secretMode !== 'OFF'"
-        class="option-section"
+        class="grid gap-4 rounded-md bg-slate-50 p-4"
     >
       <BaseCheckbox
           v-if="board.policy.secretMode === 'OPTIONAL'"
@@ -156,7 +211,7 @@ async function submit() {
 
       <p
           v-else
-          class="policy-message"
+          class="rounded-md bg-blue-50 p-3 text-sm text-slate-600"
       >
         이 게시판의 모든 글은 비밀글로 작성됩니다.
       </p>
@@ -179,15 +234,8 @@ async function submit() {
     />
 
     <p
-        v-if="imageUploadRequired"
-        class="policy-message policy-message--warning"
-    >
-      이 게시판은 이미지 첨부가 필수입니다. 파일 기능이 아직 구현되지 않아 글을 작성할 수 없습니다.
-    </p>
-
-    <p
         v-if="errorMessage"
-        class="result-message result-message--error"
+        class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
         role="alert"
     >
       {{ errorMessage }}
@@ -195,62 +243,30 @@ async function submit() {
 
     <p
         v-if="createdPostId"
-        class="result-message result-message--success"
+        class="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700"
     >
       게시글이 등록되었습니다. 게시글 번호: {{ createdPostId }}
     </p>
 
-    <div class="form-actions">
+    <div class="flex justify-end border-t border-slate-200 pt-5">
       <BaseButton
           type="submit"
-          :disabled="submitting || imageUploadRequired"
+          :disabled="submitting"
       >
         {{ submitting ? '등록 중...' : '게시글 등록' }}
       </BaseButton>
     </div>
   </form>
+
+  <PostImageModal
+      :open="imageModalOpen"
+      :images="bodyImages"
+      :other-file-count="attachments.length"
+      :max-file-count="board.policy.maxFileCount"
+      :max-file-size-bytes="board.policy.maxFileSizeBytes"
+      :allow-add="board.policy.attachmentsEnabled"
+      @apply="applyImages"
+      @cancel="imageModalOpen = false"
+  />
+
 </template>
-
-<style scoped>
-.post-form {
-  display: grid;
-  gap: 1.25rem;
-  padding: 1.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 1rem;
-  background: #fff;
-}
-
-.option-section {
-  display: grid;
-  gap: 1rem;
-}
-
-.policy-message,
-.result-message {
-  margin: 0;
-  padding: 0.85rem 1rem;
-  border-radius: 0.7rem;
-}
-
-.policy-message {
-  color: #475569;
-  background: #f1f5f9;
-}
-
-.policy-message--warning,
-.result-message--error {
-  color: #991b1b;
-  background: #fee2e2;
-}
-
-.result-message--success {
-  color: #166534;
-  background: #dcfce7;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-</style>

@@ -33,57 +33,41 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http)
-		throws Exception {
+	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
 		JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtTokenProvider);
 
-		return http
-			.csrf(AbstractHttpConfigurer::disable)
+		return http.csrf(AbstractHttpConfigurer::disable)
 			.httpBasic(AbstractHttpConfigurer::disable)
 			.formLogin(AbstractHttpConfigurer::disable)
 			.logout(AbstractHttpConfigurer::disable)
 			.requestCache(AbstractHttpConfigurer::disable)
 
-			.sessionManagement(session -> session
-				.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-			)
+			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-			.exceptionHandling(exception -> exception
-				.authenticationEntryPoint((request, response, cause) -> {
-					response.setStatus(HttpStatus.UNAUTHORIZED.value());
-					response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-					response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-					response.getWriter().write(
-						"{\"message\":\"로그인이 필요합니다.\"}"
-					);
-				})
-				.accessDeniedHandler((request, response, cause) -> {
-					response.setStatus(HttpStatus.FORBIDDEN.value());
-					response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-					response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-					response.getWriter().write(
-						"{\"message\":\"접근 권한이 없습니다.\"}"
-					);
-				})
-			)
+			.exceptionHandling(exception -> exception.authenticationEntryPoint((request, response, cause) -> {
+				response.setStatus(HttpStatus.UNAUTHORIZED.value());
+				response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+				response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+				response.getWriter().write("{\"message\":\"로그인이 필요합니다.\"}");
+			}).accessDeniedHandler((request, response, cause) -> {
+				response.setStatus(HttpStatus.FORBIDDEN.value());
+				response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+				response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+				response.getWriter().write("{\"message\":\"접근 권한이 없습니다.\"}");
+			}))
 
-			.authorizeHttpRequests(authorize -> authorize
-				.requestMatchers(HttpMethod.POST, "/api/auth/login","/api/members").permitAll()
-				.requestMatchers(HttpMethod.GET, "/api/boards/**").permitAll()
-				.requestMatchers(
-					"/v3/api-docs/**",
-					"/swagger-ui/**",
-					"/swagger-ui.html",
-					"/error"
-				).permitAll()
-				.anyRequest().authenticated()
-			)
+			.authorizeHttpRequests(
+				authorize -> authorize.requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/members")
+					.permitAll()
+					.requestMatchers(HttpMethod.GET, "/api/boards/**")
+					.permitAll()
+					.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/error")
+					.permitAll()
+					.anyRequest()
+					.authenticated())
 
-			.addFilterBefore(
-				jwtFilter,
-				UsernamePasswordAuthenticationFilter.class
-			)
+			.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
 
 			.build();
 	}

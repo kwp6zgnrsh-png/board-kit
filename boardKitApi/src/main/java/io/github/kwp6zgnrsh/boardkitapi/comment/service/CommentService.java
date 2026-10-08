@@ -59,12 +59,9 @@ public class CommentService {
 	private final PasswordEncoder passwordEncoder;
 
 	@Transactional
-	public CommentCreateResponse createComment(@NotBlank String boardSlug,
-											   @NotNull @Positive Long postId,
-											   @NotNull @Valid CommentCreateRequest request,
-											   @NotNull @Positive Long memberId,
-											   boolean adminAccess,
-											   String secretPassword) {
+	public CommentCreateResponse createComment(@NotBlank String boardSlug, @NotNull @Positive Long postId,
+		@NotNull @Valid CommentCreateRequest request, @NotNull @Positive Long memberId, boolean adminAccess,
+		String secretPassword) {
 
 		validateMember(memberId);
 
@@ -73,8 +70,7 @@ public class CommentService {
 
 		BoardReadAccess.validate(policy.getReadPermission(), true, adminAccess);
 
-		PostCommentTarget post = postMapper
-			.selectActiveCommentTargetForUpdate(board.getId(), postId)
+		PostCommentTarget post = postMapper.selectActiveCommentTargetForUpdate(board.getId(), postId)
 			.orElseThrow(PostNotFoundException::new);
 
 		validateSecretAccess(post, memberId, adminAccess, secretPassword);
@@ -95,14 +91,8 @@ public class CommentService {
 	}
 
 	@Transactional(readOnly = true)
-	public CommentPageResponse getComments(@NotBlank String boardSlug,
-										   @NotNull @Positive Long postId,
-										   @Min(1) int page,
-										   @Min(1) @Max(100) int size,
-										   Long memberId,
-										   boolean memberAccess,
-										   boolean adminAccess,
-										   String secretPassword) {
+	public CommentPageResponse getComments(@NotBlank String boardSlug, @NotNull @Positive Long postId, @Min(1) int page,
+		@Min(1) @Max(100) int size, Long memberId, boolean memberAccess, boolean adminAccess, String secretPassword) {
 
 		Board board = requireActiveBoard(boardSlug);
 		BoardPolicy policy = requireBoardPolicy(board.getId());
@@ -113,32 +103,20 @@ public class CommentService {
 
 		long totalElements = commentMapper.countActiveComments(postId);
 
-		long offset = (long) (page - 1) * size;
+		long offset = (long)(page - 1) * size;
 
-		List<CommentItemResponse> comments =
-			totalElements == 0 || offset >= totalElements
-				? List.of()
-				: commentMapper.selectActiveComments(postId, size, offset);
+		List<CommentItemResponse> comments = totalElements == 0 || offset >= totalElements ? List.of() :
+			commentMapper.selectActiveComments(postId, size, offset);
 
 		long calculatedTotalPages = totalElements / size + (totalElements % size == 0 ? 0 : 1);
 
-		return new CommentPageResponse(
-			comments,
-			page,
-			size,
-			totalElements,
-			Math.toIntExact(calculatedTotalPages)
-		);
+		return new CommentPageResponse(comments, page, size, totalElements, Math.toIntExact(calculatedTotalPages));
 	}
 
 	@Transactional
-	public void updateComment(@NotBlank String boardSlug,
-							  @NotNull @Positive Long postId,
-							  @NotNull @Positive Long commentId,
-							  @NotNull @Valid CommentUpdateRequest request,
-							  @NotNull @Positive Long memberId,
-							  boolean adminAccess,
-							  String secretPassword) {
+	public void updateComment(@NotBlank String boardSlug, @NotNull @Positive Long postId,
+		@NotNull @Positive Long commentId, @NotNull @Valid CommentUpdateRequest request,
+		@NotNull @Positive Long memberId, boolean adminAccess, String secretPassword) {
 
 		validateMember(memberId);
 
@@ -165,14 +143,8 @@ public class CommentService {
 			throw new CommentConflictException();
 		}
 
-		int updatedCount = commentMapper.updateComment(
-			board.getId(),
-			postId,
-			commentId,
-			memberId,
-			request.content(),
-			request.version()
-		);
+		int updatedCount = commentMapper.updateComment(board.getId(), postId, commentId, memberId, request.content(),
+			request.version());
 
 		if (updatedCount != 1) {
 			throw new CommentConflictException();
@@ -180,12 +152,9 @@ public class CommentService {
 	}
 
 	@Transactional
-	public void deleteComment(@NotBlank String boardSlug,
-							  @NotNull @Positive Long postId,
-							  @NotNull @Positive Long commentId,
-							  @NotNull @PositiveOrZero Integer version,
-							  @NotNull @Positive Long memberId,
-							  boolean adminAccess) {
+	public void deleteComment(@NotBlank String boardSlug, @NotNull @Positive Long postId,
+		@NotNull @Positive Long commentId, @NotNull @PositiveOrZero Integer version, @NotNull @Positive Long memberId,
+		boolean adminAccess) {
 
 		validateActiveMember(memberId);
 
@@ -203,12 +172,7 @@ public class CommentService {
 			throw new CommentConflictException();
 		}
 
-		int deletedCount = commentMapper.softDeleteComment(
-			board.getId(),
-			postId,
-			commentId,
-			version
-		);
+		int deletedCount = commentMapper.softDeleteComment(board.getId(), postId, commentId, version);
 
 		if (deletedCount != 1) {
 			throw new CommentConflictException();
@@ -216,14 +180,14 @@ public class CommentService {
 	}
 
 	private void validateSecretAccess(PostCommentTarget post, Long memberId, boolean adminAccess, String password) {
-		if (!post.secret() || post.secretPasswordHash() == null
-			|| adminAccess || Objects.equals(post.authorId(), memberId)) {
+		if (!post.secret() || post.secretPasswordHash() == null || adminAccess || Objects.equals(post.authorId(),
+			memberId)) {
 			return;
 		}
 
 		if (password == null || password.isBlank()
-			|| password.getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_PASSWORD_BYTES
-			|| !passwordEncoder.matches(password, post.secretPasswordHash())) {
+			|| password.getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_PASSWORD_BYTES || !passwordEncoder.matches(
+			password, post.secretPasswordHash())) {
 			throw new SecretPostAccessDeniedException();
 		}
 	}
@@ -242,14 +206,10 @@ public class CommentService {
 		}
 	}
 
-	private PostCommentTarget validatePostAccess(Long boardId,
-									Long postId,
-									Long memberId,
-									boolean adminAccess,
-									String secretPassword) {
+	private PostCommentTarget validatePostAccess(Long boardId, Long postId, Long memberId, boolean adminAccess,
+		String secretPassword) {
 
-		PostCommentTarget post = postMapper
-			.selectActiveCommentTarget(boardId, postId)
+		PostCommentTarget post = postMapper.selectActiveCommentTarget(boardId, postId)
 			.orElseThrow(PostNotFoundException::new);
 
 		validateSecretAccess(post, memberId, adminAccess, secretPassword);
@@ -274,16 +234,10 @@ public class CommentService {
 		}
 	}
 
-	private void validateCommentCreation(PostCommentTarget post,
-										 BoardPolicy policy,
-										 Long postId,
-										 Long parentId) {
+	private void validateCommentCreation(PostCommentTarget post, BoardPolicy policy, Long postId, Long parentId) {
 
 		if (post.commentsLocked()) {
-			throw new ResponseStatusException(
-				HttpStatus.FORBIDDEN,
-				"댓글 작성이 잠긴 게시글입니다."
-			);
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글 작성이 잠긴 게시글입니다.");
 		}
 
 		if (parentId == null) {
@@ -291,37 +245,24 @@ public class CommentService {
 		}
 
 		if (!policy.isCommentRepliesEnabled()) {
-			throw new ResponseStatusException(
-				HttpStatus.FORBIDDEN,
-				"대댓글을 사용할 수 없는 게시판입니다."
-			);
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "대댓글을 사용할 수 없는 게시판입니다.");
 		}
 
-		if (commentMapper
-			.selectActiveRootIdForUpdate(postId, parentId)
-			.isEmpty()) {
-			throw new ResponseStatusException(
-				HttpStatus.BAD_REQUEST,
-				"사용할 수 없는 부모 댓글입니다."
-			);
+		if (commentMapper.selectActiveRootIdForUpdate(postId, parentId).isEmpty()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "사용할 수 없는 부모 댓글입니다.");
 		}
 	}
 
 	private Comment requireActiveComment(Long boardId, Long postId, Long commentId) {
-		return commentMapper
-			.selectActiveComment(boardId, postId, commentId)
-			.orElseThrow(CommentNotFoundException::new);
+		return commentMapper.selectActiveComment(boardId, postId, commentId).orElseThrow(CommentNotFoundException::new);
 	}
 
 	private Board requireActiveBoard(String boardSlug) {
-		return boardMapper.selectActiveBoardBySlug(boardSlug)
-			.orElseThrow(BoardNotFoundException::new);
+		return boardMapper.selectActiveBoardBySlug(boardSlug).orElseThrow(BoardNotFoundException::new);
 	}
 
 	private BoardPolicy requireBoardPolicy(Long boardId) {
 		return boardMapper.selectPolicyByBoardId(boardId)
-			.orElseThrow(() -> new IllegalStateException(
-				"게시판 정책을 찾을 수 없습니다. boardId=" + boardId
-			));
+			.orElseThrow(() -> new IllegalStateException("게시판 정책을 찾을 수 없습니다. boardId=" + boardId));
 	}
 }

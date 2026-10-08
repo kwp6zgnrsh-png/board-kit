@@ -27,8 +27,6 @@ public class MemberApi {
 
 		URI location = URI.create("/api/members/" + response.id());
 
-		return ResponseEntity
-			.created(location)
-			.body(response);
+		return ResponseEntity.created(location).body(response);
 	}
 }

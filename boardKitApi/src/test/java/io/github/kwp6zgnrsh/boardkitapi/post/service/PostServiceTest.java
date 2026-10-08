@@ -3,22 +3,47 @@ package io.github.kwp6zgnrsh.boardkitapi.post.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+
+import javax.imageio.ImageIO;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.util.unit.DataSize;
 
 import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy;
+import io.github.kwp6zgnrsh.boardkitapi.file.config.FileStorageProperties;
+import io.github.kwp6zgnrsh.boardkitapi.file.mapper.FileCleanupTaskMapper;
+import io.github.kwp6zgnrsh.boardkitapi.file.mapper.PostFileMapper;
+import io.github.kwp6zgnrsh.boardkitapi.file.model.FileFormat;
+import io.github.kwp6zgnrsh.boardkitapi.file.model.PostFile;
+import io.github.kwp6zgnrsh.boardkitapi.file.model.PostFileContent;
+import io.github.kwp6zgnrsh.boardkitapi.file.model.StoredPostFile;
+import io.github.kwp6zgnrsh.boardkitapi.file.model.TempStoredFile;
+import io.github.kwp6zgnrsh.boardkitapi.file.service.FileSignatureDetector;
+import io.github.kwp6zgnrsh.boardkitapi.file.service.FileUploadValidator;
+import io.github.kwp6zgnrsh.boardkitapi.file.service.LocalFileStorage;
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberSanctionedException;
 import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.converter.PostConverter;
@@ -39,6 +64,11 @@ import io.github.kwp6zgnrsh.boardkitapi.post.exception.SecretPostAccessDeniedExc
 import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.Post;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.PostDetail;
+import io.github.kwp6zgnrsh.boardkitapi.post.service.PostDocumentValidator.ValidatedDocument;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.JsonNodeFactory;
+import tools.jackson.databind.node.ObjectNode;
 
 @ExtendWith(MockitoExtension.class)
 class PostServiceTest {
@@ -60,6 +90,20 @@ class PostServiceTest {
 
 	private PostService postService;
 
+	@Mock
+	private PostFileMapper postFileMapper;
+
+	@Mock
+	private LocalFileStorage localFileStorage;
+
+	private final FileStorageProperties properties = new FileStorageProperties(
+		Path.of("build/test-store"), 20,
+		DataSize.ofMegabytes(20), DataSize.ofMegabytes(50), Duration.ofHours(24)
+	);
+
+	@Mock
+	private FileCleanupTaskMapper fileCleanupTaskMapper;
+
 	@BeforeEach
 	void setUp() {
 		postService = new PostService(
@@ -67,7 +111,12 @@ class PostServiceTest {
 			boardMapper,
 			memberMapper,
 			postConverter,
-			passwordEncoder
+			passwordEncoder,
+			postFileMapper,
+			new FileUploadValidator(properties, new FileSignatureDetector()),
+			localFileStorage,
+			fileCleanupTaskMapper,
+			new PostDocumentValidator()
 		);
 	}
 
@@ -87,14 +136,16 @@ class PostServiceTest {
 		allowActiveMember();
 		prepareBoard("free",policy);
 
-		when(postConverter.toPost(request, 1L, 10L, null))
-			.thenReturn(post);
+		when(postConverter.toPost(
+			eq(request), eq(1L), eq(10L), isNull(), any(ValidatedDocument.class)
+		)).thenReturn(post);
 		when(postMapper.insertPost(post))
 			.thenReturn(1);
 		when(postConverter.toCreateResponse(post))
 			.thenReturn(new PostCreateResponse(100L));
 
-		PostCreateResponse response = postService.createPost("free", request, 10L, false);
+		PostCreateResponse response =
+			postService.createPost("free", request, List.of(),10L, false);
 
 		assertEquals(100L, response.id());
 		verify(postMapper).insertPost(post);
@@ -113,6 +164,7 @@ class PostServiceTest {
 			() -> postService.createPost(
 				"free",
 				request(false, null),
+				List.of(),
 				10L,
 				false
 			)
@@ -132,6 +184,7 @@ class PostServiceTest {
 			() -> postService.createPost(
 				"admin",
 				request(false, null),
+				List.of(),
 				10L,
 				false
 			)
@@ -151,6 +204,7 @@ class PostServiceTest {
 			() -> postService.createPost(
 				"free",
 				request(false, null),
+				List.of(),
 				10L,
 				false
 			)
@@ -170,6 +224,7 @@ class PostServiceTest {
 			() -> postService.createPost(
 				"free",
 				request(true, "1234"),
+				List.of(),
 				10L,
 				false
 			)
@@ -302,7 +357,7 @@ class PostServiceTest {
 			.thenReturn(Optional.of(postDetail));
 		when(postMapper.increaseViewCount(1L, 100L))
 			.thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L))
+		when(postConverter.toDetailResponse(postDetail, 6L, List.of()))
 			.thenReturn(expected);
 
 		PostDetailResponse response =
@@ -331,7 +386,7 @@ class PostServiceTest {
 			.thenReturn(Optional.of(postDetail));
 		when(postMapper.increaseViewCount(1L, 100L))
 			.thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L))
+		when(postConverter.toDetailResponse(postDetail, 6L, List.of()))
 			.thenReturn(expected);
 
 		PostDetailResponse response =
@@ -364,7 +419,7 @@ class PostServiceTest {
 		)).thenReturn(true);
 		when(postMapper.increaseViewCount(1L, 100L))
 			.thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L))
+		when(postConverter.toDetailResponse(postDetail, 6L, List.of()))
 			.thenReturn(expected);
 
 		PostDetailResponse response =
@@ -427,7 +482,7 @@ class PostServiceTest {
 			.thenReturn(Optional.of(postDetail));
 		when(postMapper.increaseViewCount(1L, 100L))
 			.thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L))
+		when(postConverter.toDetailResponse(postDetail, 6L, List.of()))
 			.thenReturn(expected);
 
 		PostDetailResponse response =
@@ -449,13 +504,14 @@ class PostServiceTest {
 	void updateOwnPostAndKeepSecretPassword() {
 		PostUpdateRequest request = new PostUpdateRequest(
 			"수정 제목",
-			"수정 본문",
+			document("수정 본문"),
 			null,
 			true,
 			null,
 			false,
 			false,
-			0
+			0,
+			List.of()
 		);
 
 		PostDetail currentPost = postDetail(10L, true, "existing-hash", 0);
@@ -481,11 +537,8 @@ class PostServiceTest {
 		when(postMapper.selectActivePostDetail(1L, 100L))
 			.thenReturn(Optional.of(currentPost));
 		when(postConverter.toUpdatedPost(
-			request,
-			100L,
-			1L,
-			10L,
-			"existing-hash"
+			eq(request), eq(100L), eq(1L), eq(10L),
+			eq("existing-hash"), any(ValidatedDocument.class)
 		)).thenReturn(updatedPost);
 		when(postMapper.updatePost(updatedPost))
 			.thenReturn(1);
@@ -494,6 +547,7 @@ class PostServiceTest {
 			"free",
 			100L,
 			request,
+			List.of(),
 			10L,
 			false
 		);
@@ -506,7 +560,15 @@ class PostServiceTest {
 	@DisplayName("비밀글 정책을 끈 뒤에도 기존 비밀글의 비밀번호를 유지하며 수정할 수 있다")
 	void updateExistingSecretPostWhenSecretModeIsOff() {
 		PostUpdateRequest request = new PostUpdateRequest(
-			"수정 제목", "수정 본문", null, true, null, false, false, 0
+			"수정 제목",
+			document("수정 본문"),
+			null,
+			true,
+			null,
+			false,
+			false,
+			0,
+			List.of()
 		);
 		PostDetail currentPost = postDetail(10L, true, "existing-hash", 0);
 		Post updatedPost = Post.builder()
@@ -525,11 +587,13 @@ class PostServiceTest {
 		prepareBoard("free", policy("MEMBER", "OFF", false, false));
 		when(postMapper.selectActivePostDetail(1L, 100L))
 			.thenReturn(Optional.of(currentPost));
-		when(postConverter.toUpdatedPost(request, 100L, 1L, 10L, "existing-hash"))
-			.thenReturn(updatedPost);
+		when(postConverter.toUpdatedPost(
+			eq(request), eq(100L), eq(1L), eq(10L),
+			eq("existing-hash"), any(ValidatedDocument.class)
+		)).thenReturn(updatedPost);
 		when(postMapper.updatePost(updatedPost)).thenReturn(1);
 
-		postService.updatePost("free", 100L, request, 10L, false);
+		postService.updatePost("free", 100L, request, List.of(), 10L, false);
 
 		verify(postMapper).updatePost(updatedPost);
 		verifyNoInteractions(passwordEncoder);
@@ -539,7 +603,15 @@ class PostServiceTest {
 	@DisplayName("비밀글 정책이 꺼져 있으면 일반 글을 비밀글로 전환할 수 없다")
 	void rejectSecretConversionWhenSecretModeIsOff() {
 		PostUpdateRequest request = new PostUpdateRequest(
-			"수정 제목", "수정 본문", null, true, null, false, false, 0
+			"수정 제목",
+			document("수정 본문"),
+			null,
+			true,
+			null,
+			false,
+			false,
+			0,
+			List.of()
 		);
 
 		allowActiveMember();
@@ -549,7 +621,7 @@ class PostServiceTest {
 
 		assertThrows(
 			InvalidPostRequestException.class,
-			() -> postService.updatePost("free", 100L, request, 10L, false)
+			() -> postService.updatePost("free", 100L, request, List.of(), 10L, false)
 		);
 
 		verify(postMapper, never()).updatePost(any());
@@ -560,7 +632,15 @@ class PostServiceTest {
 	@DisplayName("비밀글 정책이 꺼져 있어도 작성자가 기존 비밀글을 명시적으로 공개할 수 있다")
 	void publishExistingSecretPostWhenSecretModeIsOff() {
 		PostUpdateRequest request = new PostUpdateRequest(
-			"수정 제목", "수정 본문", null, false, null, false, false, 0
+			"수정 제목",
+			document("수정 본문"),
+			null,
+			false,
+			null,
+			false,
+			false,
+			0,
+			List.of()
 		);
 		PostDetail currentPost = postDetail(10L, true, "existing-hash", 0);
 		Post updatedPost = Post.builder()
@@ -579,11 +659,13 @@ class PostServiceTest {
 		prepareBoard("free", policy("MEMBER", "OFF", false, false));
 		when(postMapper.selectActivePostDetail(1L, 100L))
 			.thenReturn(Optional.of(currentPost));
-		when(postConverter.toUpdatedPost(request, 100L, 1L, 10L, null))
-			.thenReturn(updatedPost);
+		when(postConverter.toUpdatedPost(
+			eq(request), eq(100L), eq(1L), eq(10L),
+			isNull(), any(ValidatedDocument.class)
+		)).thenReturn(updatedPost);
 		when(postMapper.updatePost(updatedPost)).thenReturn(1);
 
-		postService.updatePost("free", 100L, request, 10L, false);
+		postService.updatePost("free", 100L, request, List.of(), 10L, false);
 
 		verify(postMapper).updatePost(updatedPost);
 		verifyNoInteractions(passwordEncoder);
@@ -594,13 +676,14 @@ class PostServiceTest {
 	void rejectPostUpdateByNonAuthor() {
 		PostUpdateRequest request = new PostUpdateRequest(
 			"수정 제목",
-			"수정 본문",
+			document("수정 본문"),
+			null,
+			true,
 			null,
 			false,
-			null,
 			false,
-			false,
-			0
+			0,
+			List.of()
 		);
 
 		allowActiveMember();
@@ -618,6 +701,7 @@ class PostServiceTest {
 				"free",
 				100L,
 				request,
+				List.of(),
 				10L,
 				false
 			)
@@ -632,13 +716,14 @@ class PostServiceTest {
 	void rejectPostUpdateWithStaleVersion() {
 		PostUpdateRequest request = new PostUpdateRequest(
 			"수정 제목",
-			"수정 본문",
+			document("수정 본문"),
+			null,
+			true,
 			null,
 			false,
-			null,
 			false,
-			false,
-			1
+			1,
+			List.of()
 		);
 
 		allowActiveMember();
@@ -658,6 +743,7 @@ class PostServiceTest {
 				"free",
 				100L,
 				request,
+				List.of(),
 				10L,
 				false
 			)
@@ -665,6 +751,127 @@ class PostServiceTest {
 
 		verify(postMapper, never()).updatePost(any());
 		verifyNoInteractions(postConverter);
+	}
+
+	@Test
+	@DisplayName("기존 이미지 순서를 변경하면 대표 이미지를 다시 선정한다")
+	void reorderExistingImagesAndRefreshRepresentative() {
+		PostUpdateRequest request = new PostUpdateRequest(
+			"수정 제목",
+			existingImageDocument("수정 본문", 12L, 11L),
+			null,
+			true,
+			null,
+			false,
+			false,
+			0,
+			List.of(11L, 12L)
+		);
+
+		Post updatedPost = Post.builder()
+			.id(100L)
+			.boardId(1L)
+			.authorId(10L)
+			.version(0)
+			.build();
+
+		PostFile firstImage = PostFile.builder()
+			.id(11L)
+			.postId(100L)
+			.contentType("image/png")
+			.sortOrder(0)
+			.build();
+
+		PostFile secondImage = PostFile.builder()
+			.id(12L)
+			.postId(100L)
+			.contentType("image/jpeg")
+			.sortOrder(1)
+			.build();
+
+		allowActiveMember();
+		prepareBoard("free", policy("MEMBER", "OPTIONAL", false, false));
+
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail(10L, false, null, 0)));
+		when(postConverter.toUpdatedPost(
+			eq(request), eq(100L), eq(1L), eq(10L),
+			isNull(), any(ValidatedDocument.class)
+		)).thenReturn(updatedPost);
+		when(postMapper.updatePost(updatedPost)).thenReturn(1);
+		when(postFileMapper.selectActivePostFilesForUpdate(100L))
+			.thenReturn(List.of(firstImage, secondImage));
+
+		postService.updatePost("free", 100L, request, List.of(), 10L, false);
+
+		InOrder order = inOrder(postMapper, postFileMapper);
+		order.verify(postMapper).updatePost(updatedPost);
+		order.verify(postFileMapper).selectActivePostFilesForUpdate(100L);
+		order.verify(postFileMapper).updateFileMetadata(100L, 12L, "BODY_IMAGE", 0);
+		order.verify(postFileMapper).updateFileMetadata(100L, 11L, "BODY_IMAGE", 1);
+		order.verify(postMapper).refreshRepresentativeImage(1L, 100L);
+
+		verifyNoInteractions(localFileStorage);
+	}
+
+	@Test
+	@DisplayName("기존 이미지를 삭제하면 정리 작업을 등록하고 대표 이미지를 다시 선정한다")
+	void removeExistingImageAndRefreshRepresentative() {
+		PostUpdateRequest request = new PostUpdateRequest(
+			"수정 제목",
+			existingImageDocument("수정 본문", 12L),
+			null,
+			true,
+			null,
+			false,
+			false,
+			0,
+			List.of(12L)
+		);
+		PostFile removed = PostFile.builder()
+			.id(11L)
+			.postId(100L)
+			.contentType("image/png")
+			.storageKey("posts/100/11.png")
+			.thumbnailKey("thumbnails/100/11.png")
+			.build();
+		PostFile retained = PostFile.builder()
+			.id(12L)
+			.postId(100L)
+			.contentType("image/jpeg")
+			.storageKey("posts/100/12.jpg")
+			.build();
+		Post updatedPost = Post.builder()
+			.id(100L).boardId(1L).authorId(10L).version(0)
+			.build();
+
+		allowActiveMember();
+		prepareBoard("free", policy("MEMBER", "OPTIONAL", false, false));
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail(10L, false, null, 0)));
+		when(postConverter.toUpdatedPost(
+			eq(request), eq(100L), eq(1L), eq(10L),
+			isNull(), any(ValidatedDocument.class)
+		)).thenReturn(updatedPost);
+		when(postMapper.updatePost(updatedPost)).thenReturn(1);
+		when(postFileMapper.selectActivePostFilesForUpdate(100L))
+			.thenReturn(List.of(removed, retained));
+		when(postFileMapper.softDeletePostFiles(100L, List.of(11L)))
+			.thenReturn(1);
+
+		postService.updatePost("free", 100L, request, List.of(), 10L, false);
+
+		InOrder order = inOrder(postMapper, postFileMapper, fileCleanupTaskMapper);
+		order.verify(postMapper).updatePost(updatedPost);
+		order.verify(postFileMapper).selectActivePostFilesForUpdate(100L);
+		order.verify(postFileMapper).updateFileMetadata(100L, 12L, "BODY_IMAGE", 0);
+		order.verify(postFileMapper).softDeletePostFiles(100L, List.of(11L));
+		order.verify(fileCleanupTaskMapper).enqueueDeletes(
+			List.of("posts/100/11.png", "thumbnails/100/11.png")
+		);
+		order.verify(postMapper).refreshRepresentativeImage(1L, 100L);
+
+		verifyNoInteractions(localFileStorage);
 	}
 
 	@Test
@@ -690,11 +897,14 @@ class PostServiceTest {
 			true
 		);
 
-		verify(postMapper).softDeletePost(1L, 100L, 0);
-		verify(
-			memberMapper,
-			never()
-		).existsActiveSanctionByMemberId(anyLong());
+		InOrder order = inOrder(postMapper, postFileMapper);
+
+		order.verify(postMapper).softDeletePost(1L, 100L, 0);
+		order.verify(postFileMapper).softDeleteAllPostFiles(100L);
+
+		verify(memberMapper, never()).existsActiveSanctionByMemberId(anyLong());
+
+		verifyNoInteractions(fileCleanupTaskMapper, localFileStorage);
 	}
 
 	@Test
@@ -841,6 +1051,454 @@ class PostServiceTest {
 		verifyNoInteractions(postMapper);
 	}
 
+	@Test
+	@DisplayName("기존 이미지를 유지하면서 새 ZIP 파일을 추가한다")
+	void addZipWhileRetainingExistingImage() {
+		byte[] zipBytes = {0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0};
+		MockMultipartFile zip = new MockMultipartFile(
+			"files", "new.zip", "application/zip", zipBytes
+		);
+		PostUpdateRequest request = new PostUpdateRequest(
+			"수정 제목",
+			existingImageDocument("수정 본문", 11L),
+			null,
+			true,
+			null,
+			false,
+			false,
+			0,
+			List.of(11L)
+		);
+		BoardPolicy filePolicy = BoardPolicy.builder()
+			.readPermission("PUBLIC")
+			.writePermission("MEMBER")
+			.secretMode("OPTIONAL")
+			.commentsEnabled(true)
+			.attachmentsEnabled(true)
+			.uploadProfile("IMAGE_AND_ZIP")
+			.maxFileCount(3)
+			.maxFileSizeBytes(1024L)
+			.imageRequired(true)
+			.thumbnailEnabled(true)
+			.build();
+		PostFile existingImage = PostFile.builder()
+			.id(11L).postId(100L).contentType("image/png")
+			.sizeBytes(100L).build();
+		Post updatedPost = Post.builder()
+			.id(100L).boardId(1L).authorId(10L).version(0).build();
+		List<TempStoredFile> temporary = List.of(
+			new TempStoredFile("temp/new.zip", "new.zip", FileFormat.ZIP, 8L, 0)
+		);
+		List<StoredPostFile> stored = List.of(
+			new StoredPostFile(
+				"posts/100/new.zip", "new.zip", FileFormat.ZIP, 8L, 0, null
+			)
+		);
+
+		allowActiveMember();
+		prepareBoard("free", filePolicy);
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail(10L, false, null, 0)));
+		when(postConverter.toUpdatedPost(
+			eq(request), eq(100L), eq(1L), eq(10L),
+			isNull(), any(ValidatedDocument.class)
+		)).thenReturn(updatedPost);
+		when(postMapper.updatePost(updatedPost)).thenReturn(1);
+		when(postFileMapper.selectActivePostFilesForUpdate(100L))
+			.thenReturn(List.of(existingImage));
+		when(localFileStorage.storeTemporary(anyList())).thenReturn(temporary);
+		when(localFileStorage.moveToPost(100L, temporary, true))
+			.thenReturn(stored);
+		when(postFileMapper.insertPostFiles(anyList())).thenReturn(1);
+
+		postService.updatePost(
+			"free", 100L, request, List.of(zip), 10L, false
+		);
+
+		verify(postFileMapper).insertPostFiles(argThat(rows ->
+			rows.size() == 1
+				&& "posts/100/new.zip".equals(rows.getFirst().getStorageKey())
+		));
+		verify(postMapper).refreshRepresentativeImage(1L, 100L);
+		verifyNoInteractions(fileCleanupTaskMapper);
+	}
+
+	@Test
+	@DisplayName("유지하지 않는 기존 이미지를 본문에 참조하면 수정을 거절한다")
+	void rejectBodyImageNotRetained() {
+		PostUpdateRequest request = new PostUpdateRequest(
+			"수정 제목",
+			existingImageDocument("수정 본문", 12L),
+			null, false, null, false, false, 0,
+			List.of(11L)
+		);
+		PostFile file = PostFile.builder()
+			.id(11L).postId(100L).contentType("image/png")
+			.build();
+		Post updatedPost = Post.builder()
+			.id(100L).boardId(1L).authorId(10L).version(0)
+			.build();
+
+		allowActiveMember();
+		prepareBoard("free", policy("MEMBER", "OPTIONAL", false, false));
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail(10L, false, null, 0)));
+		when(postConverter.toUpdatedPost(
+			eq(request), eq(100L), eq(1L), eq(10L),
+			isNull(), any(ValidatedDocument.class)
+		)).thenReturn(updatedPost);
+		when(postMapper.updatePost(updatedPost)).thenReturn(1);
+		when(postFileMapper.selectActivePostFilesForUpdate(100L))
+			.thenReturn(List.of(file));
+
+		assertThrows(
+			InvalidPostRequestException.class,
+			() -> postService.updatePost("free", 100L, request, List.of(), 10L, false)
+		);
+
+		verify(postFileMapper, never())
+			.updateFileMetadata(anyLong(), anyLong(), anyString(), anyInt());
+		verify(postFileMapper, never()).insertPostFiles(anyList());
+		verify(postFileMapper, never()).softDeletePostFiles(anyLong(), anyList());
+		verify(postMapper, never()).refreshRepresentativeImage(anyLong(), anyLong());
+		verifyNoInteractions(localFileStorage, fileCleanupTaskMapper);
+	}
+
+	@Test
+	@DisplayName("이미지만 있는 글을 등록하고 본문 순서와 첨부 이미지 용도를 구분한다")
+	void createImageOnlyPostWithBodyOrderAndAttachment() throws Exception {
+		MockMultipartFile first = createImage("A.png");
+		MockMultipartFile second = createImage("B.png");
+		MockMultipartFile attachment = createImage("C.png");
+		long size = first.getSize();
+
+		// 업로드는 A, B, C. 본문에는 B, A만 배치한다.
+		PostCreateRequest request = new PostCreateRequest(
+			"제목", document("", 1, 0), null, false, null, false
+		);
+
+		Post post = Post.builder()
+			.id(100L)
+			.boardId(1L)
+			.authorId(10L)
+			.build();
+
+		List<TempStoredFile> temporary = List.of(
+			new TempStoredFile("temp/A.png", "A.png", FileFormat.PNG, size, 0),
+			new TempStoredFile("temp/B.png", "B.png", FileFormat.PNG, size, 1),
+			new TempStoredFile("temp/C.png", "C.png", FileFormat.PNG, size, 2)
+		);
+
+		List<StoredPostFile> stored = List.of(
+			new StoredPostFile("posts/100/A.png", "A.png", FileFormat.PNG,
+				size, 0, "thumbnails/100/A.png"),
+			new StoredPostFile("posts/100/B.png", "B.png", FileFormat.PNG,
+				size, 1, "thumbnails/100/B.png"),
+			new StoredPostFile("posts/100/C.png", "C.png", FileFormat.PNG,
+				size, 2, "thumbnails/100/C.png")
+		);
+
+		allowActiveMember();
+		prepareBoard("free", filePolicy(false));
+
+		when(postConverter.toPost(
+			eq(request), eq(1L), eq(10L), isNull(), any(ValidatedDocument.class)
+		)).thenReturn(post);
+		when(postMapper.insertPost(post)).thenReturn(1);
+		when(localFileStorage.storeTemporary(anyList())).thenReturn(temporary);
+		when(localFileStorage.moveToPost(100L, temporary, true)).thenReturn(stored);
+
+		when(postFileMapper.insertPostFiles(anyList())).thenAnswer(invocation -> {
+			List<PostFile> rows = invocation.getArgument(0);
+			for (int index = 0; index < rows.size(); index++) {
+				ReflectionTestUtils.setField(rows.get(index), "id", 11L + index);
+			}
+			return rows.size();
+		});
+
+		when(postMapper.updateContentDocument(eq(1L), eq(100L), any(JsonNode.class)))
+			.thenReturn(1);
+		when(postMapper.refreshRepresentativeImage(1L, 100L)).thenReturn(1);
+		when(postConverter.toCreateResponse(post)).thenReturn(new PostCreateResponse(100L));
+
+		PostCreateResponse response = postService.createPost(
+			"free", request, List.of(first, second, attachment), 10L, false
+		);
+
+		assertEquals(100L, response.id());
+
+		verify(postFileMapper).insertPostFiles(argThat(rows ->
+			rows.size() == 3
+				&& "BODY_IMAGE".equals(rows.get(0).getFileUsage())
+				&& Integer.valueOf(1).equals(rows.get(0).getSortOrder())
+				&& "BODY_IMAGE".equals(rows.get(1).getFileUsage())
+				&& Integer.valueOf(0).equals(rows.get(1).getSortOrder())
+				&& "ATTACHMENT".equals(rows.get(2).getFileUsage())
+				&& Integer.valueOf(2).equals(rows.get(2).getSortOrder())
+		));
+
+		ArgumentCaptor<JsonNode> documentCaptor = ArgumentCaptor.forClass(JsonNode.class);
+		verify(postMapper).updateContentDocument(eq(1L), eq(100L), documentCaptor.capture());
+
+		JsonNode body = documentCaptor.getValue().path("content");
+		assertEquals(12L, body.get(0).path("attrs").path("fileId").longValue());
+		assertEquals(11L, body.get(1).path("attrs").path("fileId").longValue());
+		assertFalse(body.get(0).path("attrs").has("fileIndex"));
+		assertFalse(body.get(1).path("attrs").has("fileIndex"));
+
+		verify(postMapper).refreshRepresentativeImage(1L, 100L);
+	}
+
+	@Test
+	@DisplayName("다운로드용 이미지만 첨부하면 본문 이미지 필수 조건을 충족하지 못한다")
+	void rejectAttachmentImageForRequiredBodyImage() throws Exception {
+		allowActiveMember();
+		prepareBoard("free", filePolicy(true));
+
+		assertThrows(
+			InvalidPostRequestException.class,
+			() -> postService.createPost(
+				"free", request(false, null), List.of(createImage("A.png")), 10L, false
+			)
+		);
+
+		verifyNoInteractions(postMapper, postFileMapper, postConverter, localFileStorage);
+	}
+
+	@Test
+	@DisplayName("실제로 첨부하지 않은 본문 이미지는 파일 저장 전에 거절한다")
+	void rejectBodyImageOutsideUploadedFiles() throws Exception {
+		allowActiveMember();
+		prepareBoard("free", filePolicy(false));
+
+		PostCreateRequest request = new PostCreateRequest(
+			"제목", document("본문", 1), null, false, null, false
+		);
+
+		assertThrows(
+			InvalidPostRequestException.class,
+			() -> postService.createPost(
+				"free", request, List.of(createImage("A.png")), 10L, false
+			)
+		);
+
+		verifyNoInteractions(postMapper, postFileMapper, postConverter, localFileStorage);
+	}
+
+	@Test
+	@DisplayName("수정 시 다운로드용 이미지만 유지하면 본문 이미지 필수 조건을 충족하지 못한다")
+	void rejectUpdateWithoutRequiredBodyImage() {
+		PostUpdateRequest request = new PostUpdateRequest(
+			"수정 제목",
+			document("수정 본문"),
+			null,
+			false,
+			null,
+			false,
+			false,
+			0,
+			List.of(11L)
+		);
+
+		allowActiveMember();
+		prepareBoard("free", filePolicy(true));
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail(10L, false, null, 0)));
+
+		assertThrows(
+			InvalidPostRequestException.class,
+			() -> postService.updatePost("free", 100L, request, List.of(), 10L, false)
+		);
+
+		verify(postMapper, never()).updatePost(any());
+		verifyNoInteractions(postConverter, postFileMapper, localFileStorage);
+	}
+
+	@Test
+	@DisplayName("새 이미지와 기존 이미지 사이의 텍스트를 유지하고 다운로드용 첨부파일을 구분한다")
+	void updateDocumentWithNewAndExistingImages() throws Exception {
+		MockMultipartFile image = createImage("new.png");
+		MockMultipartFile zip = new MockMultipartFile(
+			"files", "new.zip", "application/zip",
+			new byte[] {0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0}
+		);
+
+		ObjectNode body = (ObjectNode) document("앞 내용", 0);
+		ArrayNode blocks = (ArrayNode) body.path("content");
+		ObjectNode paragraph = blocks.addObject();
+		paragraph.put("type", "paragraph");
+		paragraph.putArray("content").addObject()
+			.put("type", "text").put("text", "중간 내용");
+		ObjectNode existingImage = blocks.addObject();
+		existingImage.put("type", "image");
+		existingImage.putObject("attrs").put("fileId", 11L);
+
+		PostUpdateRequest request = new PostUpdateRequest(
+			"수정 제목", body, null, false, null,
+			false, false, 0, List.of(11L)
+		);
+		Post updatedPost = Post.builder()
+			.id(100L).boardId(1L).authorId(10L).version(0)
+			.build();
+		PostFile retained = PostFile.builder()
+			.id(11L).postId(100L).contentType("image/png")
+			.sizeBytes(100L).build();
+		PostFile removed = PostFile.builder()
+			.id(12L).postId(100L).contentType("image/png")
+			.storageKey("posts/100/old.png")
+			.thumbnailKey("thumbnails/100/old.png")
+			.build();
+
+		List<TempStoredFile> temporary = List.of(
+			new TempStoredFile(
+				"temp/new.png", "new.png", FileFormat.PNG, image.getSize(), 0
+			),
+			new TempStoredFile("temp/new.zip", "new.zip", FileFormat.ZIP, 8L, 1)
+		);
+		List<StoredPostFile> stored = List.of(
+			new StoredPostFile(
+				"posts/100/new.png", "new.png", FileFormat.PNG,
+				image.getSize(), 0, "thumbnails/100/new.png"
+			),
+			new StoredPostFile(
+				"posts/100/new.zip", "new.zip", FileFormat.ZIP, 8L, 1, null
+			)
+		);
+
+		allowActiveMember();
+		prepareBoard("free", filePolicy(true));
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail(10L, false, null, 0)));
+		when(postConverter.toUpdatedPost(
+			eq(request), eq(100L), eq(1L), eq(10L),
+			isNull(), any(ValidatedDocument.class)
+		)).thenReturn(updatedPost);
+		when(postMapper.updatePost(updatedPost)).thenReturn(1);
+		when(postFileMapper.selectActivePostFilesForUpdate(100L))
+			.thenReturn(List.of(retained, removed));
+		when(localFileStorage.storeTemporary(anyList())).thenReturn(temporary);
+		when(localFileStorage.moveToPost(100L, temporary, true)).thenReturn(stored);
+		when(postFileMapper.insertPostFiles(anyList())).thenAnswer(invocation -> {
+			List<PostFile> rows = invocation.getArgument(0);
+			ReflectionTestUtils.setField(rows.get(0), "id", 20L);
+			ReflectionTestUtils.setField(rows.get(1), "id", 21L);
+			return rows.size();
+		});
+		when(postMapper.updateContentDocument(eq(1L), eq(100L), any(JsonNode.class)))
+			.thenReturn(1);
+		when(postFileMapper.softDeletePostFiles(100L, List.of(12L))).thenReturn(1);
+
+		postService.updatePost("free", 100L, request, List.of(image, zip), 10L, false);
+
+		ArgumentCaptor<JsonNode> captor = ArgumentCaptor.forClass(JsonNode.class);
+		verify(postMapper).updateContentDocument(eq(1L), eq(100L), captor.capture());
+		JsonNode saved = captor.getValue().path("content");
+
+		assertEquals("앞 내용", saved.get(0).path("content").get(0).path("text").asString());
+		assertEquals(20L, saved.get(1).path("attrs").path("fileId").longValue());
+		assertEquals("중간 내용", saved.get(2).path("content").get(0).path("text").asString());
+		assertEquals(11L, saved.get(3).path("attrs").path("fileId").longValue());
+		assertFalse(saved.get(1).path("attrs").has("fileIndex"));
+
+		verify(postFileMapper).insertPostFiles(argThat(rows ->
+			rows.size() == 2
+				&& "BODY_IMAGE".equals(rows.getFirst().getFileUsage())
+				&& Integer.valueOf(0).equals(rows.getFirst().getSortOrder())
+				&& "ATTACHMENT".equals(rows.get(1).getFileUsage())
+				&& Integer.valueOf(2).equals(rows.get(1).getSortOrder())
+		));
+		verify(postFileMapper).updateFileMetadata(100L, 11L, "BODY_IMAGE", 1);
+		verify(fileCleanupTaskMapper).enqueueDeletes(
+			List.of("posts/100/old.png", "thumbnails/100/old.png")
+		);
+		verify(postMapper).refreshRepresentativeImage(1L, 100L);
+	}
+
+	@ParameterizedTest
+	@CsvSource({
+		"notes.txt, text/plain;charset=UTF-8",
+		"guide.pdf, application/pdf",
+		"photo.png, image/png",
+		"archive.zip, application/zip"
+	})
+	@DisplayName("다운로드용 파일은 실제 형식과 관계없이 첨부 응답으로 반환한다")
+	void returnAttachmentByFileUsage(String name, String contentType) {
+		PostFile file = PostFile.builder()
+			.id(11L).postId(100L)
+			.originalName(name)
+			.contentType(contentType)
+			.fileUsage("ATTACHMENT")
+			.storageKey("posts/100/file")
+			.build();
+		ByteArrayResource resource = new ByteArrayResource(new byte[] {1, 2, 3});
+
+		prepareBoard("free", readPolicy("PUBLIC"));
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail(false, null)));
+		when(postFileMapper.selectActivePostFile(100L, 11L))
+			.thenReturn(Optional.of(file));
+		when(localFileStorage.load("posts/100/file")).thenReturn(resource);
+
+		PostFileContent result = postService.getPostFile(
+			"free", 100L, 11L, false, null, false, false, null
+		);
+
+		assertTrue(result.attachment());
+		assertEquals(contentType, result.contentType());
+		assertSame(resource, result.resource());
+
+		verify(postMapper).selectActivePostDetail(1L, 100L);
+		verifyNoMoreInteractions(postMapper);
+	}
+
+	@Test
+	@DisplayName("본문 이미지는 다운로드용 첨부 응답으로 반환하지 않는다")
+	void returnBodyImageWithoutAttachmentDisposition() {
+		PostFile file = PostFile.builder()
+			.id(11L).postId(100L)
+			.originalName("body.png")
+			.contentType("image/png")
+			.fileUsage("BODY_IMAGE")
+			.storageKey("posts/100/body.png")
+			.build();
+
+		prepareBoard("free", readPolicy("PUBLIC"));
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail(false, null)));
+		when(postFileMapper.selectActivePostFile(100L, 11L))
+			.thenReturn(Optional.of(file));
+		when(localFileStorage.load("posts/100/body.png"))
+			.thenReturn(new ByteArrayResource(new byte[] {1, 2, 3}));
+
+		PostFileContent result = postService.getPostFile(
+			"free", 100L, 11L, false, null, false, false, null
+		);
+
+		assertFalse(result.attachment());
+		assertEquals("image/png", result.contentType());
+	}
+
+	private MockMultipartFile createImage(String name) throws Exception {
+		ByteArrayOutputStream output = new ByteArrayOutputStream();
+		ImageIO.write(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB), "png", output);
+		return new MockMultipartFile("files", name, "image/png", output.toByteArray());
+	}
+
+	private BoardPolicy filePolicy(boolean imageRequired) {
+		return BoardPolicy.builder()
+			.readPermission("PUBLIC")
+			.writePermission("MEMBER")
+			.secretMode("OPTIONAL")
+			.commentsEnabled(true)
+			.attachmentsEnabled(true)
+			.uploadProfile("IMAGE_AND_ZIP")
+			.maxFileCount(3)
+			.maxFileSizeBytes(1024L)
+			.imageRequired(imageRequired)
+			.thumbnailEnabled(true)
+			.build();
+	}
+
 	private BoardPolicy readPolicy(String readPermission) {
 		return BoardPolicy.builder()
 			.readPermission(readPermission)
@@ -856,13 +1514,44 @@ class PostServiceTest {
 
 	private PostCreateRequest request(boolean secret, String password) {
 		return new PostCreateRequest(
-			"제목",
-			"본문",
-			null,
-			secret,
-			password,
-			false
+			"제목", document("본문"), null, secret, password, false
 		);
+	}
+
+	private JsonNode document(String text, int... imageIndexes) {
+		ObjectNode root = JsonNodeFactory.instance.objectNode();
+		root.put("type", "doc");
+		var blocks = root.putArray("content");
+
+		if (!text.isEmpty()) {
+			ObjectNode paragraph = blocks.addObject();
+			paragraph.put("type", "paragraph");
+			paragraph.putArray("content")
+				.addObject()
+				.put("type", "text")
+				.put("text", text);
+		}
+
+		for (int index : imageIndexes) {
+			ObjectNode image = blocks.addObject();
+			image.put("type", "image");
+			image.putObject("attrs").put("fileIndex", index);
+		}
+
+		return root;
+	}
+
+	private JsonNode existingImageDocument(String text, Long... fileIds) {
+		ObjectNode root = (ObjectNode) document(text);
+		ArrayNode blocks = (ArrayNode) root.path("content");
+
+		for (Long fileId : fileIds) {
+			ObjectNode image = blocks.addObject();
+			image.put("type", "image");
+			image.putObject("attrs").put("fileId", fileId);
+		}
+
+		return root;
 	}
 
 	private BoardPolicy policy(String writePermission,
@@ -904,7 +1593,9 @@ class PostServiceTest {
 			5L,
 			version,
 			createdAt,
-			createdAt
+			createdAt,
+			null,
+			null
 		);
 	}
 
@@ -926,7 +1617,10 @@ class PostServiceTest {
 			6L,
 			0,
 			createdAt,
-			createdAt
+			createdAt,
+			null,
+			List.of(),
+			null
 		);
 	}
 

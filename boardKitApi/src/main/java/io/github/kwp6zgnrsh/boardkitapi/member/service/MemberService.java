@@ -54,11 +54,7 @@ public class MemberService {
 			throw new DuplicateMemberException("이미 사용 중인 아이디 또는 닉네임입니다.");
 		}
 
-		return new MemberCreateResponse(
-			member.getId(),
-			member.getLoginId(),
-			member.getDisplayName()
-		);
+		return new MemberCreateResponse(member.getId(), member.getLoginId(), member.getDisplayName());
 	}
 
 	private void validatePasswordConfirmation(String password, String passwordConfirm) {
