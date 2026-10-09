@@ -69,12 +69,19 @@
                 WHERE c.post_id = p.id
                     AND c.deleted_at IS NULL
             ) AS commentCount,
-            p.created_at AS createdAt
+            p.created_at AS createdAt,
+            pf.id AS representativeFileId,
+            (pf.thumbnail_key IS NOT NULL) AS thumbnailAvailable
         FROM post p
             INNER JOIN member m
                 ON m.id = p.author_id
             LEFT JOIN board_category bc
                 ON bc.id = p.category_id
+            LEFT JOIN post_file pf
+                ON pf.id = p.representative_file_id
+                AND pf.post_id = p.id
+                AND pf.deleted_at IS NULL
+                AND pf.file_usage = 'BODY_IMAGE'
         WHERE
             <include refid="postSummaryConditions"/>
         ORDER BY

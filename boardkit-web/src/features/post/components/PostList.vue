@@ -2,6 +2,7 @@
 import type { PostSummaryResponse } from '@/features/post/types/post'
 import { useRoute } from 'vue-router'
 import CommunityIcon from '@/components/ui/CommunityIcon.vue'
+import PostThumbnail from '@/features/post/components/PostThumbnail.vue'
 
 defineProps<{
   boardSlug: string
@@ -43,6 +44,12 @@ function formatDate(value: string): string {
               <span v-if="post.pinned" class="shrink-0 rounded bg-slate-400 px-1.5 py-0.5 text-[10px] font-medium text-white sm:hidden">공지</span>
               <CommunityIcon v-if="post.secret" name="lock" class="size-4 text-slate-500" aria-label="비밀글" role="img" :aria-hidden="false" />
               <span v-if="post.categoryName" class="hidden shrink-0 text-xs text-slate-400 lg:inline">[{{ post.categoryName }}]</span>
+              <PostThumbnail v-if="!post.secret && post.representativeFileId !== null &&post.thumbnailAvailable"
+                  :board-slug="boardSlug"
+                  :post-id="post.id"
+                  :file-id="post.representativeFileId"
+                  class="size-8 rounded"
+              />
               <span class="truncate" :class="post.pinned ? 'font-semibold' : 'font-normal'">{{ post.title }}</span>
               <span v-if="post.commentCount > 0" class="shrink-0 text-xs tabular-nums text-red-500">[{{ post.commentCount }}]</span>
             </RouterLink>

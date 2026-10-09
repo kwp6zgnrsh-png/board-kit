@@ -254,7 +254,9 @@ class PostServiceTest {
 				false,
 				3L,
 				2L,
-				createdAt
+				createdAt,
+				null,
+				false
 			)
 		);
 

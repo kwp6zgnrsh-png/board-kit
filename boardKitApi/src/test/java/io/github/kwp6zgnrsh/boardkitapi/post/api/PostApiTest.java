@@ -231,7 +231,9 @@ class PostApiTest {
 			false,
 			3L,
 			2L,
-			LocalDateTime.of(2026, 9, 21, 10, 0)
+			LocalDateTime.of(2026, 9, 21, 10, 0),
+			20L,
+			true
 		);
 
 		PostPageResponse response = new PostPageResponse(
@@ -259,6 +261,8 @@ class PostApiTest {
 			.andExpect(jsonPath("$.posts[0].authorDisplayName").value("작성자"))
 			.andExpect(jsonPath("$.posts[0].viewCount").value(3))
 			.andExpect(jsonPath("$.posts[0].commentCount").value(2))
+			.andExpect(jsonPath("$.posts[0].representativeFileId").value(20))
+			.andExpect(jsonPath("$.posts[0].thumbnailAvailable").value(true))
 			.andExpect(jsonPath("$.page").value(1))
 			.andExpect(jsonPath("$.size").value(10))
 			.andExpect(jsonPath("$.totalElements").value(1))

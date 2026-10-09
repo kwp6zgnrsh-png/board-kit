@@ -13,6 +13,8 @@ public record PostSummaryResponse(
 	boolean pinned,
 	long viewCount,
 	long commentCount,
-	LocalDateTime createdAt
+	LocalDateTime createdAt,
+	Long representativeFileId,
+	boolean thumbnailAvailable
 ) {
 }

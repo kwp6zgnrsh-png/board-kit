@@ -35,6 +35,8 @@ export interface PostSummaryResponse {
     viewCount: number
     commentCount: number
     createdAt: string
+    representativeFileId: number | null
+    thumbnailAvailable: boolean
 }
 
 export interface PostPageResponse {

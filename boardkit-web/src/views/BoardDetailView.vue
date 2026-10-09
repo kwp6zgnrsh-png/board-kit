@@ -12,6 +12,7 @@ import BoardHero from '@/features/board/components/BoardHero.vue'
 import BoardPolicyPanel from '@/features/board/components/BoardPolicyPanel.vue'
 import type { BoardDetailResponse } from '@/features/board/types/board'
 import PostList from '@/features/post/components/PostList.vue'
+import PostCardList from '@/features/post/components/PostCardList.vue'
 import type { PostPageResponse, PostSort } from '@/features/post/types/post'
 
 const route = useRoute()
@@ -343,7 +344,8 @@ watch(
         <p v-if="postsLoading" class="rounded-md border border-slate-200 py-16 text-center text-sm text-slate-500" role="status">게시글을 불러오는 중입니다.</p>
         <p v-else-if="postsErrorMessage" class="rounded-md border border-red-200 bg-red-50 py-12 text-center text-sm text-red-700" role="alert">{{ postsErrorMessage }}</p>
         <template v-else-if="postPage">
-          <PostList :board-slug="board.slug" :posts="postPage.posts" />
+          <PostCardList v-if="board.displayType === 'CARD'" :board-slug="board.slug" :posts="postPage.posts"/>
+          <PostList v-else :board-slug="board.slug" :posts="postPage.posts"/>
           <BasePagination :page="postPage.page" :total-pages="postPage.totalPages" @change="changePage" />
         </template>
 
