@@ -280,7 +280,20 @@ public class PostService {
 			throw new PostConflictException();
 		}
 
+		List<PostFile> files = postFileMapper.selectActivePostFilesForUpdate(postId);
 		postFileMapper.softDeleteAllPostFiles(postId);
+
+		List<String> targetKeys = new ArrayList<>();
+		for (PostFile file : files) {
+			targetKeys.add(file.getStorageKey());
+			if (file.getThumbnailKey() != null) {
+				targetKeys.add(file.getThumbnailKey());
+			}
+		}
+
+		if (!targetKeys.isEmpty()) {
+			fileCleanupTaskMapper.enqueueDeletes(targetKeys);
+		}
 	}
 
 	@Transactional(readOnly = true)

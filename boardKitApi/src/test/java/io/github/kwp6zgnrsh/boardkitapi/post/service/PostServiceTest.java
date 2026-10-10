@@ -890,6 +890,8 @@ class PostServiceTest {
 			));
 		when(postMapper.softDeletePost(1L, 100L, 0))
 			.thenReturn(1);
+		when(postFileMapper.selectActivePostFilesForUpdate(100L))
+			.thenReturn(List.of());
 
 		postService.deletePost(
 			"free",
@@ -902,6 +904,7 @@ class PostServiceTest {
 		InOrder order = inOrder(postMapper, postFileMapper);
 
 		order.verify(postMapper).softDeletePost(1L, 100L, 0);
+		order.verify(postFileMapper).selectActivePostFilesForUpdate(100L);
 		order.verify(postFileMapper).softDeleteAllPostFiles(100L);
 
 		verify(memberMapper, never()).existsActiveSanctionByMemberId(anyLong());
