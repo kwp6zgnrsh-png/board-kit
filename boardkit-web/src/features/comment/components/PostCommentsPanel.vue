@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import {computed, ref, watch} from 'vue'
 
-import { deleteComment, getComments } from '@/api/commentApi'
-import { ApiError } from '@/api/http'
+import {deleteComment, getComments} from '@/api/commentApi'
+import {ApiError} from '@/api/http'
 import CommentEditForm from '@/features/comment/components/CommentEditForm.vue'
 import CommentCreateForm from '@/features/comment/components/CommentCreateForm.vue'
-import { getAuthSession } from '@/features/auth/services/authSession'
-import type { WritePermission } from '@/features/board/types/board'
-import type { CommentItemResponse } from '@/features/comment/types/comment'
+import {getAuthSession} from '@/features/auth/services/authSession'
+import type {WritePermission} from '@/features/board/types/board'
+import type {CommentItemResponse} from '@/features/comment/types/comment'
 
 const props = defineProps<{
   boardSlug: string
@@ -35,7 +35,7 @@ const deletingCommentId = ref<number | null>(null)
 const resultMessage = ref('')
 const actionErrorMessage = ref('')
 
-const session = getAuthSession()
+const session = computed(() => getAuthSession())
 
 const canCreateReply = computed(
     () =>
@@ -53,29 +53,34 @@ function canOpenReplyForm(
   )
 }
 
-function canEditComment(
-    comment: CommentItemResponse,
-): boolean {
+function canEditComment(comment: CommentItemResponse): boolean {
+  const member = session.value
+
   return (
       !comment.deleted &&
-      session !== null &&
-      session.memberId === comment.authorId &&
+      member !== null &&
+      member.memberId === comment.authorId &&
       canCreateComment.value
   )
 }
 
-function canDeleteComment(
-    comment: CommentItemResponse,
-): boolean {
+function canDeleteComment(comment: CommentItemResponse): boolean {
+  const member = session.value
+
   return (
       !comment.deleted &&
-      session !== null &&
-      (
-          session.memberId === comment.authorId ||
-          session.role === 'ADMIN'
-      )
+      member !== null &&
+      (member.memberId === comment.authorId || member.role === 'ADMIN')
   )
 }
+
+const canCreateComment = computed(() => {
+  const member = session.value
+
+  if (!member || !props.commentsEnabled || props.locked) return false
+
+  return props.commentPermission === 'MEMBER' || member.role === 'ADMIN'
+})
 
 function startCommentEdit(
     comment: CommentItemResponse,
@@ -184,19 +189,6 @@ async function handleReplyCreated() {
   await loadComments()
 }
 
-const canCreateComment = computed(() => {
-  if (
-      session === null ||
-      !props.commentsEnabled ||
-      props.locked
-  ) {
-    return false
-  }
-
-  return props.commentPermission === 'MEMBER' ||
-      session.role === 'ADMIN'
-})
-
 async function handleCommentCreated() {
   resultMessage.value = '댓글이 등록되었습니다.'
 
@@ -295,6 +287,13 @@ watch(
       immediate: true,
     },
 )
+
+watch(session, (member) => {
+  if (!member) {
+    selectedReplyParentId.value = null
+    editingCommentId.value = null
+  }
+})
 </script>
 
 <template>

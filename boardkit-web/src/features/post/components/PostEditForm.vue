@@ -1,21 +1,25 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import type { JSONContent } from '@tiptap/core'
+import {computed, onBeforeUnmount, onMounted, reactive, ref} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
+import type {JSONContent} from '@tiptap/core'
 
-import { ApiError } from '@/api/http'
-import { getPostFileBlob, updatePost } from '@/api/postApi'
+import {ApiError} from '@/api/http'
+import {getPostFileBlob, updatePost} from '@/api/postApi'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseCheckbox from '@/components/ui/BaseCheckbox.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
-import type { BoardDetailResponse } from '@/features/board/types/board'
+import type {BoardDetailResponse} from '@/features/board/types/board'
 import type {
   PostDetailResponse,
   PostEditorImage,
   SelectedPostAttachment,
 } from '@/features/post/types/post'
-import { buildPostUpload, getBodyImageKeys } from '@/features/post/editor/postDocument'
+import {
+  buildPostUpload,
+  getBodyImageKeys,
+  getBodyImageNodes,
+} from '@/features/post/editor/postDocument'
 import PostContentEditor from './PostContentEditor.vue'
 import PostImageModal from './PostImageModal.vue'
 import PostAttachmentPicker from './PostAttachmentPicker.vue'
@@ -39,7 +43,7 @@ const form = reactive({
 
 const contentDocument = ref<JSONContent>({
   type: 'doc',
-  content: [{ type: 'paragraph' }],
+  content: [{type: 'paragraph'}],
 })
 const contentEditor = ref<InstanceType<typeof PostContentEditor> | null>(null)
 const images = ref<PostEditorImage[]>([])
@@ -93,7 +97,6 @@ async function loadDocument() {
         .filter(file => file.fileUsage === 'BODY_IMAGE')
         .sort((left, right) => left.sortOrder - right.sortOrder || left.id - right.id)
 
-    // JSON 본문이 없는 기존 게시글은 이미지 상단 + 기존 텍스트로 복원한다.
     const document: JSONContent = props.post.contentDocument
         ? JSON.parse(JSON.stringify(props.post.contentDocument))
         : {
@@ -101,26 +104,31 @@ async function loadDocument() {
           content: [
             ...bodyFiles.map(file => ({
               type: 'image',
-              attrs: { fileId: file.id },
+              attrs: {fileId: file.id},
             })),
             ...props.post.content.split(/\r?\n/).map(text => ({
               type: 'paragraph',
-              content: text ? [{ type: 'text', text }] : [],
+              content: text ? [{type: 'text', text}] : [],
             })),
           ],
         }
 
     const fileById = new Map(bodyFiles.map(file => [file.id, file]))
     const loadedImages: PostEditorImage[] = []
+    const usedFileIds = new Set<number>()
 
-    for (const block of document.content ?? []) {
-      if (block.type !== 'image') continue
-
-      const fileId = Number(block.attrs?.fileId)
+    for (const node of getBodyImageNodes(document)) {
+      const fileId = Number(node.attrs?.fileId)
       const file = fileById.get(fileId)
+
       if (!file || !file.contentType.startsWith('image/')) {
         throw new Error('본문 이미지 정보를 확인할 수 없습니다.')
       }
+      if (usedFileIds.has(fileId)) {
+        throw new Error('같은 첨부 이미지가 반복되었습니다. 본문을 확인해 주세요.')
+      }
+
+      usedFileIds.add(fileId)
 
       const blob = await getPostFileBlob(props.board.slug, props.post.id, file.id)
       if (disposed) return
@@ -139,7 +147,7 @@ async function loadDocument() {
       }
 
       loadedImages.push(image)
-      block.attrs = {
+      node.attrs = {
         imageKey: image.key,
         src: image.previewUrl,
         alt: image.name,
@@ -147,6 +155,7 @@ async function loadDocument() {
     }
 
     if (disposed) return
+
     images.value = loadedImages
     contentDocument.value = document
     editorReady.value = true
@@ -157,9 +166,10 @@ async function loadDocument() {
     }
 
     if (!disposed) {
-      errorMessage.value = error instanceof Error
-          ? error.message
-          : '본문 이미지를 불러오지 못했습니다.'
+      errorMessage.value =
+          error instanceof Error
+              ? error.message
+              : '본문 이미지를 불러오지 못했습니다.'
     }
   } finally {
     if (!disposed) loadingImages.value = false
@@ -266,7 +276,7 @@ async function submit() {
 
     await router.replace({
       name: 'post-detail',
-      params: { boardSlug: props.board.slug, postId: props.post.id },
+      params: {boardSlug: props.board.slug, postId: props.post.id},
       query: route.query,
     })
   } catch (error) {

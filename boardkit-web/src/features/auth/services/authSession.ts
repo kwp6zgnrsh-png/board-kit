@@ -1,40 +1,22 @@
-import type {
-    AuthSession,
-    LoginResponse,
-} from '@/features/auth/types/auth'
+import { shallowRef } from 'vue'
+import type { AuthSession } from '@/features/auth/types/auth'
 
-const STORAGE_KEY = 'boardkit.auth'
+sessionStorage.removeItem('boardkit.auth')
 
-export function saveAuthSession(response: LoginResponse): void {
-    const session: AuthSession = {
-        accessToken: response.accessToken,
-        memberId: response.memberId,
-        displayName: response.displayName,
-        role: response.role,
+const currentSession = shallowRef<AuthSession | null>(null)
+
+export function saveAuthSession(session: AuthSession): void {
+    currentSession.value = {
+        memberId: session.memberId,
+        displayName: session.displayName,
+        role: session.role,
     }
-
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session))
 }
 
 export function getAuthSession(): AuthSession | null {
-    const value = sessionStorage.getItem(STORAGE_KEY)
-
-    if (!value) {
-        return null
-    }
-
-    try {
-        return JSON.parse(value) as AuthSession
-    } catch {
-        sessionStorage.removeItem(STORAGE_KEY)
-        return null
-    }
-}
-
-export function getAccessToken(): string | null {
-    return getAuthSession()?.accessToken ?? null
+    return currentSession.value
 }
 
 export function clearAuthSession(): void {
-    sessionStorage.removeItem(STORAGE_KEY)
+    currentSession.value = null
 }

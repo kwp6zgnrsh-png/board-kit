@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.github.kwp6zgnrsh.boardkitapi.auth.mapper.RevokedTokenMapper">
+
+    <insert id="insertRevokedToken">
+        INSERT INTO revoked_token (token_id, expires_at)
+        VALUES (#{tokenId}, #{expiresAt})
+        ON DUPLICATE KEY UPDATE token_id = token_id
+    </insert>
+
+    <select id="existsRevokedToken" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM revoked_token
+            WHERE token_id = #{tokenId}
+        )
+    </select>
+
+    <delete id="deleteExpiredTokens">
+        DELETE FROM revoked_token
+        WHERE expires_at <![CDATA[<=]]> UTC_TIMESTAMP(6)
+    </delete>
+
+</mapper>

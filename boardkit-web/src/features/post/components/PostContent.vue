@@ -1,18 +1,22 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import type { JSONContent } from '@tiptap/core'
-import { getPostFileBlob } from '@/api/postApi'
-import type { PostFileResponse } from '@/features/post/types/post'
+import {computed, onBeforeUnmount, ref, watch} from 'vue'
+import {generateHTML} from '@tiptap/core'
+import type {JSONContent} from '@tiptap/core'
+import type {DOMOutputSpec} from '@tiptap/pm/model'
+import {getPostFileBlob} from '@/api/postApi'
+import {getBodyImageNodes} from '@/features/post/editor/postDocument'
+import {
+  createPostEditorExtensions,
+  POST_DOCUMENT_CLASS,
+} from '@/features/post/editor/postEditor'
+import {PostImage} from '@/features/post/editor/postImage'
+import type {PostFileResponse} from '@/features/post/types/post'
 
 interface DisplayImage {
   file: PostFileResponse
   url: string | null
   failed: boolean
 }
-
-type BodyBlock =
-    | { type: 'paragraph'; text: string }
-    | { type: 'image'; fileId: number }
 
 const props = defineProps<{
   boardSlug: string
@@ -29,39 +33,136 @@ const downloadErrorMessage = ref('')
 const imageUrls = new Set<string>()
 let requestSequence = 0
 
-const bodyBlocks = computed<BodyBlock[]>(() => {
-  if (!props.contentDocument) {
-    const oldImages = props.files
-        .filter(file => file.fileUsage === 'BODY_IMAGE')
-        .sort((left, right) => left.sortOrder - right.sortOrder || left.id - right.id)
+// 상세 화면에서는 이미지 로딩 상태도 본문의 원래 위치에 표시한다.
+const DisplayImageExtension = PostImage.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      imageStatus: {
+        default: 'loading',
+        rendered: false,
+      },
+    }
+  },
+
+  renderHTML({node}): DOMOutputSpec {
+    const status = node.attrs.imageStatus
+    const src = node.attrs.src
+
+    if (
+        status === 'ready' &&
+        typeof src === 'string' &&
+        src.startsWith('blob:')
+    ) {
+      return [
+        'img',
+        {
+          src,
+          alt: node.attrs.alt,
+          draggable: 'false',
+          decoding: 'async',
+          class: 'mx-auto my-3 block h-auto max-w-full rounded',
+        },
+      ]
+    }
+
+    const message = status === 'loading'
+        ? '이미지를 불러오는 중입니다.'
+        : status === 'missing'
+            ? '본문 이미지 정보를 확인할 수 없습니다.'
+            : '이미지를 불러오지 못했습니다.'
 
     return [
-      ...oldImages.map((file): BodyBlock => ({
-        type: 'image',
-        fileId: file.id,
-      })),
-      { type: 'paragraph', text: props.content },
+      'div',
+      {
+        role: status === 'loading' ? 'status' : 'alert',
+        class:
+            'my-3 rounded border p-4 text-sm ' +
+            (status === 'loading'
+                ? 'border-slate-200 bg-slate-50 text-slate-500'
+                : 'border-red-200 bg-red-50 text-red-700'),
+      },
+      message,
     ]
+  },
+})
+
+const displayExtensions = createPostEditorExtensions().map(extension =>
+    extension.name === 'image' ? DisplayImageExtension : extension,
+)
+
+const sourceDocument = computed<JSONContent>(() => {
+  if (props.contentDocument) {
+    return props.contentDocument
   }
 
-  return (props.contentDocument.content ?? []).flatMap<BodyBlock>(block => {
-    if (block.type === 'paragraph') {
-      const text = (block.content ?? [])
-          .map(inline => inline.type === 'hardBreak' ? '\n' : inline.text ?? '')
-          .join('')
+  const oldImages = props.files
+      .filter(file => file.fileUsage === 'BODY_IMAGE')
+      .sort((left, right) => left.sortOrder - right.sortOrder || left.id - right.id)
 
-      return [{ type: 'paragraph', text }]
-    }
-    if (block.type === 'image') {
-      return [{ type: 'image', fileId: Number(block.attrs?.fileId) }]
-    }
-    return []
-  })
+  return {
+    type: 'doc',
+    content: [
+      ...oldImages.map(file => ({
+        type: 'image',
+        attrs: {fileId: file.id},
+      })),
+      ...props.content.split(/\r?\n/).map(text => ({
+        type: 'paragraph',
+        content: text ? [{type: 'text', text}] : [],
+      })),
+    ],
+  }
 })
 
 const imagesById = computed(() =>
     new Map(images.value.map(image => [image.file.id, image])),
 )
+
+const renderedBody = computed(() => {
+  function prepareNode(node: JSONContent): JSONContent {
+    if (node.type === 'image') {
+      const image = imagesById.value.get(Number(node.attrs?.fileId))
+
+      return {
+        type: 'image',
+        attrs: {
+          src: image?.url ?? null,
+          alt: image?.file.originalName ?? '본문 이미지',
+          imageStatus: !image
+              ? 'missing'
+              : image.failed
+                  ? 'failed'
+                  : image.url
+                      ? 'ready'
+                      : 'loading',
+        },
+      }
+    }
+
+    const copied: JSONContent = {...node}
+    if (node.content) {
+      copied.content = node.content.map(prepareNode)
+    }
+
+    return copied
+  }
+
+  try {
+    return {
+      html: generateHTML(
+          prepareNode(sourceDocument.value),
+          displayExtensions,
+      ),
+      error: '',
+    }
+  } catch {
+    return {
+      html: '',
+      error: '본문을 표시하지 못했습니다.',
+    }
+  }
+})
 
 const downloadFiles = computed(() =>
     props.files
@@ -70,7 +171,9 @@ const downloadFiles = computed(() =>
 )
 
 function revokeImageUrls() {
-  for (const url of imageUrls) URL.revokeObjectURL(url)
+  for (const url of imageUrls) {
+    URL.revokeObjectURL(url)
+  }
   imageUrls.clear()
 }
 
@@ -81,12 +184,21 @@ async function loadImages() {
   const secretPassword = props.secretPassword
 
   revokeImageUrls()
+  downloadingIds.value = []
+  downloadErrorMessage.value = ''
 
-  const referencedIds = new Set(
-      bodyBlocks.value.flatMap(block =>
-          block.type === 'image' ? [block.fileId] : [],
-      ),
-  )
+  let referencedIds: Set<number>
+
+  try {
+    referencedIds = new Set(
+        getBodyImageNodes(sourceDocument.value)
+            .map(node => Number(node.attrs?.fileId)),
+    )
+  } catch {
+    images.value = []
+    return
+  }
+
   const imageFiles = props.files.filter(file =>
       referencedIds.has(file.id) &&
       file.fileUsage === 'BODY_IMAGE' &&
@@ -107,14 +219,14 @@ async function loadImages() {
           })
 
           if (currentRequest !== requestSequence) {
-            return { file, url: null, failed: false }
+            return {file, url: null, failed: false}
           }
 
           const url = URL.createObjectURL(blob)
           imageUrls.add(url)
-          return { file, url, failed: false }
+          return {file, url, failed: false}
         } catch {
-          return { file, url: null, failed: true }
+          return {file, url: null, failed: true}
         }
       }),
   )
@@ -136,7 +248,7 @@ async function downloadFile(file: PostFileResponse) {
         props.boardSlug,
         props.postId,
         file.id,
-        { secretPassword: props.secretPassword },
+        {secretPassword: props.secretPassword},
     )
 
     if (currentRequest !== requestSequence) return
@@ -151,7 +263,6 @@ async function downloadFile(file: PostFileResponse) {
       link.click()
     } finally {
       link.remove()
-      // 브라우저가 다운로드를 시작할 시간을 준 뒤 해제한다.
       window.setTimeout(() => URL.revokeObjectURL(url), 1000)
     }
   } catch (error) {
@@ -161,7 +272,9 @@ async function downloadFile(file: PostFileResponse) {
           : '첨부파일을 내려받지 못했습니다.'
     }
   } finally {
-    downloadingIds.value = downloadingIds.value.filter(id => id !== file.id)
+    if (currentRequest === requestSequence) {
+      downloadingIds.value = downloadingIds.value.filter(id => id !== file.id)
+    }
   }
 }
 
@@ -177,10 +290,10 @@ watch(
       () => props.postId,
       () => props.secretPassword,
       () => props.files,
-      () => props.contentDocument,
+      sourceDocument,
     ],
     loadImages,
-    { immediate: true, deep: true },
+    {immediate: true, deep: true},
 )
 
 onBeforeUnmount(() => {
@@ -188,50 +301,22 @@ onBeforeUnmount(() => {
   revokeImageUrls()
 })
 </script>
+
 <template>
-  <div class="grid min-h-36 gap-0 py-5 text-slate-800 max-sm:min-h-24">
-    <div class="grid min-w-0 gap-3">
-      <template v-for="(block, index) in bodyBlocks" :key="index">
-        <p
-            v-if="block.type === 'paragraph'"
-            class="m-0 min-h-8 leading-8 whitespace-pre-wrap [overflow-wrap:anywhere]"
-        >
-          {{ block.text }}
-        </p>
+  <div class="min-h-36 min-w-0 py-5 text-slate-800 max-sm:min-h-24">
+    <p
+        v-if="renderedBody.error"
+        role="alert"
+        class="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+    >
+      {{ renderedBody.error }}
+    </p>
 
-        <figure
-            v-else
-            class="m-0 overflow-hidden rounded border border-slate-200 bg-slate-100"
-        >
-          <p
-              v-if="!imagesById.has(block.fileId)"
-              class="m-0 p-4 font-medium text-red-800"
-              role="alert"
-          >
-            본문 이미지 정보를 확인할 수 없습니다.
-          </p>
-
-          <img
-              v-else-if="imagesById.get(block.fileId)?.url"
-              :src="imagesById.get(block.fileId)?.url ?? undefined"
-              :alt="imagesById.get(block.fileId)?.file.originalName ?? '본문 이미지'"
-              class="mx-auto block h-auto max-w-full"
-          >
-
-          <p
-              v-else-if="imagesById.get(block.fileId)?.failed"
-              class="m-0 p-4 font-medium text-red-800"
-              role="alert"
-          >
-            이미지를 불러오지 못했습니다.
-          </p>
-
-          <p v-else class="m-0 p-4 font-medium text-slate-500">
-            이미지를 불러오는 중입니다.
-          </p>
-        </figure>
-      </template>
-    </div>
+    <div
+        v-else
+        :class="POST_DOCUMENT_CLASS"
+        v-html="renderedBody.html"
+    />
 
     <section
         v-if="downloadFiles.length"
@@ -269,8 +354,8 @@ onBeforeUnmount(() => {
 
       <p
           v-if="downloadErrorMessage"
-          class="m-0 rounded border border-red-200 bg-rose-50 p-3 font-medium text-red-900"
           role="alert"
+          class="m-0 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700"
       >
         {{ downloadErrorMessage }}
       </p>

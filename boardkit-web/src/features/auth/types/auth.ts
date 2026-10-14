@@ -5,17 +5,11 @@ export interface LoginRequest {
     password: string
 }
 
-export interface LoginResponse {
-    accessToken: string
-    tokenType: 'Bearer'
+export interface AuthSession {
     memberId: number
     displayName: string
     role: MemberRole
 }
 
-export interface AuthSession {
-    accessToken: string
-    memberId: number
-    displayName: string
-    role: MemberRole
-}
+export type LoginResponse = AuthSession
+export type CurrentMemberResponse = AuthSession

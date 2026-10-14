@@ -2,6 +2,7 @@ package io.github.kwp6zgnrsh.boardkitapi.auth.token;
 
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -33,6 +35,7 @@ public class JwtTokenProvider {
 
 		return Jwts.builder()
 			.issuer(ISSUER)
+			.id(UUID.randomUUID().toString())
 			.subject(memberId.toString())
 			.claim("role", role)
 			.claim("type", "access")
@@ -51,6 +54,14 @@ public class JwtTokenProvider {
 			.parseSignedClaims(token)
 			.getPayload();
 
-		return new JwtPayload(Long.valueOf(claims.getSubject()), claims.get("role", String.class));
+		String tokenId = claims.getId();
+		Date expiration = claims.getExpiration();
+
+		if (tokenId == null || tokenId.isBlank() || expiration == null) {
+			throw new JwtException("필수 인증 정보가 없는 토큰입니다.");
+		}
+
+		return new JwtPayload(Long.valueOf(claims.getSubject()), claims.get("role", String.class), tokenId,
+			expiration.toInstant());
 	}
 }

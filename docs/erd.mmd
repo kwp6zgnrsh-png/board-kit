@@ -155,6 +155,11 @@ erDiagram
         datetime(6) created_at
     }
 
+    REVOKED_TOKEN {
+        char(36) token_id PK
+        datetime(6) expires_at
+    }
+
     MEMBER ||--o{ BOARD : creates
     BOARD ||--o| BOARD_POLICY : has_policy
     BOARD ||--o{ BOARD_CATEGORY : contains

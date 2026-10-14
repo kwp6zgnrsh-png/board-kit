@@ -33,3 +33,6 @@ boardkit:
     interval: PT1M
     orphan-scan-interval: PT6H
     orphan-scan-initial-delay: PT1M
+
+  auth:
+    cookie-secure: false

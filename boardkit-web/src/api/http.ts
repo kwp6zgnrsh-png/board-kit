@@ -1,12 +1,54 @@
-import {
-    clearAuthSession,
-    getAccessToken,
-} from '@/features/auth/services/authSession'
+import { clearAuthSession } from '@/features/auth/services/authSession'
 
 export class ApiError extends Error {
-    constructor(public readonly status: number, message: string) {
+    constructor(
+        public readonly status: number,
+        message: string,
+    ) {
         super(message)
+        this.name = 'ApiError'
     }
+}
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS', 'TRACE'])
+const CSRF_COOKIE_PREFIX = 'XSRF-TOKEN='
+
+let csrfInitialization: Promise<void> | null = null
+
+function readCsrfToken(): string | undefined {
+    const cookie = document.cookie
+        .split(';')
+        .map((value) => value.trim())
+        .find((value) => value.startsWith(CSRF_COOKIE_PREFIX))
+
+    if (!cookie) return undefined
+
+    const token = decodeURIComponent(cookie.slice(CSRF_COOKIE_PREFIX.length))
+    return token || undefined
+}
+
+async function ensureCsrfToken(): Promise<string> {
+    const existingToken = readCsrfToken()
+    if (existingToken) return existingToken
+
+    if (!csrfInitialization) {
+        csrfInitialization = fetchApiResponse('/api/auth/csrf')
+            .then(() => undefined)
+            .finally(() => {
+                csrfInitialization = null
+            })
+    }
+
+    await csrfInitialization
+
+    const token = readCsrfToken()
+    if (!token) {
+        throw new Error(
+            '요청 보호 정보를 확인할 수 없습니다. 쿠키 설정을 확인하고 새로고침해 주세요.',
+        )
+    }
+
+    return token
 }
 
 async function fetchApiResponse(
@@ -14,18 +56,23 @@ async function fetchApiResponse(
     options: RequestInit = {},
 ): Promise<Response> {
     const headers = new Headers(options.headers)
-    const accessToken = getAccessToken()
+    const method = (options.method ?? 'GET').toUpperCase()
 
-    if (accessToken) {
-        headers.set('Authorization', `Bearer ${accessToken}`)
+    if (!SAFE_METHODS.has(method)) {
+        headers.set('X-XSRF-TOKEN', await ensureCsrfToken())
     }
 
-    if (options.body != null && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    if (
+        options.body != null &&
+        !(options.body instanceof FormData) &&
+        !headers.has('Content-Type')
+    ) {
         headers.set('Content-Type', 'application/json')
     }
 
     const response = await fetch(url, {
         ...options,
+        credentials: 'same-origin',
         headers,
     })
 
@@ -40,8 +87,7 @@ async function fetchApiResponse(
 
         throw new ApiError(
             response.status,
-            body?.message ??
-            `요청에 실패했습니다. (${response.status})`,
+            body?.message ?? `요청에 실패했습니다. (${response.status})`,
         )
     }
 
@@ -66,6 +112,5 @@ export async function apiBlobRequest(
     options: RequestInit = {},
 ): Promise<Blob> {
     const response = await fetchApiResponse(url, options)
-
     return response.blob()
 }

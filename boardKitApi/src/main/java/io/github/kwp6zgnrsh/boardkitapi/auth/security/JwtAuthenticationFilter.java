@@ -4,55 +4,60 @@ import java.io.IOException;
 import java.util.List;
 
 import org.jspecify.annotations.NonNull;
-import org.springframework.http.HttpHeaders;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import io.github.kwp6zgnrsh.boardkitapi.auth.cookie.AuthCookieFactory;
+import io.github.kwp6zgnrsh.boardkitapi.auth.mapper.RevokedTokenMapper;
 import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtPayload;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-	private static final String BEARER_PREFIX = "Bearer ";
-
 	private final JwtTokenProvider jwtTokenProvider;
+	private final RevokedTokenMapper revokedTokenMapper;
 
-	public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
+	public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, RevokedTokenMapper revokedTokenMapper) {
 		this.jwtTokenProvider = jwtTokenProvider;
+		this.revokedTokenMapper = revokedTokenMapper;
 	}
 
 	@Override
-	protected void doFilterInternal(HttpServletRequest request, @NonNull HttpServletResponse response,
+	protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
 		@NonNull FilterChain filterChain) throws ServletException, IOException {
+		String token = resolveToken(request);
 
-		String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
-
-		if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+		if (token == null || token.isBlank()) {
 			filterChain.doFilter(request, response);
 			return;
 		}
-
-		String token = authorization.substring(BEARER_PREFIX.length());
 
 		try {
 			JwtPayload payload = jwtTokenProvider.parseAccessToken(token);
 			validatePayload(payload);
 
-			LoginMember principal = new LoginMember(payload.memberId());
+			if (revokedTokenMapper.existsRevokedToken(payload.tokenId())) {
+				throw new JwtException("무효화된 인증 토큰입니다.");
+			}
 
+			LoginMember principal = new LoginMember(payload.memberId());
 			SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + payload.role());
 
 			UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(principal,
 				null, List.of(authority));
+
+			authentication.setDetails(payload);
 
 			SecurityContext context = SecurityContextHolder.createEmptyContext();
 			context.setAuthentication(authentication);
@@ -62,6 +67,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		}
 
 		filterChain.doFilter(request, response);
+	}
+
+	private @Nullable String resolveToken(HttpServletRequest request) {
+		Cookie[] cookies = request.getCookies();
+
+		if (cookies == null) {
+			return null;
+		}
+
+		for (Cookie cookie : cookies) {
+			if (AuthCookieFactory.ACCESS_TOKEN_COOKIE_NAME.equals(cookie.getName())) {
+				return cookie.getValue();
+			}
+		}
+
+		return null;
 	}
 
 	private void validatePayload(JwtPayload payload) {

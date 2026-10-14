@@ -21,6 +21,22 @@
             AND deleted_at IS NULL
     </select>
 
+    <select id="selectActiveMemberById"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.member.model.Member">
+        SELECT
+            id,
+            login_id,
+            password_hash,
+            display_name,
+            role,
+            created_at,
+            updated_at,
+            deleted_at
+        FROM member
+        WHERE id = #{memberId}
+            AND deleted_at IS NULL
+    </select>
+
     <select id="existsActiveMemberById" resultType="boolean">
         SELECT EXISTS (
             SELECT 1

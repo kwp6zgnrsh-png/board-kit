@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, shallowRef, watch } from 'vue'
-import { Editor, EditorContent } from '@tiptap/vue-3'
-import type { JSONContent } from '@tiptap/core'
-import Document from '@tiptap/extension-document'
-import Paragraph from '@tiptap/extension-paragraph'
-import Text from '@tiptap/extension-text'
-import HardBreak from '@tiptap/extension-hard-break'
-import { Gapcursor, UndoRedo } from '@tiptap/extensions'
-import { PostImage } from '@/features/post/editor/postImage'
-import type { PostEditorImage } from '@/features/post/types/post'
+import {onBeforeUnmount, onMounted, shallowRef, watch} from 'vue'
+import {Editor, EditorContent} from '@tiptap/vue-3'
+import type {JSONContent} from '@tiptap/core'
+import {
+  createPostEditorExtensions,
+  POST_DOCUMENT_CLASS,
+} from '@/features/post/editor/postEditor'
+import {getBodyImageNodes} from '@/features/post/editor/postDocument'
+import type {PostEditorImage} from '@/features/post/types/post'
+import PostEditorToolbar from './PostEditorToolbar.vue'
 
 const props = withDefaults(defineProps<{
   disabled?: boolean
@@ -16,20 +16,12 @@ const props = withDefaults(defineProps<{
   disabled: false,
 })
 
-const contentDocument = defineModel<JSONContent>({ required: true })
+const contentDocument = defineModel<JSONContent>({required: true})
 const editor = shallowRef<Editor | null>(null)
 
 onMounted(() => {
   editor.value = new Editor({
-    extensions: [
-      Document,
-      Paragraph,
-      Text,
-      HardBreak,
-      PostImage,
-      Gapcursor,
-      UndoRedo,
-    ],
+    extensions: createPostEditorExtensions(),
     content: contentDocument.value,
     editable: !props.disabled,
     editorProps: {
@@ -38,8 +30,8 @@ onMounted(() => {
         'aria-label': '게시글 본문',
         'aria-multiline': 'true',
         class:
-            'min-h-72 p-4 text-sm leading-7 outline-none break-words focus:ring-2 focus:ring-inset focus:ring-blue-100 ' +
-            '[&_p]:my-2 [&_p]:min-h-7',
+            'min-h-72 p-4 outline-none focus:ring-2 focus:ring-inset focus:ring-blue-100 ' +
+            POST_DOCUMENT_CLASS,
       },
       handlePaste(_view, event) {
         return (event.clipboardData?.files.length ?? 0) > 0
@@ -48,7 +40,7 @@ onMounted(() => {
         return (event.dataTransfer?.files.length ?? 0) > 0
       },
     },
-    onUpdate({ editor: currentEditor }) {
+    onUpdate({editor: currentEditor}) {
       contentDocument.value = currentEditor.getJSON()
     },
   })
@@ -72,9 +64,9 @@ function applyImages(images: PostEditorImage[]): boolean {
   if (!currentEditor || props.disabled) return false
   if (new Set(images.map(image => image.key)).size !== images.length) return false
 
-  const currentBlocks = currentEditor.getJSON().content ?? []
-  const blocks: JSONContent[] = []
-  let remainingSlots = currentBlocks.filter(block => block.type === 'image').length
+  const source = currentEditor.getJSON()
+  let remainingSlots = getBodyImageNodes(source).length
+  const hadImageSlots = remainingSlots > 0
   let nextIndex = 0
 
   function imageBlock(image: PostEditorImage): JSONContent {
@@ -88,46 +80,80 @@ function applyImages(images: PostEditorImage[]): boolean {
     }
   }
 
-  function appendRemainingImages() {
+  function appendRemainingImages(target: JSONContent[]) {
     while (nextIndex < images.length) {
       const image = images[nextIndex]
       if (!image) break
 
-      blocks.push(imageBlock(image), { type: 'paragraph' })
+      target.push(imageBlock(image), {type: 'paragraph'})
       nextIndex++
     }
   }
 
-  if (remainingSlots === 0) {
-    appendRemainingImages()
+  function rewriteNodes(nodes: JSONContent[]): JSONContent[] {
+    const result: JSONContent[] = []
+
+    for (const node of nodes) {
+      if (node.type === 'image') {
+        const image = images[nextIndex]
+        if (image) {
+          result.push(imageBlock(image))
+          nextIndex++
+        }
+
+        remainingSlots--
+        if (remainingSlots === 0) {
+          appendRemainingImages(result)
+        }
+        continue
+      }
+
+      const copied: JSONContent = {...node}
+
+      if (node.content) {
+        copied.content = rewriteNodes(node.content)
+      }
+      if (
+          copied.type === 'blockquote' &&
+          copied.content?.length === 0
+      ) {
+        copied.content = [{type: 'paragraph'}]
+      }
+
+      result.push(copied)
+    }
+
+    return result
   }
 
-  for (const block of currentBlocks) {
-    if (block.type !== 'image') {
-      blocks.push(block)
-      continue
-    }
+  let blocks = rewriteNodes(source.content ?? [])
 
-    const image = images[nextIndex]
-    if (image) {
-      blocks.push(imageBlock(image))
-      nextIndex++
-    }
-
-    remainingSlots--
-    if (remainingSlots === 0) {
-      appendRemainingImages()
-    }
+  if (!hadImageSlots) {
+    const added: JSONContent[] = []
+    appendRemainingImages(added)
+    blocks = [...added, ...blocks]
+  }
+  if (blocks.length === 0) {
+    blocks = [{type: 'paragraph'}]
   }
 
-  return currentEditor.chain()
-      .insertContentAt(
-          { from: 0, to: currentEditor.state.doc.content.size },
-          blocks.length ? blocks : [{ type: 'paragraph' }],
-          { updateSelection: false },
-      )
-      .focus()
-      .run()
+  try {
+    currentEditor.state.schema.nodeFromJSON({
+      ...source,
+      content: blocks,
+    }).check()
+
+    return currentEditor.chain()
+        .insertContentAt(
+            {from: 0, to: currentEditor.state.doc.content.size},
+            blocks,
+            {updateSelection: false},
+        )
+        .focus()
+        .run()
+  } catch {
+    return false
+  }
 }
 
 watch(() => props.disabled, disabled => {
@@ -138,21 +164,22 @@ onBeforeUnmount(() => {
   editor.value?.destroy()
 })
 
-defineExpose({ applyImages })
+defineExpose({applyImages})
 </script>
 
 <template>
-  <section class="overflow-hidden rounded border border-slate-200 bg-white">
-    <header class="border-b border-slate-200 bg-slate-50 px-4 py-2.5">
-      <p class="m-0 text-sm font-semibold text-slate-900">
-        본문
-      </p>
+  <section class="overflow-hidden rounded-md border border-slate-200 bg-white">
+    <header class="border-b border-slate-200 px-4 py-2.5">
+      <p class="m-0 text-sm font-semibold text-slate-900">본문</p>
     </header>
 
-    <EditorContent
-        v-if="editor"
-        :editor="editor"
-        :class="{ 'bg-slate-100 text-slate-500': disabled }"
-    />
+    <template v-if="editor">
+      <PostEditorToolbar :editor="editor" :disabled="disabled"/>
+
+      <EditorContent
+          :editor="editor"
+          :class="{ 'bg-slate-100': disabled }"
+      />
+    </template>
   </section>
 </template>

@@ -1,27 +1,31 @@
 package io.github.kwp6zgnrsh.boardkitapi.auth.service;
 
-import io.github.kwp6zgnrsh.boardkitapi.auth.dto.request.LoginRequest;
-import io.github.kwp6zgnrsh.boardkitapi.auth.dto.response.LoginResponse;
-import io.github.kwp6zgnrsh.boardkitapi.auth.exception.InvalidCredentialsException;
-import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
-import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
-import io.github.kwp6zgnrsh.boardkitapi.member.model.Member;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.Optional;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import io.github.kwp6zgnrsh.boardkitapi.auth.dto.request.LoginRequest;
+import io.github.kwp6zgnrsh.boardkitapi.auth.dto.response.CurrentMemberResponse;
+import io.github.kwp6zgnrsh.boardkitapi.auth.exception.InvalidCredentialsException;
+import io.github.kwp6zgnrsh.boardkitapi.auth.mapper.RevokedTokenMapper;
+import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginResult;
+import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtPayload;
+import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
+import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberUnavailableException;
+import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
+import io.github.kwp6zgnrsh.boardkitapi.member.model.Member;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
@@ -35,43 +39,39 @@ class AuthServiceTest {
 	@Mock
 	private JwtTokenProvider jwtTokenProvider;
 
+	@Mock
+	private RevokedTokenMapper revokedTokenMapper;
+
 	private AuthService authService;
 
 	@BeforeEach
 	void setUp() {
-		authService = new AuthService(
-			memberMapper,
-			passwordEncoder,
-			jwtTokenProvider
-		);
+		authService = new AuthService(memberMapper, passwordEncoder, jwtTokenProvider, revokedTokenMapper);
 	}
 
 	@Test
-	@DisplayName("아이디와 비밀번호가 일치하면 JWT를 발급한다")
+	@DisplayName("아이디와 비밀번호가 일치하면 JWT와 회원 정보를 반환한다")
 	void loginWithValidCredentials() {
 		LoginRequest request = new LoginRequest("admin", "1234");
 		Member member = adminMember();
+		Instant expiresAt = Instant.now().plusSeconds(1800);
 
-		when(memberMapper.selectByLoginId("admin"))
-			.thenReturn(Optional.of(member));
-		when(passwordEncoder.matches("1234", "encoded-password"))
-			.thenReturn(true);
-		when(jwtTokenProvider.createAccessToken(1L, "ADMIN"))
-			.thenReturn("access-token");
+		when(memberMapper.selectByLoginId("admin")).thenReturn(Optional.of(member));
+		when(passwordEncoder.matches("1234", "encoded-password")).thenReturn(true);
+		when(jwtTokenProvider.createAccessToken(1L, "ADMIN")).thenReturn("access-token");
+		when(jwtTokenProvider.parseAccessToken("access-token")).thenReturn(
+			new JwtPayload(1L, "ADMIN", "test-token-id", expiresAt));
 
-		LoginResponse response = authService.login(request);
+		LoginResult result = authService.login(request);
 
-		assertAll(
-			() -> assertEquals("access-token", response.accessToken()),
-			() -> assertEquals("Bearer", response.tokenType()),
-			() -> assertEquals(1L, response.memberId()),
-			() -> assertEquals("관리자", response.displayName()),
-			() -> assertEquals("ADMIN", response.role())
-		);
+		assertAll(() -> assertEquals("access-token", result.accessToken()),
+			() -> assertEquals(expiresAt, result.expiresAt()), () -> assertEquals(1L, result.memberId()),
+			() -> assertEquals("관리자", result.displayName()), () -> assertEquals("ADMIN", result.role()));
 
 		verify(memberMapper).selectByLoginId("admin");
 		verify(passwordEncoder).matches("1234", "encoded-password");
 		verify(jwtTokenProvider).createAccessToken(1L, "ADMIN");
+		verify(jwtTokenProvider).parseAccessToken("access-token");
 	}
 
 	@Test
@@ -79,13 +79,9 @@ class AuthServiceTest {
 	void rejectLoginWhenMemberDoesNotExist() {
 		LoginRequest request = new LoginRequest("unknown", "1234");
 
-		when(memberMapper.selectByLoginId("unknown"))
-			.thenReturn(Optional.empty());
+		when(memberMapper.selectByLoginId("unknown")).thenReturn(Optional.empty());
 
-		assertThrows(
-			InvalidCredentialsException.class,
-			() -> authService.login(request)
-		);
+		assertThrows(InvalidCredentialsException.class, () -> authService.login(request));
 
 		verifyNoInteractions(passwordEncoder, jwtTokenProvider);
 	}
@@ -96,17 +92,81 @@ class AuthServiceTest {
 		LoginRequest request = new LoginRequest("admin", "wrong-password");
 		Member member = adminMember();
 
-		when(memberMapper.selectByLoginId("admin"))
-			.thenReturn(Optional.of(member));
-		when(passwordEncoder.matches("wrong-password", "encoded-password"))
-			.thenReturn(false);
+		when(memberMapper.selectByLoginId("admin")).thenReturn(Optional.of(member));
+		when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
 
-		assertThrows(
-			InvalidCredentialsException.class,
-			() -> authService.login(request)
-		);
+		assertThrows(InvalidCredentialsException.class, () -> authService.login(request));
 
 		verifyNoInteractions(jwtTokenProvider);
+	}
+
+	@Test
+	@DisplayName("로그아웃하면 현재 JWT 식별자와 UTC 만료 시각을 저장한다")
+	void revokeCurrentTokenOnLogout() {
+		JwtPayload payload = new JwtPayload(10L, "MEMBER", "00000000-0000-0000-0000-000000000001",
+			Instant.parse("2030-01-01T12:30:00Z"));
+		LocalDateTime expiresAt = LocalDateTime.of(2030, 1, 1, 12, 30);
+
+		when(revokedTokenMapper.insertRevokedToken(payload.tokenId(), expiresAt)).thenReturn(1);
+
+		authService.logout(payload);
+
+		verify(revokedTokenMapper).insertRevokedToken(payload.tokenId(), expiresAt);
+		verifyNoInteractions(memberMapper, passwordEncoder, jwtTokenProvider);
+	}
+
+	@Test
+	@DisplayName("같은 JWT의 중복 무효화 등록도 성공으로 처리한다")
+	void allowDuplicateTokenRevocation() {
+		JwtPayload payload = new JwtPayload(10L, "MEMBER", "00000000-0000-0000-0000-000000000001",
+			Instant.parse("2030-01-01T12:30:00Z"));
+		LocalDateTime expiresAt = LocalDateTime.of(2030, 1, 1, 12, 30);
+
+		when(revokedTokenMapper.insertRevokedToken(payload.tokenId(), expiresAt)).thenReturn(0);
+
+		assertDoesNotThrow(() -> authService.logout(payload));
+		verify(revokedTokenMapper).insertRevokedToken(payload.tokenId(), expiresAt);
+	}
+
+	@Test
+	@DisplayName("무효화 기록 저장에 실패하면 로그아웃 실패를 전달한다")
+	void propagateTokenRevocationFailure() {
+		JwtPayload payload = new JwtPayload(10L, "MEMBER", "00000000-0000-0000-0000-000000000001",
+			Instant.parse("2030-01-01T12:30:00Z"));
+		LocalDateTime expiresAt = LocalDateTime.of(2030, 1, 1, 12, 30);
+		DataAccessResourceFailureException failure = new DataAccessResourceFailureException("DB 연결 실패");
+
+		when(revokedTokenMapper.insertRevokedToken(payload.tokenId(), expiresAt)).thenThrow(failure);
+
+		assertSame(failure, assertThrows(DataAccessResourceFailureException.class, () -> authService.logout(payload)));
+	}
+
+	@Test
+	@DisplayName("현재 회원 정보를 DB에서 조회하여 반환한다")
+	void getCurrentMemberFromDatabase() {
+		when(memberMapper.selectActiveMemberById(1L))
+			.thenReturn(Optional.of(adminMember()));
+
+		CurrentMemberResponse response = authService.getCurrentMember(1L);
+
+		assertEquals(
+			new CurrentMemberResponse(1L, "관리자", "ADMIN"),
+			response
+		);
+		verify(memberMapper).selectActiveMemberById(1L);
+		verifyNoInteractions(passwordEncoder, jwtTokenProvider, revokedTokenMapper);
+	}
+
+	@Test
+	@DisplayName("존재하지 않거나 삭제된 회원은 현재 회원 정보를 조회할 수 없다")
+	void rejectUnavailableCurrentMember() {
+		when(memberMapper.selectActiveMemberById(1L))
+			.thenReturn(Optional.empty());
+
+		assertThrows(
+			MemberUnavailableException.class,
+			() -> authService.getCurrentMember(1L)
+		);
 	}
 
 	private Member adminMember() {

@@ -1,5 +1,5 @@
 -- Community V2 schema draft, 2026-09-19
--- Last synchronized with the agreed policies: 2026-10-08.
+-- Last synchronized with the agreed policies: 2026-10-11.
 -- Target: MySQL 8.0.16+ / InnoDB (CHECK constraints must be enforced).
 -- Apply once to an EMPTY database explicitly selected by the caller.
 -- This file does not create/drop a database or disable FK checks.
@@ -273,4 +273,13 @@ CREATE TABLE file_cleanup_task (
     PRIMARY KEY (id),
     UNIQUE KEY uq_cleanup_target_key (target_key),
     KEY ix_cleanup_due (next_attempt_at, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- 로그아웃한 JWT의 jti와 원래 만료 시각만 저장한다. 회원 FK와 JWT 원문은 저장하지 않는다.
+-- expires_at은 UTC이며, JWT 만료 이후에는 무효화 기록을 정리할 수 있다.
+CREATE TABLE revoked_token (
+    token_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    expires_at DATETIME(6) NOT NULL,
+    PRIMARY KEY (token_id),
+    KEY ix_revoked_token_expiration (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

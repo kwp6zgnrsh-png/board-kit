@@ -12,6 +12,8 @@ public interface MemberMapper {
 
 	Optional<Member> selectByLoginId(@Param("loginId") String loginId);
 
+	Optional<Member> selectActiveMemberById(@Param("memberId") Long memberId);
+
 	boolean existsActiveMemberById(@Param("memberId") Long memberId);
 
 	boolean existsActiveSanctionByMemberId(@Param("memberId") Long memberId);

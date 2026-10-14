@@ -704,26 +704,30 @@ public class PostService {
 		}
 
 		JsonNode resolved = document.deepCopy();
+		replaceDocumentFileIndexes(resolved, idByIndex);
+		return resolved;
+	}
 
-		for (JsonNode block : resolved.path("content")) {
-			if (!"image".equals(block.path("type").asString(""))) {
-				continue;
-			}
-			if (block.path("attrs").hasNonNull("fileId")) {
-				continue;
+	private void replaceDocumentFileIndexes(JsonNode node, Map<Integer, Long> idByIndex) {
+		if ("image".equals(node.path("type").asString(""))) {
+			if (node.path("attrs").hasNonNull("fileId")) {
+				return;
 			}
 
-			int fileIndex = block.path("attrs").path("fileIndex").intValue();
+			int fileIndex = node.path("attrs").path("fileIndex").intValue();
 			Long fileId = idByIndex.get(fileIndex);
 
 			if (fileId == null) {
 				throw new IllegalStateException("본문 이미지의 파일 ID를 확인할 수 없습니다.");
 			}
 
-			((ObjectNode)block).putObject("attrs").put("fileId", fileId);
+			((ObjectNode)node).putObject("attrs").put("fileId", fileId);
+			return;
 		}
 
-		return resolved;
+		for (JsonNode child : node.path("content")) {
+			replaceDocumentFileIndexes(child, idByIndex);
+		}
 	}
 
 	private ValidatedDocument validateDocument(JsonNode source, BoardPolicy policy) {
