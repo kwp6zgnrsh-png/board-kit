@@ -61,6 +61,7 @@ import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostUpdateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.PostDetail;
+import io.github.kwp6zgnrsh.boardkitapi.post.policy.PostSecretAccess;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.JsonNodeFactory;
 
@@ -108,8 +109,8 @@ class PostFileIntegrationTest {
 	@Configuration(proxyBeanMethods = false)
 	@EnableConfigurationProperties(FileStorageProperties.class)
 	@MapperScan(basePackageClasses = {BoardMapper.class, MemberMapper.class, PostMapper.class, PostFileMapper.class})
-	@Import({PostService.class, PostDocumentValidator.class, JsonNodeTypeHandler.class, FileSignatureDetector.class,
-		FileUploadValidator.class, LocalFileStorage.class, FileCleanupService.class})
+	@Import({PostService.class, PostSecretAccess.class, PostDocumentValidator.class, JsonNodeTypeHandler.class,
+		FileSignatureDetector.class, FileUploadValidator.class, LocalFileStorage.class, FileCleanupService.class})
 	static class Config {
 
 		@Bean
@@ -411,18 +412,14 @@ class PostFileIntegrationTest {
 	@Test
 	@DisplayName("파일 삭제 실패를 기록하고 재시도에 성공하면 파일과 작업을 제거한다")
 	void retryFailedFileDeletionAndCompleteTask() throws IOException {
-		PostCreateResponse response = postService.createPost(
-			boardSlug, request(), List.of(image()), memberId, true
-		);
+		PostCreateResponse response = postService.createPost(boardSlug, request(), List.of(image()), memberId, true);
 		Long postId = response.id();
 		PostDetail post = postMapper.selectActivePostDetail(boardId, postId).orElseThrow();
 		PostFile file = postFileMapper.selectActivePostFilesForUpdate(postId).getFirst();
 
 		postService.deletePost(boardSlug, postId, post.version(), memberId, true);
 
-		List<FileCleanupTask> tasks = readCleanupTasks(
-			file.getStorageKey(), file.getThumbnailKey()
-		);
+		List<FileCleanupTask> tasks = readCleanupTasks(file.getStorageKey(), file.getThumbnailKey());
 		assertEquals(2, tasks.size());
 
 		FileCleanupTask originalTask = tasks.stream()
@@ -433,15 +430,13 @@ class PostFileIntegrationTest {
 		doReturn(tasks).when(fileCleanupTaskMapper).selectDueTasks(anyInt());
 
 		// 원본의 첫 삭제만 실패시키고, 다음 호출은 실제 파일을 삭제한다.
-		doThrow(new IllegalStateException("테스트용 파일 삭제 실패"))
-			.doCallRealMethod()
-			.when(localFileStorage).delete(file.getStorageKey());
+		doThrow(new IllegalStateException("테스트용 파일 삭제 실패")).doCallRealMethod()
+			.when(localFileStorage)
+			.delete(file.getStorageKey());
 
 		assertDoesNotThrow(() -> fileCleanupService.processDueTasks());
 
-		List<FileCleanupTask> remaining = readCleanupTasks(
-			file.getStorageKey(), file.getThumbnailKey()
-		);
+		List<FileCleanupTask> remaining = readCleanupTasks(file.getStorageKey(), file.getThumbnailKey());
 		assertEquals(1, remaining.size());
 
 		FileCleanupTask failedTask = remaining.getFirst();
@@ -450,9 +445,7 @@ class PostFileIntegrationTest {
 		assertNotNull(failedTask.getLastError());
 		assertTrue(failedTask.getLastError().contains("테스트용 파일 삭제 실패"));
 
-		verify(fileCleanupTaskMapper).recordFailure(
-			eq(originalTask.getId()), eq(60L), anyString()
-		);
+		verify(fileCleanupTaskMapper).recordFailure(eq(originalTask.getId()), eq(60L), anyString());
 		verify(fileCleanupTaskMapper, never()).deleteTask(originalTask.getId());
 
 		assertEquals(1L, jdbcTemplate.queryForObject("""
@@ -470,9 +463,7 @@ class PostFileIntegrationTest {
 			WHERE id = ?
 			""", originalTask.getId()));
 
-		List<FileCleanupTask> retryTasks = readCleanupTasks(
-			file.getStorageKey(), file.getThumbnailKey()
-		);
+		List<FileCleanupTask> retryTasks = readCleanupTasks(file.getStorageKey(), file.getThumbnailKey());
 		doReturn(retryTasks).when(fileCleanupTaskMapper).selectDueTasks(anyInt());
 
 		fileCleanupService.processDueTasks();

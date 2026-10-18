@@ -35,7 +35,8 @@ public class AuthService {
 			throw new InvalidCredentialsException();
 		}
 
-		String accessToken = jwtTokenProvider.createAccessToken(member.getId(), member.getRole());
+		String accessToken = jwtTokenProvider.createAccessToken(member.getId(), member.getRole(),
+			member.getAuthVersion());
 		JwtPayload payload = jwtTokenProvider.parseAccessToken(accessToken);
 
 		return new LoginResult(accessToken, payload.expiresAt(), member.getId(), member.getDisplayName(),

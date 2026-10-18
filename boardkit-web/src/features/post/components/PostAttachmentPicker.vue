@@ -73,13 +73,16 @@ function removeFile(key: string) {
 </script>
 
 <template>
-  <div class="grid gap-3">
+  <div class="grid gap-2.5">
     <button
         type="button"
         :disabled="disabled"
-        class="justify-self-start rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
+        class="inline-flex h-11 items-center gap-2 justify-self-start rounded-sm border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50 sm:px-4"
         @click="fileInput?.click()"
     >
+      <svg class="size-5 text-indigo-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m8 12 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l8-8m-3 9 5-5a1 1 0 0 1 2 2l-6 6" />
+      </svg>
       파일
     </button>
 
@@ -97,7 +100,7 @@ function removeFile(key: string) {
       <li
           v-for="item in attachments"
           :key="item.key"
-          class="flex min-w-0 items-center justify-between gap-3 rounded border border-slate-200 bg-slate-50 p-3"
+          class="flex min-w-0 items-center justify-between gap-3 rounded-sm border border-slate-200 bg-white px-3 py-2"
       >
         <div class="min-w-0">
           <p class="m-0 truncate text-sm font-medium">{{ item.file.name }}</p>

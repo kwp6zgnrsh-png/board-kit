@@ -85,3 +85,35 @@ export function deleteComment(
         },
     )
 }
+
+export function likeComment(
+    boardSlug: string,
+    postId: number,
+    commentId: number,
+    secretPassword?: string,
+): Promise<void> {
+    return apiRequest<void>(
+        `/api/boards/${encodeURIComponent(boardSlug)}` +
+        `/posts/${postId}/comments/${commentId}/like`,
+        {
+            method: 'PUT',
+            headers: createSecretHeaders(secretPassword),
+        },
+    )
+}
+
+export function unlikeComment(
+    boardSlug: string,
+    postId: number,
+    commentId: number,
+    secretPassword?: string,
+): Promise<void> {
+    return apiRequest<void>(
+        `/api/boards/${encodeURIComponent(boardSlug)}` +
+        `/posts/${postId}/comments/${commentId}/like`,
+        {
+            method: 'DELETE',
+            headers: createSecretHeaders(secretPassword),
+        },
+    )
+}

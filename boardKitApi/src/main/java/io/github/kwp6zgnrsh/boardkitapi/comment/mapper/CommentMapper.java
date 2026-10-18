@@ -22,7 +22,8 @@ public interface CommentMapper {
 	List<CommentItemResponse> selectActiveComments(
 		@Param("postId") Long postId,
 		@Param("limit") int limit,
-		@Param("offset") long offset
+		@Param("offset") long offset,
+		@Param("memberId") Long memberId
 	);
 
 	Optional<Comment> selectActiveComment(
@@ -49,5 +50,11 @@ public interface CommentMapper {
 		@Param("postId") Long postId,
 		@Param("commentId") Long commentId,
 		@Param("version") Integer version
+	);
+
+	Optional<Long> selectActiveLikeTargetForShare(
+		@Param("boardId") Long boardId,
+		@Param("postId") Long postId,
+		@Param("commentId") Long commentId
 	);
 }

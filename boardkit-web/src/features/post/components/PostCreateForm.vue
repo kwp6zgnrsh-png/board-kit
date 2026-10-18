@@ -170,33 +170,37 @@ async function submit() {
         :options="categoryOptions"
     />
 
-    <section class="grid gap-4 rounded border border-slate-200 bg-white p-4">
-      <div v-if="board.policy.attachmentsEnabled" class="flex flex-wrap items-start gap-3">
-        <button
-            type="button"
-            :disabled="submitting"
-            class="rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-blue-50 disabled:opacity-50"
-            @click="imageModalOpen = true"
-        >
-          이미지
-        </button>
-
-        <PostAttachmentPicker
-            v-model="attachments"
-            :upload-profile="board.policy.uploadProfile"
-            :other-file-count="bodyImages.length"
-            :max-file-count="board.policy.maxFileCount"
-            :max-file-size-bytes="board.policy.maxFileSizeBytes"
-            :disabled="submitting"
-            @error="errorMessage = $event"
-        />
-      </div>
-      <PostContentEditor
+    <PostContentEditor
           ref="contentEditor"
           v-model="contentDocument"
           :disabled="submitting"
-      />
-    </section>
+    >
+      <template v-if="board.policy.attachmentsEnabled" #uploads>
+        <div class="flex items-start gap-2.5">
+          <button
+              type="button"
+              :disabled="submitting"
+              class="inline-flex h-11 shrink-0 items-center gap-2 rounded-sm border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50 sm:px-4"
+              @click="imageModalOpen = true"
+          >
+            <svg class="size-5 text-indigo-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 3h18v18H3V3ZM3 16l6-6 4 4 3-3 5 5M16 7h.01" />
+            </svg>
+            이미지
+          </button>
+          <PostAttachmentPicker
+              v-model="attachments"
+              :upload-profile="board.policy.uploadProfile"
+              :other-file-count="bodyImages.length"
+              :max-file-count="board.policy.maxFileCount"
+              :max-file-size-bytes="board.policy.maxFileSizeBytes"
+              :disabled="submitting"
+              class="min-w-0 flex-1"
+              @error="errorMessage = $event"
+          />
+        </div>
+      </template>
+    </PostContentEditor>
 
     <section
         v-if="board.policy.secretMode !== 'OFF'"

@@ -71,7 +71,12 @@
             ) AS commentCount,
             p.created_at AS createdAt,
             pf.id AS representativeFileId,
-            (pf.thumbnail_key IS NOT NULL) AS thumbnailAvailable
+            (pf.thumbnail_key IS NOT NULL) AS thumbnailAvailable,
+            (
+                SELECT COUNT(*)
+                FROM post_like pl
+                WHERE pl.post_id = p.id
+            ) AS likeCount
         FROM post p
             INNER JOIN member m
                 ON m.id = p.author_id

@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
@@ -61,9 +62,11 @@ import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostDeleteDeniedException
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostEditDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostWriteDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.SecretPostAccessDeniedException;
+import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostLikeMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.Post;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.PostDetail;
+import io.github.kwp6zgnrsh.boardkitapi.post.policy.PostSecretAccess;
 import io.github.kwp6zgnrsh.boardkitapi.post.service.PostDocumentValidator.ValidatedDocument;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ArrayNode;
@@ -96,6 +99,9 @@ class PostServiceTest {
 	@Mock
 	private LocalFileStorage localFileStorage;
 
+	@Mock
+	private PostLikeMapper postLikeMapper;
+
 	private final FileStorageProperties properties = new FileStorageProperties(Path.of("build/test-store"), 20,
 		DataSize.ofMegabytes(20), DataSize.ofMegabytes(50), Duration.ofHours(24));
 
@@ -104,9 +110,13 @@ class PostServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		postService = new PostService(postMapper, boardMapper, memberMapper, postConverter, passwordEncoder,
-			postFileMapper, new FileUploadValidator(properties, new FileSignatureDetector()), localFileStorage,
-			fileCleanupTaskMapper, new PostDocumentValidator());
+		postService = new PostService(
+			postMapper, boardMapper, memberMapper, postConverter, passwordEncoder,
+			postFileMapper,
+			new FileUploadValidator(properties, new FileSignatureDetector()),
+			localFileStorage, fileCleanupTaskMapper, new PostDocumentValidator(),
+			postLikeMapper, new PostSecretAccess(passwordEncoder)
+		);
 	}
 
 	@Test
@@ -188,8 +198,12 @@ class PostServiceTest {
 		LocalDateTime createdAt = LocalDateTime.of(2026, 9, 21, 10, 0);
 
 		List<PostSummaryResponse> posts = List.of(
-			new PostSummaryResponse(11L, "게시글 제목", 10L, "작성자", null, null, false, false, 3L, 2L, createdAt, null,
-				false));
+			new PostSummaryResponse(
+				11L, "게시글 제목", 10L, "작성자",
+				null, null, false, false,
+				3L, 2L, createdAt, null, false, 7L
+			)
+		);
 
 		when(postMapper.countPostSummaries(1L, null, null)).thenReturn(21L);
 
@@ -202,6 +216,9 @@ class PostServiceTest {
 			() -> assertEquals(3, response.totalPages()));
 
 		verify(postMapper).selectPostSummaries(1L, null, null, PostSort.LATEST, 10, 10L);
+
+		assertEquals(7L, response.posts().getFirst().likeCount());
+		verifyNoInteractions(postLikeMapper);
 	}
 
 	@Test
@@ -235,14 +252,14 @@ class PostServiceTest {
 	@DisplayName("일반 게시글 상세를 조회하고 조회수를 증가시킨다")
 	void getRegularPostDetailAndIncreaseViewCount() {
 		PostDetail postDetail = postDetail(false, null);
-		PostDetailResponse expected = detailResponse();
+		PostDetailResponse expected = detailResponse(0L, false);
 
 		prepareBoard("free", readPolicy("PUBLIC"));
 
 		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
 		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L, List.of())).thenReturn(expected);
-
+		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false))
+			.thenReturn(expected);
 		PostDetailResponse response = postService.getPostDetail("free", 100L, null, false, false, null);
 
 		assertEquals(expected, response);
@@ -250,17 +267,78 @@ class PostServiceTest {
 	}
 
 	@Test
+	@DisplayName("비로그인은 좋아요 수를 조회하고 내 좋아요 여부는 조회하지 않는다")
+	void getLikeCountWithoutAuthentication() {
+		PostDetail postDetail = postDetail(false, null);
+		PostDetailResponse expected = detailResponse(4L, false);
+
+		prepareBoard("free", readPolicy("PUBLIC"));
+
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail));
+		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
+		when(postLikeMapper.countPostLikes(100L)).thenReturn(4L);
+		when(postConverter.toDetailResponse(
+			postDetail, 6L, List.of(), 4L, false
+		)).thenReturn(expected);
+
+		PostDetailResponse response = postService.getPostDetail(
+			"free", 100L, null, false, false, null
+		);
+
+		assertEquals(4L, response.likeCount());
+		assertFalse(response.likedByMe());
+
+		verify(postLikeMapper).countPostLikes(100L);
+		verify(postLikeMapper, never()).existsPostLike(anyLong(), anyLong());
+	}
+
+	@ParameterizedTest
+	@ValueSource(booleans = {true, false})
+	@DisplayName("좋아요 기능이 꺼져도 기존 좋아요 수와 내 좋아요 상태를 조회한다")
+	void getExistingLikesWhenLikesAreDisabled(boolean likedByMe) {
+		PostDetail postDetail = postDetail(false, null);
+		PostDetailResponse expected = detailResponse(4L, likedByMe);
+
+		BoardPolicy policy = BoardPolicy.builder()
+			.readPermission("PUBLIC")
+			.postLikesEnabled(false)
+			.build();
+
+		prepareBoard("free", policy);
+
+		when(postMapper.selectActivePostDetail(1L, 100L))
+			.thenReturn(Optional.of(postDetail));
+		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
+		when(postLikeMapper.countPostLikes(100L)).thenReturn(4L);
+		when(postLikeMapper.existsPostLike(100L, 10L)).thenReturn(likedByMe);
+		when(postConverter.toDetailResponse(
+			postDetail, 6L, List.of(), 4L, likedByMe
+		)).thenReturn(expected);
+
+		PostDetailResponse response = postService.getPostDetail(
+			"free", 100L, 10L, true, false, null
+		);
+
+		assertEquals(4L, response.likeCount());
+		assertEquals(likedByMe, response.likedByMe());
+
+		verify(postLikeMapper).countPostLikes(100L);
+		verify(postLikeMapper).existsPostLike(100L, 10L);
+	}
+
+	@Test
 	@DisplayName("비밀번호가 없는 비밀글은 누구나 조회할 수 있다")
 	void allowPasswordlessSecretPostForAnyone() {
 		PostDetail postDetail = postDetail(true, null);
-		PostDetailResponse expected = detailResponse();
+		PostDetailResponse expected = detailResponse(0L, false);
 
 		prepareBoard("free", readPolicy("PUBLIC"));
 
 		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
 		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L, List.of())).thenReturn(expected);
-
+		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false))
+			.thenReturn(expected);
 		PostDetailResponse response = postService.getPostDetail("free", 100L, null, false, false, null);
 
 		assertEquals(expected, response);
@@ -271,15 +349,15 @@ class PostServiceTest {
 	@DisplayName("비밀글 비밀번호가 일치하면 게시글을 조회할 수 있다")
 	void allowSecretPostWithCorrectPassword() {
 		PostDetail postDetail = postDetail(true, "encoded-password");
-		PostDetailResponse expected = detailResponse();
+		PostDetailResponse expected = detailResponse(0L, false);
 
 		prepareBoard("free", readPolicy("PUBLIC"));
 
 		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
 		when(passwordEncoder.matches("1234", "encoded-password")).thenReturn(true);
 		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L, List.of())).thenReturn(expected);
-
+		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false))
+			.thenReturn(expected);
 		PostDetailResponse response = postService.getPostDetail("free", 100L, null, false, false, "1234");
 
 		assertEquals(expected, response);
@@ -301,20 +379,21 @@ class PostServiceTest {
 
 		verify(postMapper, never()).increaseViewCount(1L, 100L);
 		verifyNoInteractions(postConverter);
+		verifyNoInteractions(postLikeMapper);
 	}
 
 	@Test
 	@DisplayName("작성자는 비밀번호 없이 자신의 비밀글을 조회할 수 있다")
 	void allowAuthorToReadSecretPostWithoutPassword() {
 		PostDetail postDetail = postDetail(true, "encoded-password");
-		PostDetailResponse expected = detailResponse();
+		PostDetailResponse expected = detailResponse(0L, false);
 
 		prepareBoard("free", readPolicy("PUBLIC"));
 
 		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
 		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L, List.of())).thenReturn(expected);
-
+		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false))
+			.thenReturn(expected);
 		PostDetailResponse response = postService.getPostDetail("free", 100L, 10L, true, false, null);
 
 		assertEquals(expected, response);
@@ -1094,11 +1173,15 @@ class PostServiceTest {
 			false, 5L, version, createdAt, createdAt, null, null);
 	}
 
-	private PostDetailResponse detailResponse() {
+	private PostDetailResponse detailResponse(long likeCount, boolean likedByMe) {
 		LocalDateTime createdAt = LocalDateTime.of(2026, 9, 21, 10, 0);
 
-		return new PostDetailResponse(100L, 1L, "게시글 제목", "게시글 본문", 10L, "작성자", null, null, false, false, false, 6L, 0,
-			createdAt, createdAt, null, List.of(), null);
+		return new PostDetailResponse(
+			100L, 1L, "게시글 제목", "게시글 본문",
+			10L, "작성자", null, null, false, false, false,
+			6L, 0, createdAt, createdAt, null, List.of(), null,
+			likeCount, likedByMe
+		);
 	}
 
 	private PostListRequest defaultPostListRequest() {

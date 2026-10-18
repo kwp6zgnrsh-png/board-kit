@@ -1,13 +1,9 @@
 package io.github.kwp6zgnrsh.boardkitapi.member.api;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,13 +20,17 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import io.github.kwp6zgnrsh.boardkitapi.auth.cookie.AuthCookieFactory;
 import io.github.kwp6zgnrsh.boardkitapi.member.dto.request.MemberCreateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.member.dto.response.MemberCreateResponse;
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.DuplicateMemberException;
 import io.github.kwp6zgnrsh.boardkitapi.member.service.MemberService;
 
 @WebMvcTest(MemberApi.class)
-@Import(MemberApiTest.SecurityTestConfig.class)
+@Import({
+	MemberApiTest.SecurityTestConfig.class,
+	AuthCookieFactory.class
+})
 class MemberApiTest {
 
 	private static final String VALID_REQUEST = """

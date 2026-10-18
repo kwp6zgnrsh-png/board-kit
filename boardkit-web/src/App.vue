@@ -86,6 +86,15 @@ watch(
         <div class="ml-auto flex shrink-0 items-center gap-2 py-2">
           <span v-if="session"
                 class="hidden max-w-28 truncate px-2 text-sm text-slate-600 sm:block">{{ session.displayName }}</span>
+          <RouterLink
+              v-if="session"
+              :to="{ name: 'my-page' }"
+              aria-label="마이페이지"
+              class="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:px-3 sm:text-sm"
+          >
+            <span class="sm:hidden">MY</span>
+            <span class="hidden sm:inline">마이페이지</span>
+          </RouterLink>
           <RouterLink v-if="session?.role === 'ADMIN'" :to="{ name: 'admin-dashboard' }"
                       class="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:text-sm"
                       aria-label="게시판 관리"><span class="sm:hidden">관리</span><span class="hidden sm:inline">게시판 관리</span>

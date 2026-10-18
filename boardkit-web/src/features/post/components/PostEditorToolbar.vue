@@ -3,6 +3,7 @@ import {ref} from 'vue'
 import type {ChainedCommands} from '@tiptap/core'
 import type {Editor} from '@tiptap/vue-3'
 import {normalizeWebLink} from '@/features/post/editor/postEditor'
+import PostEditorIcon from './PostEditorIcon.vue'
 
 const props = withDefaults(defineProps<{
   editor: Editor
@@ -137,6 +138,11 @@ function run(button: ToolbarButton) {
   button.command(props.editor.chain().focus()).run()
 }
 
+function changeBlockType(event: Event) {
+  const button = buttons[Number((event.target as HTMLSelectElement).value)]
+  if (button) run(button)
+}
+
 function editLink() {
   if (props.disabled) return
   errorMessage.value = ''
@@ -189,46 +195,94 @@ function editLink() {
 </script>
 
 <template>
-  <div class="border-b border-slate-200 bg-slate-50 p-2">
-    <div class="flex flex-wrap gap-1" role="toolbar" aria-label="본문 서식">
-      <button
-          v-for="button in buttons"
-          :key="button.title"
-          type="button"
-          :title="button.title"
-          :aria-label="button.title"
-          :aria-pressed="button.activeName ? isActive(button) : undefined"
-          :disabled="!canRun(button)"
-          class="inline-flex h-8 min-w-8 items-center justify-center rounded border px-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
-          :class="isActive(button)
-          ? 'border-blue-300 bg-blue-50 text-blue-700'
-          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'"
-          @mousedown.prevent
-          @click="run(button)"
-      >
-        <span :class="button.labelClass">{{ button.label }}</span>
-      </button>
+  <div class="border-b border-slate-300 bg-slate-50">
+    <div class="overflow-x-auto px-2 py-2 sm:px-3" role="toolbar" aria-label="본문 서식">
+      <div class="flex min-w-max items-center">
+        <div class="border-r border-slate-300 pr-2 sm:pr-3" role="group" aria-label="문단 유형">
+          <select
+              :value="editor.isActive('heading', { level: 2 }) ? 1 : editor.isActive('heading', { level: 3 }) ? 2 : 0"
+              :disabled="disabled"
+              aria-label="본문 또는 제목 선택"
+              class="h-8 w-24 cursor-pointer rounded-sm border-0 bg-transparent px-2 text-sm text-slate-700 outline-none hover:bg-slate-200/70 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-40"
+              @change="changeBlockType"
+          >
+            <option value="0">본문</option>
+            <option value="1">제목 2</option>
+            <option value="2">제목 3</option>
+          </select>
+        </div>
 
-      <button
-          type="button"
-          title="링크 추가·수정·제거"
-          :aria-pressed="editor.isActive('link')"
-          :disabled="disabled"
-          class="h-8 rounded border px-2 text-xs font-medium focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-40"
-          :class="editor.isActive('link')
-          ? 'border-blue-300 bg-blue-50 text-blue-700'
-          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'"
-          @mousedown.prevent
-          @click="editLink"
-      >
-        링크
-      </button>
+        <div class="flex items-center gap-0.5 border-r border-slate-300 px-2 sm:px-3" role="group" aria-label="글자 서식">
+          <button
+              v-for="button in buttons.slice(3, 7)"
+              :key="button.title"
+              type="button"
+              :title="button.title"
+              :aria-label="button.title"
+              :aria-pressed="isActive(button)"
+              :disabled="!canRun(button)"
+              class="inline-flex size-8 items-center justify-center rounded-sm focus-visible:outline-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-30"
+              :class="isActive(button) ? 'bg-blue-100 text-blue-700' : 'text-slate-700 hover:bg-slate-200/70'"
+              @mousedown.prevent
+              @click="run(button)"
+          >
+            <span class="text-base leading-none" :class="button.labelClass">가</span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-0.5 border-r border-slate-300 px-2 sm:px-3" role="group" aria-label="목록과 인용 및 코드">
+          <button
+              v-for="button in buttons.slice(7, 13)"
+              :key="button.title"
+              type="button"
+              :title="button.title"
+              :aria-label="button.title"
+              :aria-pressed="button.activeName ? isActive(button) : undefined"
+              :disabled="!canRun(button)"
+              class="inline-flex size-8 items-center justify-center rounded-sm focus-visible:outline-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-30"
+              :class="isActive(button) ? 'bg-blue-100 text-blue-700' : 'text-slate-700 hover:bg-slate-200/70'"
+              @mousedown.prevent
+              @click="run(button)"
+          >
+            <PostEditorIcon :name="button.title" />
+          </button>
+        </div>
+
+        <div class="flex items-center gap-0.5 pl-2 sm:pl-3" role="group" aria-label="실행 취소와 링크">
+          <button
+              v-for="button in buttons.slice(13)"
+              :key="button.title"
+              type="button"
+              :title="button.title"
+              :aria-label="button.title"
+              :disabled="!canRun(button)"
+              class="inline-flex size-8 items-center justify-center rounded-sm text-slate-700 hover:bg-slate-200/70 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-30"
+              @mousedown.prevent
+              @click="run(button)"
+          >
+            <PostEditorIcon :name="button.title" />
+          </button>
+          <button
+              type="button"
+              title="링크 추가·수정·제거"
+              aria-label="링크 추가·수정·제거"
+              :aria-pressed="editor.isActive('link')"
+              :disabled="disabled"
+              class="inline-flex size-8 items-center justify-center rounded-sm focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-30"
+              :class="editor.isActive('link') ? 'bg-blue-100 text-blue-700' : 'text-slate-700 hover:bg-slate-200/70'"
+              @mousedown.prevent
+              @click="editLink"
+          >
+            <PostEditorIcon name="링크" />
+          </button>
+        </div>
+      </div>
     </div>
 
     <p
         v-if="errorMessage"
         role="alert"
-        class="mt-2 text-xs text-red-600"
+        class="border-t border-slate-200 px-4 py-2 text-xs text-red-600"
     >
       {{ errorMessage }}
     </p>

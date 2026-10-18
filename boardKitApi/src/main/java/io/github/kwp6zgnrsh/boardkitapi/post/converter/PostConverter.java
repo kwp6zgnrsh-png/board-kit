@@ -38,7 +38,10 @@ public interface PostConverter {
 
 	@Mapping(target = "viewCount", source = "increasedViewCount")
 	@Mapping(target = "files", source = "files")
-	PostDetailResponse toDetailResponse(PostDetail postDetail, long increasedViewCount, List<PostFileResponse> files);
+	@Mapping(target = "likeCount", source = "likeCount")
+	@Mapping(target = "likedByMe", source = "likedByMe")
+	PostDetailResponse toDetailResponse(PostDetail postDetail, long increasedViewCount, List<PostFileResponse> files,
+		long likeCount, boolean likedByMe);
 
 	@BeanMapping(ignoreByDefault = true)
 	@Mapping(target = "id", source = "postId")

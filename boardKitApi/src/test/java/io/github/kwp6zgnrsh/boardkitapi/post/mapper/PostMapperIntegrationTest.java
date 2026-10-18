@@ -190,6 +190,76 @@ class PostMapperIntegrationTest {
 		);
 	}
 
+	@Test
+	@DisplayName("좋아요가 없는 게시글의 목록 좋아요 수는 0이다")
+	void returnZeroLikeCountWhenNoLikesExist() {
+		insertPost();
+
+		assertEquals(0L, summary().likeCount());
+	}
+
+	@Test
+	@DisplayName("게시글별 좋아요 수를 다른 게시글 및 댓글 수와 구분하여 집계한다")
+	void countLikesSeparatelyForEachPost() {
+		Post firstPost = insertPost();
+		Post secondPost = insertPost();
+
+		String key = UUID.randomUUID().toString().replace("-", "");
+
+		jdbcTemplate.update("""
+		INSERT INTO member (login_id, password_hash, display_name, role)
+		VALUES (?, ?, ?, 'MEMBER')
+		""",
+			"like-" + key,
+			"unused-in-mapper-tests",
+			key.substring(0, 10)
+		);
+
+		Long otherMemberId = jdbcTemplate.queryForObject(
+			"SELECT LAST_INSERT_ID()", Long.class
+		);
+
+		jdbcTemplate.update("""
+		INSERT INTO post_like (post_id, member_id)
+		VALUES (?, ?), (?, ?), (?, ?)
+		""",
+			firstPost.getId(), memberId,
+			firstPost.getId(), otherMemberId,
+			secondPost.getId(), memberId
+		);
+
+		jdbcTemplate.update("""
+		INSERT INTO comment (post_id, author_id, content)
+		VALUES (?, ?, ?), (?, ?, ?)
+		""",
+			firstPost.getId(), memberId, "첫 댓글",
+			firstPost.getId(), otherMemberId, "두 번째 댓글"
+		);
+
+		List<PostSummaryResponse> posts = postMapper.selectPostSummaries(
+			boardId, null, null, PostSort.LATEST, 10, 0L
+		);
+
+		assertEquals(2, posts.size());
+
+		PostSummaryResponse first = posts.stream()
+			.filter(post -> post.id().equals(firstPost.getId()))
+			.findFirst()
+			.orElseThrow();
+
+		PostSummaryResponse second = posts.stream()
+			.filter(post -> post.id().equals(secondPost.getId()))
+			.findFirst()
+			.orElseThrow();
+
+		assertAll(
+			() -> assertEquals(2L, first.likeCount()),
+			() -> assertEquals(2L, first.commentCount()),
+			() -> assertEquals(1L, second.likeCount()),
+			() -> assertEquals(0L, second.commentCount())
+		);
+	}
+
 	private Post insertPost() {
 		Post post = Post.builder()
 			.boardId(boardId)

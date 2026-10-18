@@ -1,13 +1,7 @@
 package io.github.kwp6zgnrsh.boardkitapi.auth.security;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 import java.time.Instant;
 
@@ -33,6 +27,7 @@ import io.github.kwp6zgnrsh.boardkitapi.auth.mapper.RevokedTokenMapper;
 import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtPayload;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
+import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.Cookie;
 
@@ -45,6 +40,9 @@ class JwtAuthenticationFilterTest {
 	@Mock
 	private RevokedTokenMapper revokedTokenMapper;
 
+	@Mock
+	private MemberMapper memberMapper;
+
 	private JwtAuthenticationFilter filter;
 	private MockHttpServletResponse response;
 	private MockFilterChain chain;
@@ -52,7 +50,7 @@ class JwtAuthenticationFilterTest {
 	@BeforeEach
 	void setUp() {
 		SecurityContextHolder.clearContext();
-		filter = new JwtAuthenticationFilter(jwtTokenProvider, revokedTokenMapper);
+		filter = new JwtAuthenticationFilter(jwtTokenProvider, revokedTokenMapper, memberMapper);
 		response = new MockHttpServletResponse();
 		chain = new MockFilterChain();
 	}
@@ -71,6 +69,7 @@ class JwtAuthenticationFilterTest {
 
 		when(jwtTokenProvider.parseAccessToken("valid-token")).thenReturn(expectedPayload);
 		when(revokedTokenMapper.existsRevokedToken("token-id")).thenReturn(false);
+		when(memberMapper.existsActiveMemberByIdAndAuthVersion(10L, 0L)).thenReturn(true);
 
 		filter.doFilter(request, response, chain);
 
@@ -83,6 +82,7 @@ class JwtAuthenticationFilterTest {
 		assertSame(request, chain.getRequest());
 		assertSame(expectedPayload, authentication.getDetails());
 		verify(revokedTokenMapper).existsRevokedToken("token-id");
+		verify(memberMapper).existsActiveMemberByIdAndAuthVersion(10L, 0L);
 	}
 
 	@Test
@@ -150,6 +150,37 @@ class JwtAuthenticationFilterTest {
 		assertNull(chain.getRequest());
 	}
 
+	@ParameterizedTest
+	@ValueSource(strings = {"device-a-token", "device-b-token"})
+	@DisplayName("어느 기기에서 발급한 JWT든 인증 버전이 다르면 인증하지 않는다")
+	void rejectTokenWithOutdatedAuthVersion(String token) throws Exception {
+		MockHttpServletRequest request = cookieRequest(token);
+		JwtPayload payload = new JwtPayload(10L, "MEMBER", token + "-id", Instant.now().plusSeconds(1800), 0L);
+
+		when(jwtTokenProvider.parseAccessToken(token)).thenReturn(payload);
+		when(memberMapper.existsActiveMemberByIdAndAuthVersion(10L, 0L)).thenReturn(false);
+
+		filter.doFilter(request, response, chain);
+
+		assertNull(SecurityContextHolder.getContext().getAuthentication());
+		assertSame(request, chain.getRequest());
+		verify(memberMapper).existsActiveMemberByIdAndAuthVersion(10L, 0L);
+	}
+
+	@Test
+	@DisplayName("인증 버전 조회에 실패하면 요청을 진행시키지 않는다")
+	void stopRequestWhenAuthVersionLookupFails() {
+		MockHttpServletRequest request = cookieRequest("valid-token");
+		when(jwtTokenProvider.parseAccessToken("valid-token")).thenReturn(payload("MEMBER"));
+		when(memberMapper.existsActiveMemberByIdAndAuthVersion(10L, 0L)).thenThrow(
+			new DataAccessResourceFailureException("DB 연결 실패"));
+
+		assertThrows(DataAccessResourceFailureException.class, () -> filter.doFilter(request, response, chain));
+
+		assertNull(SecurityContextHolder.getContext().getAuthentication());
+		assertNull(chain.getRequest());
+	}
+
 	private MockHttpServletRequest cookieRequest(String token) {
 		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/boards");
 		request.setCookies(new Cookie(AuthCookieFactory.ACCESS_TOKEN_COOKIE_NAME, token));
@@ -157,6 +188,6 @@ class JwtAuthenticationFilterTest {
 	}
 
 	private JwtPayload payload(String role) {
-		return new JwtPayload(10L, role, "token-id", Instant.now().plusSeconds(1800));
+		return new JwtPayload(10L, role, "token-id", Instant.now().plusSeconds(1800), 0L);
 	}
 }

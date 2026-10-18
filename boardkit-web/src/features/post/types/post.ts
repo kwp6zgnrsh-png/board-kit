@@ -37,6 +37,7 @@ export interface PostSummaryResponse {
     createdAt: string
     representativeFileId: number | null
     thumbnailAvailable: boolean
+    likeCount: number
 }
 
 export interface PostPageResponse {
@@ -66,6 +67,8 @@ export interface PostDetailResponse {
     updatedAt: string
     representativeFileId: number | null
     files: PostFileResponse[]
+    likeCount: number
+    likedByMe: boolean
 }
 
 export interface PostUpdateRequest {

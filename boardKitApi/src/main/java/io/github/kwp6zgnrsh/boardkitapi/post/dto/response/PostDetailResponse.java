@@ -24,6 +24,8 @@ public record PostDetailResponse(
 	LocalDateTime updatedAt,
 	Long representativeFileId,
 	List<PostFileResponse> files,
-	JsonNode contentDocument
+	JsonNode contentDocument,
+	long likeCount,
+	boolean likedByMe
 ) {
 }

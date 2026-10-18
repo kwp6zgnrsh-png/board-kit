@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.github.kwp6zgnrsh.boardkitapi.comment.mapper.CommentLikeMapper">
+
+    <insert id="insertCommentLike">
+        INSERT INTO comment_like (comment_id, member_id)
+        VALUES (#{commentId}, #{memberId})
+        ON DUPLICATE KEY UPDATE member_id = #{memberId}
+    </insert>
+
+    <delete id="deleteCommentLike">
+        DELETE FROM comment_like
+        WHERE comment_id = #{commentId}
+            AND member_id = #{memberId}
+    </delete>
+
+</mapper>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import {computed, ref, watch} from 'vue'
+import {computed, onBeforeUnmount, ref, watch} from 'vue'
 
-import {deleteComment, getComments} from '@/api/commentApi'
+import {deleteComment, getComments, likeComment, unlikeComment} from '@/api/commentApi'
+import LikeButton from '@/components/ui/LikeButton.vue'
 import {ApiError} from '@/api/http'
 import CommentEditForm from '@/features/comment/components/CommentEditForm.vue'
 import CommentCreateForm from '@/features/comment/components/CommentCreateForm.vue'
@@ -17,6 +18,7 @@ const props = defineProps<{
   commentRepliesEnabled: boolean
   locked: boolean
   secretPassword?: string
+  commentLikesEnabled: boolean
 }>()
 
 const comments = ref<CommentItemResponse[]>([])
@@ -31,6 +33,7 @@ const selectedReplyParentId = ref<number | null>(null)
 
 const editingCommentId = ref<number | null>(null)
 const deletingCommentId = ref<number | null>(null)
+const likingCommentIds = ref(new Set<number>())
 
 const resultMessage = ref('')
 const actionErrorMessage = ref('')
@@ -71,6 +74,16 @@ function canDeleteComment(comment: CommentItemResponse): boolean {
       !comment.deleted &&
       member !== null &&
       (member.memberId === comment.authorId || member.role === 'ADMIN')
+  )
+}
+
+function canLikeComment(comment: CommentItemResponse): boolean {
+  return (
+      !comment.deleted
+      && session.value !== null
+      && props.commentLikesEnabled
+      && !loading.value
+      && deletingCommentId.value !== comment.id
   )
 }
 
@@ -117,12 +130,92 @@ async function reloadAfterDelete() {
   }
 }
 
+async function toggleCommentLike(comment: CommentItemResponse) {
+  const member = session.value
+  const pending = likingCommentIds.value
+
+  if (
+      member === null
+      || !canLikeComment(comment)
+      || pending.has(comment.id)
+  ) {
+    return
+  }
+
+  const currentRequest = requestSequence
+  const memberId = member.memberId
+  const nextLiked = !comment.likedByMe
+
+  pending.add(comment.id)
+  actionErrorMessage.value = ''
+
+  try {
+    if (nextLiked) {
+      await likeComment(
+          props.boardSlug,
+          props.postId,
+          comment.id,
+          props.secretPassword,
+      )
+    } else {
+      await unlikeComment(
+          props.boardSlug,
+          props.postId,
+          comment.id,
+          props.secretPassword,
+      )
+    }
+
+    if (
+        currentRequest !== requestSequence
+        || session.value?.memberId !== memberId
+    ) {
+      return
+    }
+
+    comments.value = comments.value.map((current) => {
+      if (current.id !== comment.id || current.deleted) {
+        return current
+      }
+
+      return {
+        ...current,
+        likedByMe: nextLiked,
+        likeCount: Math.max(
+            0,
+            current.likeCount + (nextLiked ? 1 : -1),
+        ),
+      }
+    })
+  } catch (error) {
+    if (currentRequest !== requestSequence) {
+      return
+    }
+
+    if (error instanceof ApiError && error.status === 401) {
+      actionErrorMessage.value = '다시 로그인해 주세요.'
+    } else if (error instanceof ApiError && error.status === 403) {
+      actionErrorMessage.value =
+          '좋아요를 변경할 수 없습니다. 회원 상태나 게시판 설정이 변경되었을 수 있습니다.'
+    } else if (error instanceof ApiError && error.status === 404) {
+      actionErrorMessage.value =
+          '게시글 또는 댓글을 찾을 수 없습니다. 목록을 다시 확인해 주세요.'
+    } else {
+      actionErrorMessage.value =
+          '좋아요 변경 결과를 확인하지 못했습니다. 새로고침 후 상태를 확인해 주세요.'
+    }
+  } finally {
+    pending.delete(comment.id)
+  }
+}
+
 async function removeComment(
     comment: CommentItemResponse,
 ) {
   if (
-      !canDeleteComment(comment) ||
-      deletingCommentId.value !== null
+      !canDeleteComment(comment)
+      || deletingCommentId.value !== null
+      || likingCommentIds.value.has(comment.id)
   ) {
     return
   }
@@ -271,6 +364,7 @@ watch(
       () => props.boardSlug,
       () => props.postId,
       () => props.secretPassword,
+      () => session.value?.memberId ?? null,
     ],
     () => {
       comments.value = []
@@ -279,20 +373,17 @@ watch(
       totalElements.value = 0
       selectedReplyParentId.value = null
       editingCommentId.value = null
+      likingCommentIds.value = new Set<number>()
       actionErrorMessage.value = ''
       resultMessage.value = ''
+
       void loadComments()
     },
-    {
-      immediate: true,
-    },
+    {immediate: true},
 )
 
-watch(session, (member) => {
-  if (!member) {
-    selectedReplyParentId.value = null
-    editingCommentId.value = null
-  }
+onBeforeUnmount(() => {
+  requestSequence++
 })
 </script>
 
@@ -438,32 +529,43 @@ watch(session, (member) => {
           </div>
 
           <div
-              v-if="canEditComment(comment) || canDeleteComment(comment)"
-              class="flex justify-end gap-2"
+              v-if="!comment.deleted"
+              class="flex flex-wrap items-center justify-between gap-2"
               @click.stop
           >
-            <button
-                v-if="canEditComment(comment)"
-                type="button"
-                class="h-8 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                @click="startCommentEdit(comment)"
-            >
-              수정
-            </button>
+            <LikeButton
+                size="sm"
+                :count="comment.likeCount"
+                :liked="comment.likedByMe"
+                :disabled="!canLikeComment(comment)"
+                :loading="likingCommentIds.has(comment.id)"
+                @toggle="toggleCommentLike(comment)"
+            />
 
-            <button
-                v-if="canDeleteComment(comment)"
-                type="button"
-                class="h-8 rounded-md border border-red-200 bg-white px-3 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-                :disabled="deletingCommentId !== null"
-                @click="removeComment(comment)"
+            <div
+                v-if="canEditComment(comment) || canDeleteComment(comment)"
+                class="ml-auto flex gap-2"
             >
-              {{
-                deletingCommentId === comment.id
-                    ? '삭제 중...'
-                    : '삭제'
-              }}
-            </button>
+              <button
+                  v-if="canEditComment(comment)"
+                  type="button"
+                  class="h-8 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  :disabled="likingCommentIds.has(comment.id)"
+                  @click="startCommentEdit(comment)"
+              >
+                수정
+              </button>
+
+              <button
+                  v-if="canDeleteComment(comment)"
+                  type="button"
+                  class="h-8 rounded-md border border-red-200 bg-white px-3 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  :disabled="deletingCommentId !== null || likingCommentIds.has(comment.id)"
+                  @click="removeComment(comment)"
+              >
+                {{ deletingCommentId === comment.id ? '삭제 중...' : '삭제' }}
+              </button>
+            </div>
           </div>
         </template>
 

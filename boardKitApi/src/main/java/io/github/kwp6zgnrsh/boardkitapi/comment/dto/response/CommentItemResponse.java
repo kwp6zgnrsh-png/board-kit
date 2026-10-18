@@ -11,5 +11,7 @@ public record CommentItemResponse(
 	boolean deleted,
 	Integer version,
 	LocalDateTime createdAt,
-	LocalDateTime updatedAt
+	LocalDateTime updatedAt,
+	long likeCount,
+	boolean likedByMe
 ) {}

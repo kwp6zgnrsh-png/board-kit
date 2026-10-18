@@ -1,4 +1,5 @@
 export type BoardDisplayType = 'LIST' | 'CARD'
+export type BoardStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED'
 export type ReadPermission = 'PUBLIC' | 'MEMBER' | 'ADMIN'
 export type WritePermission = 'MEMBER' | 'ADMIN'
 export type SecretMode = 'OFF' | 'OPTIONAL' | 'REQUIRED'

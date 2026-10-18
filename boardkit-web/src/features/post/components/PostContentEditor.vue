@@ -30,7 +30,7 @@ onMounted(() => {
         'aria-label': '게시글 본문',
         'aria-multiline': 'true',
         class:
-            'min-h-72 p-4 outline-none focus:ring-2 focus:ring-inset focus:ring-blue-100 ' +
+            'min-h-full px-4 py-5 outline-none sm:px-6 sm:py-6 ' +
             POST_DOCUMENT_CLASS,
       },
       handlePaste(_view, event) {
@@ -168,16 +168,17 @@ defineExpose({applyImages})
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-md border border-slate-200 bg-white">
-    <header class="border-b border-slate-200 px-4 py-2.5">
-      <p class="m-0 text-sm font-semibold text-slate-900">본문</p>
-    </header>
+  <section class="overflow-hidden rounded-sm border border-slate-300 bg-white" aria-label="본문 편집기">
+    <div v-if="$slots.uploads" class="border-b border-slate-300 bg-slate-50 px-3 py-3 sm:px-4">
+      <slot name="uploads" />
+    </div>
 
     <template v-if="editor">
       <PostEditorToolbar :editor="editor" :disabled="disabled"/>
 
       <EditorContent
           :editor="editor"
+          class="h-[52vh] min-h-80 resize-y overflow-auto sm:min-h-[420px]"
           :class="{ 'bg-slate-100': disabled }"
       />
     </template>

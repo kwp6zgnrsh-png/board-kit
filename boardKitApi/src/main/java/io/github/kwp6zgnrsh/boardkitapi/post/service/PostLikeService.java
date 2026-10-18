@@ -1,0 +1,86 @@
+package io.github.kwp6zgnrsh.boardkitapi.post.service;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.server.ResponseStatusException;
+
+import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardNotFoundException;
+import io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper;
+import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
+import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy;
+import io.github.kwp6zgnrsh.boardkitapi.board.policy.BoardReadAccess;
+import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberSanctionedException;
+import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberUnavailableException;
+import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
+import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostNotFoundException;
+import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostLikeMapper;
+import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper;
+import io.github.kwp6zgnrsh.boardkitapi.post.model.PostDetail;
+import io.github.kwp6zgnrsh.boardkitapi.post.policy.PostSecretAccess;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+
+@Service
+@Validated
+@RequiredArgsConstructor
+public class PostLikeService {
+
+	private final BoardMapper boardMapper;
+	private final PostMapper postMapper;
+	private final PostLikeMapper postLikeMapper;
+	private final MemberMapper memberMapper;
+	private final PostSecretAccess postSecretAccess;
+
+	@Transactional
+	public void likePost(@NotBlank String boardSlug, @NotNull @Positive Long postId, @NotNull @Positive Long memberId,
+		boolean adminAccess, String secretPassword) {
+		validateActiveMember(memberId);
+
+		if (memberMapper.existsActiveSanctionByMemberId(memberId)) {
+			throw new MemberSanctionedException();
+		}
+
+		validateLikeAccess(boardSlug, postId, memberId, adminAccess, secretPassword);
+
+		postLikeMapper.insertPostLike(postId, memberId);
+	}
+
+	@Transactional
+	public void unlikePost(@NotBlank String boardSlug, @NotNull @Positive Long postId, @NotNull @Positive Long memberId,
+		boolean adminAccess, String secretPassword) {
+		validateActiveMember(memberId);
+		validateLikeAccess(boardSlug, postId, memberId, adminAccess, secretPassword);
+
+		postLikeMapper.deletePostLike(postId, memberId);
+	}
+
+	private void validateActiveMember(Long memberId) {
+		if (!memberMapper.existsActiveMemberById(memberId)) {
+			throw new MemberUnavailableException();
+		}
+	}
+
+	private void validateLikeAccess(String boardSlug, Long postId, Long memberId, boolean adminAccess,
+		String secretPassword) {
+		Board board = boardMapper.selectActiveBoardBySlug(boardSlug).orElseThrow(BoardNotFoundException::new);
+
+		BoardPolicy policy = boardMapper.selectPolicyByBoardId(board.getId())
+			.orElseThrow(() -> new IllegalStateException("게시판 정책을 찾을 수 없습니다. boardId=" + board.getId()));
+
+		BoardReadAccess.validate(policy.getReadPermission(), true, adminAccess);
+
+		if (!policy.isPostLikesEnabled()) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "좋아요를 사용할 수 없는 게시판입니다.");
+		}
+
+		PostDetail post = postMapper.selectActivePostDetail(board.getId(), postId)
+			.orElseThrow(PostNotFoundException::new);
+
+		postSecretAccess.validate(post.secret(), post.secretPasswordHash(), post.authorId(), memberId, adminAccess,
+			secretPassword);
+	}
+}

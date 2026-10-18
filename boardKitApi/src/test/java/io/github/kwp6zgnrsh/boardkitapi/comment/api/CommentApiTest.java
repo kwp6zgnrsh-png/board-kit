@@ -104,10 +104,12 @@ class CommentApiTest {
 	@DisplayName("비로그인 사용자도 공개 게시글의 댓글을 조회할 수 있다")
 	void getCommentsWithoutAuthentication() throws Exception {
 		CommentItemResponse item = new CommentItemResponse(
-			50L, null, 10L, "작성자", "첫 댓글",false, 0,
+			50L, null, 10L, "작성자", "첫 댓글", false, 0,
 			LocalDateTime.of(2026, 9, 25, 10, 0),
-			LocalDateTime.of(2026, 9, 25, 10, 0)
+			LocalDateTime.of(2026, 9, 25, 10, 0),
+			3L, false
 		);
+
 		when(commentService.getComments(
 			"free", 100L, 1, 20, null, false, false, null
 		)).thenReturn(new CommentPageResponse(List.of(item), 1, 20, 1, 1));
@@ -116,7 +118,9 @@ class CommentApiTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.comments.length()").value(1))
 			.andExpect(jsonPath("$.comments[0].content").value("첫 댓글"))
-			.andExpect(jsonPath("$.totalElements").value(1));
+			.andExpect(jsonPath("$.totalElements").value(1))
+			.andExpect(jsonPath("$.comments[0].likeCount").value(3))
+			.andExpect(jsonPath("$.comments[0].likedByMe").value(false));
 
 		verify(commentService).getComments(
 			"free", 100L, 1, 20, null, false, false, null

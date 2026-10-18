@@ -233,7 +233,8 @@ class PostApiTest {
 			2L,
 			LocalDateTime.of(2026, 9, 21, 10, 0),
 			20L,
-			true
+			true,
+			7
 		);
 
 		PostPageResponse response = new PostPageResponse(
@@ -266,7 +267,8 @@ class PostApiTest {
 			.andExpect(jsonPath("$.page").value(1))
 			.andExpect(jsonPath("$.size").value(10))
 			.andExpect(jsonPath("$.totalElements").value(1))
-			.andExpect(jsonPath("$.totalPages").value(1));
+			.andExpect(jsonPath("$.totalPages").value(1))
+			.andExpect(jsonPath("$.posts[0].likeCount").value(7));
 
 		verify(postService).getPosts(
 			"free",
@@ -357,7 +359,9 @@ class PostApiTest {
 			.andExpect(jsonPath("$.content").value("게시글 본문"))
 			.andExpect(jsonPath("$.authorDisplayName").value("작성자"))
 			.andExpect(jsonPath("$.viewCount").value(6))
-			.andExpect(jsonPath("$.version").value(0));
+			.andExpect(jsonPath("$.version").value(0))
+			.andExpect(jsonPath("$.likeCount").value(0))
+			.andExpect(jsonPath("$.likedByMe").value(false));
 
 		verify(postService).getPostDetail(
 			"free",
@@ -442,7 +446,9 @@ class PostApiTest {
 			createdAt,
 			null,
 			List.of(),
-			null
+			null,
+			0L,
+			false
 		);
 	}
 

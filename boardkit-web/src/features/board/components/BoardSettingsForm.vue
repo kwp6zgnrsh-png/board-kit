@@ -187,7 +187,7 @@ function buildPolicy(): BoardPolicyRequest {
     commentsEnabled,
     commentRepliesEnabled: commentsEnabled && form.commentRepliesEnabled,
     postLikesEnabled: form.postLikesEnabled,
-    commentLikesEnabled: commentsEnabled && form.commentLikesEnabled,
+    commentLikesEnabled: form.commentLikesEnabled,
     officialReplyEnabled: form.officialReplyEnabled,
   }
 }
@@ -474,7 +474,6 @@ async function submit() {
         <BaseCheckbox
           v-model="form.commentLikesEnabled"
           label="댓글 좋아요"
-          :disabled="!form.commentsEnabled"
         />
         <BaseCheckbox v-model="form.officialReplyEnabled" label="관리자 공식 답변" />
       </div>

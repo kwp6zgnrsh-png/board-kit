@@ -299,7 +299,7 @@ async function submit() {
 
 <template>
   <form
-      class="grid min-w-0 gap-6 rounded-lg border border-slate-200 bg-white p-5 sm:p-8"
+      class="grid min-w-0 gap-6 rounded-lg border border-slate-200 bg-white p-5 sm:p-6"
       @submit.prevent="submit"
   >
     <BaseInput
@@ -318,7 +318,7 @@ async function submit() {
         :options="categoryOptions"
     />
 
-    <section class="grid gap-4 rounded border border-slate-200 bg-white p-4">
+    <section class="min-w-0">
       <p v-if="loadingImages" class="m-0 text-sm font-medium text-slate-600">
         본문 이미지를 불러오는 중입니다.
       </p>
@@ -332,36 +332,39 @@ async function submit() {
         본문 다시 불러오기
       </button>
 
-      <template v-else>
-        <div class="flex flex-wrap items-start gap-3">
-          <button
-              v-if="board.policy.attachmentsEnabled || bodyImages.length > 0"
-              type="button"
-              :disabled="submitting"
-              class="rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-blue-50 disabled:opacity-50"
-              @click="imageModalOpen = true"
-          >
-            이미지
-          </button>
-
-          <PostAttachmentPicker
-              v-if="board.policy.attachmentsEnabled"
-              v-model="attachments"
-              :upload-profile="board.policy.uploadProfile"
-              :other-file-count="bodyImages.length + retainedAttachments.length"
-              :max-file-count="board.policy.maxFileCount"
-              :max-file-size-bytes="board.policy.maxFileSizeBytes"
-              :disabled="submitting"
-              @error="errorMessage = $event"
-          />
-        </div>
-
-        <PostContentEditor
+      <PostContentEditor
+            v-else
             ref="contentEditor"
             v-model="contentDocument"
             :disabled="submitting"
-        />
-      </template>
+      >
+        <template v-if="board.policy.attachmentsEnabled || bodyImages.length > 0" #uploads>
+          <div class="flex items-start gap-2.5">
+            <button
+                type="button"
+                :disabled="submitting"
+                class="inline-flex h-11 shrink-0 items-center gap-2 rounded-sm border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50 sm:px-4"
+                @click="imageModalOpen = true"
+            >
+              <svg class="size-5 text-indigo-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 3h18v18H3V3ZM3 16l6-6 4 4 3-3 5 5M16 7h.01" />
+              </svg>
+              이미지
+            </button>
+            <PostAttachmentPicker
+                v-if="board.policy.attachmentsEnabled"
+                v-model="attachments"
+                :upload-profile="board.policy.uploadProfile"
+                :other-file-count="bodyImages.length + retainedAttachments.length"
+                :max-file-count="board.policy.maxFileCount"
+                :max-file-size-bytes="board.policy.maxFileSizeBytes"
+                :disabled="submitting"
+                class="min-w-0 flex-1"
+                @error="errorMessage = $event"
+            />
+          </div>
+        </template>
+      </PostContentEditor>
     </section>
 
     <section

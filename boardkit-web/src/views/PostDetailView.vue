@@ -1,28 +1,35 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getBoardDetail } from '@/api/boardApi'
-import { ApiError } from '@/api/http'
+import {computed, onBeforeUnmount, ref, watch} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
+import {getBoardDetail} from '@/api/boardApi'
+import {ApiError} from '@/api/http'
 import BoardHero from '@/features/board/components/BoardHero.vue'
 import type {BoardDetailResponse,} from '@/features/board/types/board'
 import PostCommentsPanel from '@/features/comment/components/PostCommentsPanel.vue'
 import PostDetailSidebar from '@/features/post/components/PostDetailSidebar.vue'
 import SecretPostPasswordForm from '@/features/post/components/SecretPostPasswordForm.vue'
 import type {PostDetailResponse,} from '@/features/post/types/post'
-import { deletePost, getPostDetail } from '@/api/postApi'
-import { getAuthSession } from '@/features/auth/services/authSession'
+import {
+  deletePost,
+  getPostDetail,
+  likePost,
+  unlikePost,
+} from '@/api/postApi'
+import {getAuthSession} from '@/features/auth/services/authSession'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import PostContent from '@/features/post/components/PostContent.vue'
+import LikeButton from '@/components/ui/LikeButton.vue'
 
 const route = useRoute()
 const router = useRouter()
 
 const deleting = ref(false)
 const deleteErrorMessage = ref('')
-
+const likeSubmitting = ref(false)
+const likeErrorMessage = ref('')
+const authSession = computed(() => getAuthSession())
 const board = ref<BoardDetailResponse | null>(null)
 const post = ref<PostDetailResponse | null>(null)
-
 const loading = ref(false)
 const passwordSubmitting = ref(false)
 const passwordRequired = ref(false)
@@ -47,6 +54,8 @@ let requestSequence = 0
 
 async function loadPage(slug: string, id: number | null,) {
   const currentRequest = ++requestSequence
+  likeSubmitting.value = false
+  likeErrorMessage.value = ''
 
   board.value = null
   post.value = null
@@ -172,6 +181,89 @@ const canEdit = computed(() => {
           session.role === 'ADMIN')
 })
 
+const canToggleLike = computed(() =>
+    authSession.value !== null
+    && post.value !== null
+    && board.value?.policy.postLikesEnabled === true
+    && !deleting.value,
+)
+
+async function toggleLike() {
+  const currentPost = post.value
+  const currentBoard = board.value
+  const currentSession = authSession.value
+
+  if (
+      !canToggleLike.value
+      || currentPost === null
+      || currentBoard === null
+      || currentSession === null
+      || likeSubmitting.value
+  ) {
+    return
+  }
+
+  const currentRequest = requestSequence
+  const memberId = currentSession.memberId
+  const nextLiked = !currentPost.likedByMe
+
+  likeSubmitting.value = true
+  likeErrorMessage.value = ''
+
+  try {
+    if (nextLiked) {
+      await likePost(
+          currentBoard.slug,
+          currentPost.id,
+          secretPostPassword.value,
+      )
+    } else {
+      await unlikePost(
+          currentBoard.slug,
+          currentPost.id,
+          secretPostPassword.value,
+      )
+    }
+
+    if (
+        currentRequest !== requestSequence
+        || post.value !== currentPost
+        || authSession.value?.memberId !== memberId
+    ) {
+      return
+    }
+
+    post.value = {
+      ...currentPost,
+      likedByMe: nextLiked,
+      likeCount: Math.max(
+          0,
+          currentPost.likeCount + (nextLiked ? 1 : -1),
+      ),
+    }
+  } catch (error) {
+    if (currentRequest !== requestSequence) {
+      return
+    }
+
+    if (error instanceof ApiError && error.status === 401) {
+      likeErrorMessage.value = '다시 로그인해 주세요.'
+    } else if (error instanceof ApiError && error.status === 403) {
+      likeErrorMessage.value =
+          '좋아요를 변경할 수 없습니다. 회원 상태나 게시판 설정이 변경되었을 수 있습니다.'
+    } else if (error instanceof ApiError && error.status === 404) {
+      likeErrorMessage.value = '게시글을 찾을 수 없습니다.'
+    } else {
+      likeErrorMessage.value =
+          '좋아요 변경 결과를 확인하지 못했습니다. 새로고침 후 상태를 확인해 주세요.'
+    }
+  } finally {
+    if (currentRequest === requestSequence) {
+      likeSubmitting.value = false
+    }
+  }
+}
+
 async function removePost() {
   const currentPost = post.value
   const id = postId.value
@@ -192,7 +284,7 @@ async function removePost() {
 
     await router.replace({
       name: 'board-detail',
-      params: { boardSlug: boardSlug.value },
+      params: {boardSlug: boardSlug.value},
       query: route.query,
     })
   } catch (error) {
@@ -216,12 +308,18 @@ function formatDate(value: string): string {
 }
 
 watch(
-    [boardSlug, postId],
+    [
+      boardSlug,
+      postId,
+      () => authSession.value?.memberId ?? null,
+    ],
     ([slug, id]) => loadPage(slug, id),
-    {
-      immediate: true,
-    },
+    {immediate: true},
 )
+
+onBeforeUnmount(() => {
+  requestSequence++
+})
 </script>
 
 <template>
@@ -286,7 +384,9 @@ watch(
                 </span>
               </div>
 
-              <h1 class="m-0 text-xl leading-relaxed font-semibold break-words text-slate-900 sm:text-2xl">{{ post.title }}</h1>
+              <h1 class="m-0 text-xl leading-relaxed font-semibold break-words text-slate-900 sm:text-2xl">{{
+                  post.title
+                }}</h1>
 
               <dl class="m-0 flex flex-wrap gap-x-6 gap-y-2 text-sm">
                 <div class="flex gap-2">
@@ -316,6 +416,33 @@ watch(
                 :secret-password="secretPostPassword"
             />
 
+            <div
+                class="grid justify-items-center gap-2 border-t border-slate-100 py-5"
+                :aria-busy="likeSubmitting"
+            >
+              <LikeButton
+                  :count="post.likeCount"
+                  :liked="post.likedByMe"
+                  :disabled="!canToggleLike"
+                  :loading="likeSubmitting"
+                  @toggle="toggleLike"
+              />
+              <p
+                  v-if="board.policy.postLikesEnabled && !authSession"
+                  class="m-0 text-xs text-slate-500"
+              >
+                로그인 후 좋아요를 누를 수 있습니다.
+              </p>
+
+              <p
+                  v-if="likeErrorMessage"
+                  class="m-0 text-center text-sm text-red-600"
+                  role="alert"
+              >
+                {{ likeErrorMessage }}
+              </p>
+            </div>
+
             <p
                 v-if="deleteErrorMessage"
                 class="m-0 rounded-lg border border-red-200 bg-rose-50 p-4 font-medium text-red-900"
@@ -324,7 +451,8 @@ watch(
               {{ deleteErrorMessage }}
             </p>
 
-            <footer class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 py-3 max-sm:justify-stretch">
+            <footer
+                class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 py-3 max-sm:justify-stretch">
               <div v-if="canEdit || canDelete" class="flex flex-wrap gap-3 max-sm:flex-1 max-sm:[&>*]:flex-1">
                 <RouterLink
                     v-if="canEdit"
@@ -339,7 +467,7 @@ watch(
                 </RouterLink>
                 <BaseButton
                     variant="danger"
-                    :disabled="deleting"
+                    :disabled="deleting || likeSubmitting"
                     @click="removePost"
                 >
                   {{ deleting ? '삭제 중...' : '삭제' }}
@@ -367,6 +495,7 @@ watch(
               :comment-replies-enabled="board.policy.commentRepliesEnabled"
               :locked="post.commentsLocked"
               :secret-password="secretPostPassword"
+              :comment-likes-enabled="board.policy.commentLikesEnabled"
           />
         </div>
 

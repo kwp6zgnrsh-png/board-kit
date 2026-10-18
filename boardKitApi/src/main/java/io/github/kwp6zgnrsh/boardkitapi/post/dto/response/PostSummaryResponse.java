@@ -15,6 +15,7 @@ public record PostSummaryResponse(
 	long commentCount,
 	LocalDateTime createdAt,
 	Long representativeFileId,
-	boolean thumbnailAvailable
+	boolean thumbnailAvailable,
+	long likeCount
 ) {
 }

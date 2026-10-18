@@ -44,7 +44,31 @@
             (c.deleted_at IS NOT NULL) AS deleted,
             c.version,
             c.created_at AS createdAt,
-            c.updated_at AS updatedAt
+            c.updated_at AS updatedAt,
+            CASE
+                WHEN c.deleted_at IS NOT NULL THEN 0
+                ELSE (
+                    SELECT COUNT(*)
+                    FROM comment_like cl
+                    WHERE cl.comment_id = c.id
+                )
+            END AS likeCount,
+            <choose>
+                <when test="memberId != null">
+                    CASE
+                        WHEN c.deleted_at IS NOT NULL THEN FALSE
+                        ELSE EXISTS (
+                            SELECT 1
+                            FROM comment_like cl
+                            WHERE cl.comment_id = c.id
+                                AND cl.member_id = #{memberId}
+                        )
+                    END AS likedByMe
+                </when>
+                <otherwise>
+                    FALSE AS likedByMe
+                </otherwise>
+            </choose>
         FROM comment c
             INNER JOIN member m
                 ON m.id = c.author_id
@@ -72,6 +96,18 @@
             c.created_at ASC,
             c.id ASC
         LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectActiveLikeTargetForShare" resultType="long">
+        SELECT c.id
+        FROM comment c
+            INNER JOIN post p ON p.id = c.post_id
+        WHERE c.id = #{commentId}
+            AND c.post_id = #{postId}
+            AND p.board_id = #{boardId}
+            AND c.deleted_at IS NULL
+            AND p.deleted_at IS NULL
+        FOR SHARE
     </select>
 
     <select id="countActiveComments" resultType="long">

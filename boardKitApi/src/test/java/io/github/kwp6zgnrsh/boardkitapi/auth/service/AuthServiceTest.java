@@ -58,9 +58,9 @@ class AuthServiceTest {
 
 		when(memberMapper.selectByLoginId("admin")).thenReturn(Optional.of(member));
 		when(passwordEncoder.matches("1234", "encoded-password")).thenReturn(true);
-		when(jwtTokenProvider.createAccessToken(1L, "ADMIN")).thenReturn("access-token");
+		when(jwtTokenProvider.createAccessToken(1L, "ADMIN", 3L)).thenReturn("access-token");
 		when(jwtTokenProvider.parseAccessToken("access-token")).thenReturn(
-			new JwtPayload(1L, "ADMIN", "test-token-id", expiresAt));
+			new JwtPayload(1L, "ADMIN", "test-token-id", expiresAt, 3L));
 
 		LoginResult result = authService.login(request);
 
@@ -70,7 +70,7 @@ class AuthServiceTest {
 
 		verify(memberMapper).selectByLoginId("admin");
 		verify(passwordEncoder).matches("1234", "encoded-password");
-		verify(jwtTokenProvider).createAccessToken(1L, "ADMIN");
+		verify(jwtTokenProvider).createAccessToken(1L, "ADMIN", 3L);
 		verify(jwtTokenProvider).parseAccessToken("access-token");
 	}
 
@@ -104,7 +104,7 @@ class AuthServiceTest {
 	@DisplayName("로그아웃하면 현재 JWT 식별자와 UTC 만료 시각을 저장한다")
 	void revokeCurrentTokenOnLogout() {
 		JwtPayload payload = new JwtPayload(10L, "MEMBER", "00000000-0000-0000-0000-000000000001",
-			Instant.parse("2030-01-01T12:30:00Z"));
+			Instant.parse("2030-01-01T12:30:00Z"), 0L);
 		LocalDateTime expiresAt = LocalDateTime.of(2030, 1, 1, 12, 30);
 
 		when(revokedTokenMapper.insertRevokedToken(payload.tokenId(), expiresAt)).thenReturn(1);
@@ -119,7 +119,7 @@ class AuthServiceTest {
 	@DisplayName("같은 JWT의 중복 무효화 등록도 성공으로 처리한다")
 	void allowDuplicateTokenRevocation() {
 		JwtPayload payload = new JwtPayload(10L, "MEMBER", "00000000-0000-0000-0000-000000000001",
-			Instant.parse("2030-01-01T12:30:00Z"));
+			Instant.parse("2030-01-01T12:30:00Z"), 0L);
 		LocalDateTime expiresAt = LocalDateTime.of(2030, 1, 1, 12, 30);
 
 		when(revokedTokenMapper.insertRevokedToken(payload.tokenId(), expiresAt)).thenReturn(0);
@@ -132,7 +132,7 @@ class AuthServiceTest {
 	@DisplayName("무효화 기록 저장에 실패하면 로그아웃 실패를 전달한다")
 	void propagateTokenRevocationFailure() {
 		JwtPayload payload = new JwtPayload(10L, "MEMBER", "00000000-0000-0000-0000-000000000001",
-			Instant.parse("2030-01-01T12:30:00Z"));
+			Instant.parse("2030-01-01T12:30:00Z"), 0L);
 		LocalDateTime expiresAt = LocalDateTime.of(2030, 1, 1, 12, 30);
 		DataAccessResourceFailureException failure = new DataAccessResourceFailureException("DB 연결 실패");
 
@@ -144,15 +144,11 @@ class AuthServiceTest {
 	@Test
 	@DisplayName("현재 회원 정보를 DB에서 조회하여 반환한다")
 	void getCurrentMemberFromDatabase() {
-		when(memberMapper.selectActiveMemberById(1L))
-			.thenReturn(Optional.of(adminMember()));
+		when(memberMapper.selectActiveMemberById(1L)).thenReturn(Optional.of(adminMember()));
 
 		CurrentMemberResponse response = authService.getCurrentMember(1L);
 
-		assertEquals(
-			new CurrentMemberResponse(1L, "관리자", "ADMIN"),
-			response
-		);
+		assertEquals(new CurrentMemberResponse(1L, "관리자", "ADMIN"), response);
 		verify(memberMapper).selectActiveMemberById(1L);
 		verifyNoInteractions(passwordEncoder, jwtTokenProvider, revokedTokenMapper);
 	}
@@ -160,13 +156,9 @@ class AuthServiceTest {
 	@Test
 	@DisplayName("존재하지 않거나 삭제된 회원은 현재 회원 정보를 조회할 수 없다")
 	void rejectUnavailableCurrentMember() {
-		when(memberMapper.selectActiveMemberById(1L))
-			.thenReturn(Optional.empty());
+		when(memberMapper.selectActiveMemberById(1L)).thenReturn(Optional.empty());
 
-		assertThrows(
-			MemberUnavailableException.class,
-			() -> authService.getCurrentMember(1L)
-		);
+		assertThrows(MemberUnavailableException.class, () -> authService.getCurrentMember(1L));
 	}
 
 	private Member adminMember() {
@@ -174,6 +166,7 @@ class AuthServiceTest {
 			.id(1L)
 			.loginId("admin")
 			.passwordHash("encoded-password")
+			.authVersion(3L)
 			.displayName("관리자")
 			.role("ADMIN")
 			.build();

@@ -11,6 +11,7 @@
             id,
             login_id,
             password_hash,
+            auth_version,
             display_name,
             role,
             created_at,
@@ -27,6 +28,7 @@
             id,
             login_id,
             password_hash,
+            auth_version,
             display_name,
             role,
             created_at,
@@ -93,4 +95,95 @@
             #{role}
         )
     </insert>
+
+    <select id="existsByDisplayNameExcludingMemberId" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM member
+            WHERE display_name = #{displayName}
+            AND id != #{memberId}
+        )
+    </select>
+
+    <update id="updateDisplayName">
+        UPDATE member
+        SET display_name = #{displayName},
+            updated_at = CURRENT_TIMESTAMP(6)
+        WHERE id = #{memberId}
+            AND deleted_at IS NULL
+    </update>
+
+    <select id="existsActiveMemberByIdAndAuthVersion" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM member
+            WHERE id = #{memberId}
+                AND auth_version = #{authVersion}
+                AND deleted_at IS NULL
+        )
+    </select>
+
+    <update id="updatePassword">
+        UPDATE member
+        SET password_hash = #{passwordHash},
+            auth_version = auth_version + 1,
+            updated_at = CURRENT_TIMESTAMP(6)
+        WHERE id = #{memberId}
+            AND deleted_at IS NULL
+            AND auth_version = #{expectedAuthVersion}
+    </update>
+
+    <select id="countMyPosts" resultType="long">
+        SELECT COUNT(*)
+        FROM post
+        WHERE author_id = #{memberId}
+            AND deleted_at IS NULL
+    </select>
+
+    <select id="selectMyPosts"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.member.dto.response.MyPostSummaryResponse">
+        SELECT
+            p.id,
+            b.slug AS boardSlug,
+            b.name AS boardName,
+            b.status AS boardStatus,
+            p.title,
+            p.is_secret AS secret,
+            p.view_count AS viewCount,
+            p.created_at AS createdAt
+        FROM post p
+            JOIN board b ON b.id = p.board_id
+        WHERE p.author_id = #{memberId}
+            AND p.deleted_at IS NULL
+        ORDER BY p.created_at DESC, p.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countMyComments" resultType="long">
+        SELECT COUNT(*)
+        FROM comment
+        WHERE author_id = #{memberId}
+            AND deleted_at IS NULL
+    </select>
+
+    <select id="selectMyComments"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.member.dto.response.MyCommentSummaryResponse">
+        SELECT
+            c.id,
+            c.post_id AS postId,
+            c.parent_id AS parentId,
+            b.slug AS boardSlug,
+            b.name AS boardName,
+            b.status AS boardStatus,
+            (p.deleted_at IS NOT NULL) AS postDeleted,
+            c.content,
+            c.created_at AS createdAt
+        FROM comment c
+            JOIN post p ON p.id = c.post_id
+            JOIN board b ON b.id = p.board_id
+        WHERE c.author_id = #{memberId}
+            AND c.deleted_at IS NULL
+        ORDER BY c.created_at DESC, c.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
 </mapper>

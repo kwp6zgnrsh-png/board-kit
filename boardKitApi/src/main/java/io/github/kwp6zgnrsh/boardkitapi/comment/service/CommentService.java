@@ -1,11 +1,9 @@
 package io.github.kwp6zgnrsh.boardkitapi.comment.service;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -32,9 +30,9 @@ import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberSanctionedExcepti
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberUnavailableException;
 import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostNotFoundException;
-import io.github.kwp6zgnrsh.boardkitapi.post.exception.SecretPostAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.PostCommentTarget;
+import io.github.kwp6zgnrsh.boardkitapi.post.policy.PostSecretAccess;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -49,14 +47,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CommentService {
 
-	private static final int BCRYPT_MAX_PASSWORD_BYTES = 72;
-
 	private final BoardMapper boardMapper;
 	private final PostMapper postMapper;
 	private final CommentMapper commentMapper;
 	private final MemberMapper memberMapper;
 	private final CommentConverter commentConverter;
-	private final PasswordEncoder passwordEncoder;
+	private final PostSecretAccess postSecretAccess;
 
 	@Transactional
 	public CommentCreateResponse createComment(@NotBlank String boardSlug, @NotNull @Positive Long postId,
@@ -73,7 +69,8 @@ public class CommentService {
 		PostCommentTarget post = postMapper.selectActiveCommentTargetForUpdate(board.getId(), postId)
 			.orElseThrow(PostNotFoundException::new);
 
-		validateSecretAccess(post, memberId, adminAccess, secretPassword);
+		postSecretAccess.validate(post.secret(), post.secretPasswordHash(), post.authorId(), memberId, adminAccess,
+			secretPassword);
 
 		validateCommentWritePolicy(policy, adminAccess);
 
@@ -105,8 +102,10 @@ public class CommentService {
 
 		long offset = (long)(page - 1) * size;
 
-		List<CommentItemResponse> comments = totalElements == 0 || offset >= totalElements ? List.of() :
-			commentMapper.selectActiveComments(postId, size, offset);
+		List<CommentItemResponse> comments =
+			totalElements == 0 || offset >= totalElements
+				? List.of()
+				: commentMapper.selectActiveComments(postId, size, offset, memberId);
 
 		long calculatedTotalPages = totalElements / size + (totalElements % size == 0 ? 0 : 1);
 
@@ -179,19 +178,6 @@ public class CommentService {
 		}
 	}
 
-	private void validateSecretAccess(PostCommentTarget post, Long memberId, boolean adminAccess, String password) {
-		if (!post.secret() || post.secretPasswordHash() == null || adminAccess || Objects.equals(post.authorId(),
-			memberId)) {
-			return;
-		}
-
-		if (password == null || password.isBlank()
-			|| password.getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_PASSWORD_BYTES || !passwordEncoder.matches(
-			password, post.secretPasswordHash())) {
-			throw new SecretPostAccessDeniedException();
-		}
-	}
-
 	private void validateMember(Long memberId) {
 		validateActiveMember(memberId);
 
@@ -212,7 +198,10 @@ public class CommentService {
 		PostCommentTarget post = postMapper.selectActiveCommentTarget(boardId, postId)
 			.orElseThrow(PostNotFoundException::new);
 
-		validateSecretAccess(post, memberId, adminAccess, secretPassword);
+		postSecretAccess.validate(
+			post.secret(), post.secretPasswordHash(), post.authorId(),
+			memberId, adminAccess, secretPassword
+		);
 
 		return post;
 	}

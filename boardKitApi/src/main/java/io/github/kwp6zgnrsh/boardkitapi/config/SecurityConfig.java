@@ -20,18 +20,21 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import io.github.kwp6zgnrsh.boardkitapi.auth.mapper.RevokedTokenMapper;
 import io.github.kwp6zgnrsh.boardkitapi.auth.security.JwtAuthenticationFilter;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
+import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 
 @Configuration
 public class SecurityConfig {
 
 	private final JwtTokenProvider jwtTokenProvider;
 	private final RevokedTokenMapper revokedTokenMapper;
+	private final MemberMapper memberMapper;
 	private final boolean cookieSecure;
 
 	public SecurityConfig(JwtTokenProvider jwtTokenProvider, RevokedTokenMapper revokedTokenMapper,
-		@Value("${boardkit.auth.cookie-secure:true}") boolean cookieSecure) {
+		MemberMapper memberMapper, @Value("${boardkit.auth.cookie-secure:true}") boolean cookieSecure) {
 		this.jwtTokenProvider = jwtTokenProvider;
 		this.revokedTokenMapper = revokedTokenMapper;
+		this.memberMapper = memberMapper;
 		this.cookieSecure = cookieSecure;
 	}
 
@@ -43,8 +46,10 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-		JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtTokenProvider, revokedTokenMapper);
-
+		JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(
+			jwtTokenProvider, revokedTokenMapper, memberMapper
+		);
+		
 		CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
 
 		csrfRepository.setCookieCustomizer(cookie -> cookie.path("/").secure(cookieSecure).sameSite("Lax"));

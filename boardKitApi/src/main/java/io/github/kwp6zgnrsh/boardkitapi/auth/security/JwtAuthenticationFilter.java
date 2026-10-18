@@ -16,6 +16,7 @@ import io.github.kwp6zgnrsh.boardkitapi.auth.mapper.RevokedTokenMapper;
 import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtPayload;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
+import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,10 +28,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	private final JwtTokenProvider jwtTokenProvider;
 	private final RevokedTokenMapper revokedTokenMapper;
+	private final MemberMapper memberMapper;
 
-	public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, RevokedTokenMapper revokedTokenMapper) {
+	public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, RevokedTokenMapper revokedTokenMapper,
+		MemberMapper memberMapper) {
 		this.jwtTokenProvider = jwtTokenProvider;
 		this.revokedTokenMapper = revokedTokenMapper;
+		this.memberMapper = memberMapper;
 	}
 
 	@Override
@@ -49,6 +53,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 			if (revokedTokenMapper.existsRevokedToken(payload.tokenId())) {
 				throw new JwtException("무효화된 인증 토큰입니다.");
+			}
+
+			if (!memberMapper.existsActiveMemberByIdAndAuthVersion(payload.memberId(), payload.authVersion())) {
+				throw new JwtException("사용할 수 없는 인증 정보입니다.");
 			}
 
 			LoginMember principal = new LoginMember(payload.memberId());
@@ -92,6 +100,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 		if (!"MEMBER".equals(payload.role()) && !"ADMIN".equals(payload.role())) {
 			throw new IllegalArgumentException("유효하지 않은 회원 권한입니다.");
+		}
+
+		if (payload.authVersion() < 0) {
+			throw new IllegalArgumentException("유효하지 않은 인증 버전입니다.");
 		}
 	}
 }

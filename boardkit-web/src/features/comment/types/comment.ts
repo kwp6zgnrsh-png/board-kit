@@ -22,6 +22,8 @@ export interface CommentItemResponse {
     version: number
     createdAt: string
     updatedAt: string
+    likeCount: number
+    likedByMe: boolean
 }
 
 export interface CommentPageResponse {

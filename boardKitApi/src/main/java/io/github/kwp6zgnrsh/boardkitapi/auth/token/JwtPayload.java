@@ -6,6 +6,6 @@ public record JwtPayload(
 	Long memberId,
 	String role,
 	String tokenId,
-	Instant expiresAt
-) {
-}
+	Instant expiresAt,
+	long authVersion
+) {}

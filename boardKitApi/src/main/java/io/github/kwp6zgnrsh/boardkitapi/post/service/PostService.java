@@ -20,6 +20,7 @@ import io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy;
 import io.github.kwp6zgnrsh.boardkitapi.board.policy.BoardReadAccess;
+import io.github.kwp6zgnrsh.boardkitapi.common.security.PasswordLimits;
 import io.github.kwp6zgnrsh.boardkitapi.file.dto.response.PostFileResponse;
 import io.github.kwp6zgnrsh.boardkitapi.file.exception.PostFileNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.file.mapper.FileCleanupTaskMapper;
@@ -48,10 +49,11 @@ import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostDeleteDeniedException
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostEditDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostWriteDeniedException;
-import io.github.kwp6zgnrsh.boardkitapi.post.exception.SecretPostAccessDeniedException;
+import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostLikeMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.Post;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.PostDetail;
+import io.github.kwp6zgnrsh.boardkitapi.post.policy.PostSecretAccess;
 import io.github.kwp6zgnrsh.boardkitapi.post.service.PostDocumentValidator.ImageReference;
 import io.github.kwp6zgnrsh.boardkitapi.post.service.PostDocumentValidator.ValidatedDocument;
 import jakarta.validation.Valid;
@@ -70,8 +72,6 @@ import tools.jackson.databind.node.ObjectNode;
 @RequiredArgsConstructor
 public class PostService {
 
-	private static final int BCRYPT_MAX_PASSWORD_BYTES = 72;
-
 	private final PostMapper postMapper;
 	private final BoardMapper boardMapper;
 	private final MemberMapper memberMapper;
@@ -82,6 +82,8 @@ public class PostService {
 	private final LocalFileStorage localFileStorage;
 	private final FileCleanupTaskMapper fileCleanupTaskMapper;
 	private final PostDocumentValidator postDocumentValidator;
+	private final PostLikeMapper postLikeMapper;
+	private final PostSecretAccess postSecretAccess;
 
 	@Transactional
 	public PostCreateResponse createPost(@NotBlank String boardSlug, @NotNull @Valid PostCreateRequest request,
@@ -192,7 +194,6 @@ public class PostService {
 	@Transactional
 	public PostDetailResponse getPostDetail(@NotBlank String boardSlug, @NotNull @Positive Long postId, Long memberId,
 		boolean memberAccess, boolean adminAccess, String secretPassword) {
-
 		PostDetail postDetail = requireReadablePost(boardSlug, postId, memberId, memberAccess, adminAccess,
 			secretPassword);
 
@@ -206,7 +207,10 @@ public class PostService {
 
 		List<PostFileResponse> files = postFileMapper.selectActivePostFiles(postId);
 
-		return postConverter.toDetailResponse(postDetail, increasedViewCount, files);
+		long likeCount = postLikeMapper.countPostLikes(postId);
+		boolean likedByMe = memberId != null && postLikeMapper.existsPostLike(postId, memberId);
+
+		return postConverter.toDetailResponse(postDetail, increasedViewCount, files, likeCount, likedByMe);
 	}
 
 	@Transactional
@@ -314,25 +318,6 @@ public class PostService {
 			file.getOriginalName(), !thumbnail && "ATTACHMENT".equals(file.getFileUsage()));
 	}
 
-	private void validateSecretPostAccess(PostDetail postDetail, Long memberId, boolean adminAccess,
-		String secretPassword) {
-		if (!postDetail.secret() || postDetail.secretPasswordHash() == null) {
-			return;
-		}
-
-		if (adminAccess || Objects.equals(postDetail.authorId(), memberId)) {
-			return;
-		}
-
-		String normalizedPassword = normalizeSecretPassword(secretPassword);
-
-		if (normalizedPassword == null
-			|| normalizedPassword.getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_PASSWORD_BYTES
-			|| !passwordEncoder.matches(normalizedPassword, postDetail.secretPasswordHash())) {
-			throw new SecretPostAccessDeniedException();
-		}
-	}
-
 	private void validateMember(Long memberId) {
 		validateActiveMember(memberId);
 
@@ -367,7 +352,8 @@ public class PostService {
 		PostDetail post = postMapper.selectActivePostDetail(board.getId(), postId)
 			.orElseThrow(PostNotFoundException::new);
 
-		validateSecretPostAccess(post, memberId, adminAccess, secretPassword);
+		postSecretAccess.validate(post.secret(), post.secretPasswordHash(), post.authorId(), memberId, adminAccess,
+			secretPassword);
 
 		return post;
 	}
@@ -432,7 +418,7 @@ public class PostService {
 
 		int passwordBytes = password.getBytes(StandardCharsets.UTF_8).length;
 
-		if (passwordBytes > BCRYPT_MAX_PASSWORD_BYTES) {
+		if (passwordBytes > PasswordLimits.BCRYPT_MAX_PASSWORD_BYTES) {
 			throw new InvalidPostRequestException("비밀글 비밀번호가 너무 깁니다.");
 		}
 

@@ -69,6 +69,40 @@ export function getPostDetail(
     )
 }
 
+export function likePost(
+    boardSlug: string,
+    postId: number,
+    secretPassword?: string,
+): Promise<void> {
+    const headers = new Headers()
+
+    if (secretPassword !== undefined) {
+        headers.set('X-Post-Password', secretPassword)
+    }
+
+    return apiRequest<void>(
+        `/api/boards/${encodeURIComponent(boardSlug)}/posts/${postId}/like`,
+        { method: 'PUT', headers },
+    )
+}
+
+export function unlikePost(
+    boardSlug: string,
+    postId: number,
+    secretPassword?: string,
+): Promise<void> {
+    const headers = new Headers()
+
+    if (secretPassword !== undefined) {
+        headers.set('X-Post-Password', secretPassword)
+    }
+
+    return apiRequest<void>(
+        `/api/boards/${encodeURIComponent(boardSlug)}/posts/${postId}/like`,
+        { method: 'DELETE', headers },
+    )
+}
+
 export function updatePost(
     boardSlug: string,
     postId: number,

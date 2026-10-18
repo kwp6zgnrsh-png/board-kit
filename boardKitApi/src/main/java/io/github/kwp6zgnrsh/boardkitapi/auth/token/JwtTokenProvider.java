@@ -29,7 +29,11 @@ public class JwtTokenProvider {
 		this.accessTokenExpirationSeconds = accessTokenExpirationSeconds;
 	}
 
-	public String createAccessToken(Long memberId, String role) {
+	public String createAccessToken(Long memberId, String role, long authVersion) {
+		if (authVersion < 0) {
+			throw new IllegalArgumentException("인증 버전은 음수일 수 없습니다.");
+		}
+
 		Instant issuedAt = Instant.now();
 		Instant expiresAt = issuedAt.plusSeconds(accessTokenExpirationSeconds);
 
@@ -39,6 +43,7 @@ public class JwtTokenProvider {
 			.subject(memberId.toString())
 			.claim("role", role)
 			.claim("type", "access")
+			.claim("authVersion", authVersion)
 			.issuedAt(Date.from(issuedAt))
 			.expiration(Date.from(expiresAt))
 			.signWith(signingKey)
@@ -56,12 +61,13 @@ public class JwtTokenProvider {
 
 		String tokenId = claims.getId();
 		Date expiration = claims.getExpiration();
+		Long authVersion = claims.get("authVersion", Long.class);
 
-		if (tokenId == null || tokenId.isBlank() || expiration == null) {
+		if (tokenId == null || tokenId.isBlank() || expiration == null || authVersion == null || authVersion < 0) {
 			throw new JwtException("필수 인증 정보가 없는 토큰입니다.");
 		}
 
 		return new JwtPayload(Long.valueOf(claims.getSubject()), claims.get("role", String.class), tokenId,
-			expiration.toInstant());
+			expiration.toInstant(), authVersion);
 	}
 }

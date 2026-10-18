@@ -28,6 +28,7 @@ import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardCreateResponse;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardPolicyResponse;
 import io.github.kwp6zgnrsh.boardkitapi.board.service.BoardService;
 import io.github.kwp6zgnrsh.boardkitapi.config.MethodSecurityConfig;
+import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 
 @WebMvcTest(AdminBoardApi.class)
 @Import(MethodSecurityConfig.class)
@@ -109,6 +110,9 @@ class AdminBoardApiTest {
 
 	@MockitoBean
 	private BoardService boardService;
+
+	@MockitoBean
+	private MemberMapper memberMapper;
 
 	@Test
 	@DisplayName("관리자는 게시판을 생성할 수 있다")

@@ -34,6 +34,7 @@ import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtPayload;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
 import io.github.kwp6zgnrsh.boardkitapi.config.SecurityConfig;
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberUnavailableException;
+import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 
@@ -59,6 +60,9 @@ class AuthApiTest {
 
 	@MockitoBean
 	private RevokedTokenMapper revokedTokenMapper;
+
+	@MockitoBean
+	private MemberMapper memberMapper;
 
 	@MockitoSpyBean
 	private AuthCookieFactory authCookieFactory;
@@ -241,11 +245,33 @@ class AuthApiTest {
 		verify(authService).getCurrentMember(10L);
 	}
 
+	@Test
+	@DisplayName("이전 인증 버전의 JWT로는 현재 회원 정보를 조회할 수 없다")
+	void rejectCurrentMemberRequestWithOutdatedAuthVersion() throws Exception {
+		prepareCurrentMemberAuthentication();
+		when(memberMapper.existsActiveMemberByIdAndAuthVersion(10L, 0L)).thenReturn(false);
+
+		mockMvc.perform(currentMemberRequest()).andExpect(status().isUnauthorized());
+
+		verifyNoInteractions(authService);
+	}
+
 	private JwtPayload prepareLogoutAuthentication() {
 		JwtPayload payload = new JwtPayload(10L, "MEMBER", "00000000-0000-0000-0000-000000000001",
-			Instant.now().plusSeconds(1800));
+			Instant.now().plusSeconds(1800), 0L);
 
 		when(jwtTokenProvider.parseAccessToken("logout-token")).thenReturn(payload);
+		when(memberMapper.existsActiveMemberByIdAndAuthVersion(10L, 0L)).thenReturn(true);
+
+		return payload;
+	}
+
+	private JwtPayload prepareCurrentMemberAuthentication() {
+		JwtPayload payload = new JwtPayload(10L, "MEMBER", "00000000-0000-0000-0000-000000000001",
+			Instant.now().plusSeconds(1800), 0L);
+
+		when(jwtTokenProvider.parseAccessToken("member-token")).thenReturn(payload);
+		when(memberMapper.existsActiveMemberByIdAndAuthVersion(10L, 0L)).thenReturn(true);
 
 		return payload;
 	}
@@ -264,14 +290,5 @@ class AuthApiTest {
 
 	private MockHttpServletRequestBuilder currentMemberRequest() {
 		return get("/api/auth/me").cookie(new Cookie(AuthCookieFactory.ACCESS_TOKEN_COOKIE_NAME, "member-token"));
-	}
-
-	private JwtPayload prepareCurrentMemberAuthentication() {
-		JwtPayload payload = new JwtPayload(10L, "MEMBER", "00000000-0000-0000-0000-000000000001",
-			Instant.now().plusSeconds(1800));
-
-		when(jwtTokenProvider.parseAccessToken("member-token")).thenReturn(payload);
-
-		return payload;
 	}
 }

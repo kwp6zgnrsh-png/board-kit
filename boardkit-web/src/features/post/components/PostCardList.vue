@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
+import {useRoute} from 'vue-router'
 import CommunityIcon from '@/components/ui/CommunityIcon.vue'
-import type { PostSummaryResponse } from '@/features/post/types/post'
+import type {PostSummaryResponse} from '@/features/post/types/post'
 import PostThumbnail from '@/features/post/components/PostThumbnail.vue'
 
 defineProps<{
@@ -21,7 +21,7 @@ function formatDate(value: string): string {
       v-if="posts.length === 0"
       class="rounded-md border border-slate-200 px-4 py-20 text-center text-sm leading-6 text-slate-500"
   >
-    아직 등록된 게시글이 없습니다.<br />
+    아직 등록된 게시글이 없습니다.<br/>
     첫 번째 이야기를 시작해 보세요.
   </p>
 
@@ -38,13 +38,13 @@ function formatDate(value: string): string {
     >
       <div class="aspect-square overflow-hidden border-b border-slate-100 bg-slate-50">
         <PostThumbnail v-if="!post.secret &&post.representativeFileId !== null && post.thumbnailAvailable"
-            :board-slug="boardSlug"
-            :post-id="post.id"
-            :file-id="post.representativeFileId"
-            class="size-full"
+                       :board-slug="boardSlug"
+                       :post-id="post.id"
+                       :file-id="post.representativeFileId"
+                       class="size-full"
         />
         <div v-else class="grid size-full place-items-center" aria-hidden="true">
-          <CommunityIcon name="image" class="size-10 text-slate-300" />
+          <CommunityIcon name="image" class="size-10 text-slate-300"/>
         </div>
       </div>
 
@@ -87,9 +87,10 @@ function formatDate(value: string): string {
           </time>
         </div>
 
-        <div class="flex items-center gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500">
           <span>조회 {{ post.viewCount.toLocaleString() }}</span>
           <span>댓글 {{ post.commentCount.toLocaleString() }}</span>
+          <span>좋아요 {{ post.likeCount.toLocaleString() }}</span>
         </div>
       </div>
     </RouterLink>
