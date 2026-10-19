@@ -11,13 +11,14 @@ import io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy;
 import io.github.kwp6zgnrsh.boardkitapi.board.policy.BoardReadAccess;
+import io.github.kwp6zgnrsh.boardkitapi.common.security.ContentBlindAccess;
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberSanctionedException;
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberUnavailableException;
 import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostLikeMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper;
-import io.github.kwp6zgnrsh.boardkitapi.post.model.PostDetail;
+import io.github.kwp6zgnrsh.boardkitapi.post.model.PostCommentTarget;
 import io.github.kwp6zgnrsh.boardkitapi.post.policy.PostSecretAccess;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -77,8 +78,10 @@ public class PostLikeService {
 			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "좋아요를 사용할 수 없는 게시판입니다.");
 		}
 
-		PostDetail post = postMapper.selectActivePostDetail(board.getId(), postId)
+		PostCommentTarget post = postMapper.selectActiveCommentTargetForShare(board.getId(), postId)
 			.orElseThrow(PostNotFoundException::new);
+
+		ContentBlindAccess.validateWrite(post.blindedAt());
 
 		postSecretAccess.validate(post.secret(), post.secretPasswordHash(), post.authorId(), memberId, adminAccess,
 			secretPassword);

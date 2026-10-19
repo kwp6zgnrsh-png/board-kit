@@ -89,6 +89,42 @@ const router = createRouter({
                 requiresAuth: true,
             },
         },
+        {
+            path: '/admin/post-replies',
+            name: 'admin-post-replies',
+            component: () => import('@/views/AdminPostReplyListView.vue'),
+            meta: {
+                requiresAuth: true,
+                requiredRole: 'ADMIN',
+            },
+        },
+        {
+            path: '/admin/reports',
+            name: 'admin-reports',
+            component: () => import('@/views/AdminReportListView.vue'),
+            meta: {
+                requiresAuth: true,
+                requiredRole: 'ADMIN',
+            },
+        },
+        {
+            path: '/admin/reports/:reportId',
+            name: 'admin-report-detail',
+            component: () => import('@/views/AdminReportDetailView.vue'),
+            meta: {
+                requiresAuth: true,
+                requiredRole: 'ADMIN',
+            },
+        },
+        {
+            path: '/admin/blinded',
+            name: 'admin-blinded',
+            component: () => import('@/views/AdminBlindListView.vue'),
+            meta: {
+                requiresAuth: true,
+                requiredRole: 'ADMIN',
+            },
+        },
     ],
 })
 

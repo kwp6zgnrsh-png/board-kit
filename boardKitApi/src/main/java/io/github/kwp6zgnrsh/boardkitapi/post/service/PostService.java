@@ -20,6 +20,7 @@ import io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy;
 import io.github.kwp6zgnrsh.boardkitapi.board.policy.BoardReadAccess;
+import io.github.kwp6zgnrsh.boardkitapi.common.security.ContentBlindAccess;
 import io.github.kwp6zgnrsh.boardkitapi.common.security.PasswordLimits;
 import io.github.kwp6zgnrsh.boardkitapi.file.dto.response.PostFileResponse;
 import io.github.kwp6zgnrsh.boardkitapi.file.exception.PostFileNotFoundException;
@@ -160,35 +161,29 @@ public class PostService {
 
 	@Transactional(readOnly = true)
 	public PostPageResponse getPosts(@NotBlank String boardSlug, @Min(1) int page, @Min(1) @Max(100) int size,
-		@NotNull @Valid PostListRequest request, boolean memberAccess, boolean adminAccess) {
+		@NotNull @Valid PostListRequest request, Long memberId, boolean memberAccess, boolean adminAccess) {
 
-		Board board = boardMapper.selectActiveBoardBySlug(boardSlug).orElseThrow(BoardNotFoundException::new);
+		Board board = boardMapper.selectReadableBoardBySlug(boardSlug, adminAccess)
+			.orElseThrow(BoardNotFoundException::new);
 
 		BoardPolicy policy = boardMapper.selectPolicyByBoardId(board.getId())
 			.orElseThrow(() -> new IllegalStateException("게시판 정책을 찾을 수 없습니다. boardId=" + board.getId()));
 
 		BoardReadAccess.validate(policy.getReadPermission(), memberAccess, adminAccess);
-
 		validateCategoryFilter(board.getId(), policy, request.categoryId());
 
 		String keyword = escapeLikeKeyword(request.keyword());
-
-		long totalElements = postMapper.countPostSummaries(board.getId(), keyword, request.categoryId());
-
+		long totalElements = postMapper.countPostSummaries(board.getId(), keyword, request.categoryId(), memberId,
+			adminAccess);
 		long offset = (long)(page - 1) * size;
 
-		List<PostSummaryResponse> posts;
+		List<PostSummaryResponse> posts = totalElements == 0 || offset >= totalElements ? List.of() :
+			postMapper.selectPostSummaries(board.getId(), keyword, request.categoryId(), request.sort(), size, offset,
+				memberId, adminAccess);
 
-		if (totalElements == 0 || offset >= totalElements) {
-			posts = List.of();
-		} else {
-			posts = postMapper.selectPostSummaries(board.getId(), keyword, request.categoryId(), request.sort(), size,
-				offset);
-		}
+		long totalPages = totalElements / size + (totalElements % size == 0 ? 0 : 1);
 
-		long calculatedTotalPages = totalElements / size + (totalElements % size == 0 ? 0 : 1);
-
-		return new PostPageResponse(posts, page, size, totalElements, Math.toIntExact(calculatedTotalPages));
+		return new PostPageResponse(posts, page, size, totalElements, Math.toIntExact(totalPages));
 	}
 
 	@Transactional
@@ -229,6 +224,7 @@ public class PostService {
 			throw new PostEditDeniedException();
 		}
 
+		ContentBlindAccess.validateWrite(currentPost.blindedAt());
 		validateVersion(currentPost.version(), request.version());
 		validateCategory(board.getId(), policy, request.categoryId());
 		validateCommentsLock(policy, request.commentsLocked());
@@ -343,7 +339,9 @@ public class PostService {
 	private PostDetail requireReadablePost(String boardSlug, Long postId, Long memberId, boolean memberAccess,
 		boolean adminAccess, String secretPassword) {
 
-		Board board = boardMapper.selectActiveBoardBySlug(boardSlug).orElseThrow(BoardNotFoundException::new);
+		Board board = boardMapper.selectReadableBoardBySlug(boardSlug, adminAccess)
+			.orElseThrow(BoardNotFoundException::new);
+
 		BoardPolicy policy = boardMapper.selectPolicyByBoardId(board.getId())
 			.orElseThrow(() -> new IllegalStateException("게시판 정책을 찾을 수 없습니다. boardId=" + board.getId()));
 
@@ -351,6 +349,8 @@ public class PostService {
 
 		PostDetail post = postMapper.selectActivePostDetail(board.getId(), postId)
 			.orElseThrow(PostNotFoundException::new);
+
+		ContentBlindAccess.validateRead(post.blindedAt(), post.authorId(), memberId, adminAccess);
 
 		postSecretAccess.validate(post.secret(), post.secretPasswordHash(), post.authorId(), memberId, adminAccess,
 			secretPassword);
@@ -570,7 +570,7 @@ public class PostService {
 		Map<Integer, Integer> newBodyImageOrder = validateBodyImages(document, newFiles, retainedFiles);
 
 		Set<Long> existingBodyImageIds = new HashSet<>();
-		for (var image : document.images()) {
+		for (ImageReference image : document.images()) {
 			if (image.fileId() != null) {
 				existingBodyImageIds.add(image.fileId());
 			}
@@ -610,7 +610,7 @@ public class PostService {
 			}
 
 			for (int order = 0; order < document.images().size(); order++) {
-				var image = document.images().get(order);
+				ImageReference image = document.images().get(order);
 
 				if (image.fileId() != null) {
 					postFileMapper.updateFileMetadata(postId, image.fileId(), "BODY_IMAGE", order);

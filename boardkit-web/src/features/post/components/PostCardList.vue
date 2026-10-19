@@ -3,6 +3,7 @@ import {useRoute} from 'vue-router'
 import CommunityIcon from '@/components/ui/CommunityIcon.vue'
 import type {PostSummaryResponse} from '@/features/post/types/post'
 import PostThumbnail from '@/features/post/components/PostThumbnail.vue'
+import PostSummaryLink from '@/features/post/components/PostSummaryLink.vue'
 
 defineProps<{
   boardSlug: string
@@ -26,14 +27,12 @@ function formatDate(value: string): string {
   </p>
 
   <div v-else class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-    <RouterLink
+    <PostSummaryLink
         v-for="post in posts"
         :key="post.id"
-        :to="{
-        name: 'post-detail',
-        params: { boardSlug, postId: post.id },
-        query: route.query,
-      }"
+        :board-slug="boardSlug"
+        :post="post"
+        :query="route.query"
         class="group overflow-hidden rounded-lg border border-slate-200 bg-white transition-colors hover:border-blue-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
     >
       <div class="aspect-square overflow-hidden border-b border-slate-100 bg-slate-50">
@@ -50,9 +49,15 @@ function formatDate(value: string): string {
 
       <div class="grid gap-3 p-4">
         <div
-            v-if="post.pinned || post.categoryName"
+            v-if="post.pinned || post.categoryName || post.blinded"
             class="flex flex-wrap items-center gap-2 text-xs"
         >
+          <span
+              v-if="post.blinded"
+              class="rounded bg-amber-50 px-2 py-0.5 font-medium text-amber-700"
+          >
+            블라인드
+          </span>
           <span
               v-if="post.pinned"
               class="rounded bg-blue-50 px-2 py-0.5 font-medium text-blue-600"
@@ -93,6 +98,24 @@ function formatDate(value: string): string {
           <span>좋아요 {{ post.likeCount.toLocaleString() }}</span>
         </div>
       </div>
-    </RouterLink>
+      <template #blocked>
+        <div class="grid aspect-square place-items-center border-b border-slate-100 bg-slate-50">
+          <CommunityIcon name="lock" class="size-8 text-slate-300" />
+        </div>
+
+        <div class="grid gap-3 p-4">
+          <h2 class="text-sm font-medium leading-6 text-slate-500">
+            블라인드된 게시글입니다.
+          </h2>
+
+          <div class="flex items-center justify-between gap-3 text-xs text-slate-400">
+            <span class="truncate">{{ post.authorDisplayName }}</span>
+            <time :datetime="post.createdAt" class="shrink-0">
+              {{ formatDate(post.createdAt) }}
+            </time>
+          </div>
+        </div>
+      </template>
+    </PostSummaryLink>
   </div>
 </template>

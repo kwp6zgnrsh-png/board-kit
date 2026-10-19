@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CommunityIcon from '@/components/ui/CommunityIcon.vue'
 import type { HomeBoardPreview } from '@/features/home/types/home'
+import PostSummaryLink from '@/features/post/components/PostSummaryLink.vue'
 
 defineProps<{
   preview: HomeBoardPreview
@@ -30,13 +31,33 @@ function formatDate(value: string): string {
     </header>
     <ol v-if="preview.postPage.posts.length" class="divide-y divide-slate-100">
       <li v-for="post in preview.postPage.posts" :key="post.id">
-        <RouterLink :to="{ name: 'post-detail', params: { boardSlug: preview.board.slug, postId: post.id } }"
-          class="flex min-w-0 items-center gap-2 px-4 py-2.5 text-sm text-slate-700 transition-colors hover:bg-blue-50/50 hover:text-blue-600">
+        <PostSummaryLink
+            :board-slug="preview.board.slug"
+            :post="post"
+            class="flex min-w-0 items-center gap-2 px-4 py-2.5 text-sm text-slate-700 transition-colors hover:bg-blue-50/50 hover:text-blue-600"
+        >
           <CommunityIcon v-if="post.secret" name="lock" class="size-3.5 text-slate-400" aria-label="비밀글" role="img" :aria-hidden="false" />
           <span class="truncate">{{ post.title }}</span>
+          <span
+              v-if="post.blinded"
+              class="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700"
+          >
+            블라인드
+          </span>
           <span v-if="post.commentCount" class="shrink-0 text-xs text-red-500">[{{ post.commentCount }}]</span>
           <time :datetime="post.createdAt" class="ml-auto shrink-0 text-xs tabular-nums text-slate-400">{{ formatDate(post.createdAt) }}</time>
-        </RouterLink>
+          <template #blocked>
+          <span class="truncate text-slate-500">
+            블라인드된 게시글입니다.
+          </span>
+            <time
+                :datetime="post.createdAt"
+                class="ml-auto shrink-0 text-xs tabular-nums text-slate-400"
+            >
+              {{ formatDate(post.createdAt) }}
+            </time>
+          </template>
+        </PostSummaryLink>
       </li>
     </ol>
     <p v-else class="px-4 py-12 text-center text-sm text-slate-400">첫 번째 글을 기다리고 있어요.</p>

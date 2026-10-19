@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.github.kwp6zgnrsh.boardkitapi.report.mapper.ReportMapper">
+
+    <insert id="insertReport" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO report (
+            reporter_id,
+            post_id,
+            comment_id,
+            reason,
+            detail
+        )
+        VALUES (
+            #{reporterId},
+            #{postId,jdbcType=BIGINT},
+            #{commentId,jdbcType=BIGINT},
+            #{reason},
+            #{detail,jdbcType=VARCHAR}
+        )
+    </insert>
+
+    <select id="selectActivePostForShare"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.post.model.PostCommentTarget"
+            useCache="false"
+            flushCache="true">
+        SELECT
+            author_id AS authorId,
+            is_secret AS secret,
+            secret_password_hash AS secretPasswordHash,
+            comments_locked AS commentsLocked,
+            blinded_at AS blindedAt
+        FROM post
+        WHERE id = #{postId}
+            AND board_id = #{boardId}
+            AND deleted_at IS NULL
+        FOR SHARE
+    </select>
+
+    <select id="selectActiveCommentAuthorForShare"
+            resultType="long"
+            useCache="false"
+            flushCache="true">
+        SELECT author_id
+        FROM comment
+        WHERE id = #{commentId}
+            AND post_id = #{postId}
+            AND deleted_at IS NULL
+            AND blinded_at IS NULL
+        FOR SHARE
+    </select>
+
+    <sql id="adminReportFrom">
+        FROM report r
+            LEFT JOIN comment c ON c.id = r.comment_id
+            INNER JOIN post p ON p.id = COALESCE(r.post_id, c.post_id)
+            INNER JOIN board b ON b.id = p.board_id
+            INNER JOIN member reporter ON reporter.id = r.reporter_id
+    </sql>
+
+    <sql id="adminReportFilter">
+        <if test="filter.name() != 'ALL'">
+            r.status = #{filter}
+        </if>
+    </sql>
+
+    <select id="countAdminReports" resultType="long">
+        SELECT COUNT(*)
+        FROM report r
+        <where>
+            <include refid="adminReportFilter"/>
+        </where>
+    </select>
+
+    <select id="selectAdminReports"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.report.dto.response.AdminReportSummaryResponse">
+        SELECT
+            r.id,
+            p.id AS postId,
+            r.comment_id AS commentId,
+            b.slug AS boardSlug,
+            b.name AS boardName,
+            b.status AS boardStatus,
+            p.title AS postTitle,
+            reporter.display_name AS reporterDisplayName,
+            r.reason,
+            r.status,
+            p.deleted_at IS NOT NULL AS postDeleted,
+            c.deleted_at IS NOT NULL AS commentDeleted,
+            r.created_at AS createdAt
+        <include refid="adminReportFrom"/>
+        <where>
+            <include refid="adminReportFilter"/>
+        </where>
+        ORDER BY r.created_at DESC, r.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectAdminReport"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.report.dto.response.AdminReportDetailResponse">
+        SELECT
+            r.id,
+            r.reporter_id AS reporterId,
+            reporter.display_name AS reporterDisplayName,
+            p.id AS postId,
+            r.comment_id AS commentId,
+            b.slug AS boardSlug,
+            b.name AS boardName,
+            b.status AS boardStatus,
+            p.title AS postTitle,
+            author.id AS authorId,
+            author.display_name AS authorDisplayName,
+            r.reason,
+            r.detail,
+            r.status,
+        CASE
+            WHEN r.comment_id IS NULL THEN p.content
+            ELSE c.content
+        END AS content,
+        CASE
+            WHEN r.comment_id IS NULL THEN p.content_document
+            ELSE NULL
+        END AS contentDocument,
+        CASE
+            WHEN r.comment_id IS NULL THEN p.created_at
+            ELSE c.created_at
+        END AS contentCreatedAt,
+        CASE
+            WHEN r.comment_id IS NULL THEN p.updated_at
+            ELSE c.updated_at
+        END AS contentUpdatedAt,
+        p.deleted_at IS NOT NULL AS postDeleted,
+        c.deleted_at IS NOT NULL AS commentDeleted,
+        r.reviewed_by AS reviewedBy,
+        reviewer.display_name AS reviewerDisplayName,
+        r.review_note AS reviewNote,
+        r.created_at AS createdAt,
+        r.reviewed_at AS reviewedAt,
+        (p.blinded_at IS NOT NULL) AS postBlinded,
+        (c.blinded_at IS NOT NULL) AS commentBlinded,
+        CASE
+            WHEN r.comment_id IS NULL THEN p.version
+            ELSE c.version
+        END AS targetVersion
+        <include refid="adminReportFrom"/>
+            INNER JOIN member author ON author.id =
+                CASE
+                    WHEN r.comment_id IS NULL THEN p.author_id
+                    ELSE c.author_id
+                END
+                    LEFT JOIN member reviewer ON reviewer.id = r.reviewed_by
+        WHERE r.id = #{reportId}
+    </select>
+
+    <select id="existsReport" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM report
+            WHERE id = #{reportId}
+        )
+    </select>
+
+    <update id="reviewReport">
+        UPDATE report
+        SET
+            status = #{status},
+            review_note = #{reviewNote},
+            reviewed_by = #{adminId},
+            reviewed_at = CURRENT_TIMESTAMP(6)
+        WHERE id = #{reportId}
+            AND status = 'PENDING'
+            AND #{status} IN ('ACCEPTED', 'REJECTED')
+    </update>
+
+    <select id="countAcceptedPostReports" resultType="long">
+        SELECT COUNT(*)
+        FROM report
+        WHERE post_id = #{postId}
+            AND status = 'ACCEPTED'
+    </select>
+
+    <select id="countAcceptedCommentReports" resultType="long">
+        SELECT COUNT(*)
+        FROM report
+        WHERE comment_id = #{commentId}
+            AND status = 'ACCEPTED'
+    </select>
+
+</mapper>

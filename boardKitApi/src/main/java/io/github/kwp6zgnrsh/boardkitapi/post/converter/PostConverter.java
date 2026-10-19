@@ -13,6 +13,7 @@ import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostCreateResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostDetailResponse;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.Post;
 import io.github.kwp6zgnrsh.boardkitapi.post.model.PostDetail;
+import io.github.kwp6zgnrsh.boardkitapi.post.model.PostReply;
 import io.github.kwp6zgnrsh.boardkitapi.post.service.PostDocumentValidator.ValidatedDocument;
 
 @Mapper(componentModel = "spring")
@@ -40,6 +41,7 @@ public interface PostConverter {
 	@Mapping(target = "files", source = "files")
 	@Mapping(target = "likeCount", source = "likeCount")
 	@Mapping(target = "likedByMe", source = "likedByMe")
+	@Mapping(target = "blinded", expression = "java(postDetail.blindedAt() != null)")
 	PostDetailResponse toDetailResponse(PostDetail postDetail, long increasedViewCount, List<PostFileResponse> files,
 		long likeCount, boolean likedByMe);
 
@@ -57,4 +59,11 @@ public interface PostConverter {
 	@Mapping(target = "version", source = "request.version")
 	Post toUpdatedPost(PostUpdateRequest request, Long postId, Long boardId, Long authorId, String secretPasswordHash,
 		ValidatedDocument document);
+
+	@BeanMapping(ignoreByDefault = true)
+	@Mapping(target = "postId", source = "postId")
+	@Mapping(target = "authorId", source = "authorId")
+	@Mapping(target = "content", source = "document.text")
+	@Mapping(target = "contentDocument", source = "document.document")
+	PostReply toPostReply(Long postId, Long authorId, ValidatedDocument document);
 }

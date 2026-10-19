@@ -22,6 +22,7 @@ import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardAccessDeniedExcepti
 import io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy;
+import io.github.kwp6zgnrsh.boardkitapi.common.exception.BlindedContentAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberSanctionedException;
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberUnavailableException;
 import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
@@ -29,7 +30,7 @@ import io.github.kwp6zgnrsh.boardkitapi.post.exception.PostNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.SecretPostAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostLikeMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper;
-import io.github.kwp6zgnrsh.boardkitapi.post.model.PostDetail;
+import io.github.kwp6zgnrsh.boardkitapi.post.model.PostCommentTarget;
 import io.github.kwp6zgnrsh.boardkitapi.post.policy.PostSecretAccess;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,10 +51,8 @@ class PostLikeServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		postLikeService = new PostLikeService(
-			boardMapper, postMapper, postLikeMapper, memberMapper,
-			new PostSecretAccess(passwordEncoder)
-		);
+		postLikeService = new PostLikeService(boardMapper, postMapper, postLikeMapper, memberMapper,
+			new PostSecretAccess(passwordEncoder));
 	}
 
 	@ParameterizedTest
@@ -129,8 +128,7 @@ class PostLikeServiceTest {
 	@DisplayName("대상 게시글이 없으면 좋아요 등록과 취소를 모두 거절한다")
 	void rejectLikeAndUnlikeWhenPostIsMissing() {
 		prepareBoard("PUBLIC", true);
-		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.empty());
-
+		when(postMapper.selectActiveCommentTargetForShare(1L, 100L)).thenReturn(Optional.empty());
 		assertThrows(PostNotFoundException.class, () -> postLikeService.likePost("free", 100L, 10L, false, null));
 		assertThrows(PostNotFoundException.class, () -> postLikeService.unlikePost("free", 100L, 10L, false, null));
 
@@ -197,6 +195,22 @@ class PostLikeServiceTest {
 		verifyNoInteractions(passwordEncoder, postLikeMapper);
 	}
 
+	@ParameterizedTest
+	@ValueSource(booleans = {false, true})
+	@DisplayName("작성자와 관리자도 블라인드 게시글의 좋아요를 추가하거나 취소할 수 없다")
+	void rejectLikeAndUnlikeOnBlindedPost(boolean adminAccess) {
+		prepareBoard("PUBLIC", true);
+		when(postMapper.selectActiveCommentTargetForShare(1L, 100L)).thenReturn(
+			Optional.of(new PostCommentTarget(10L, true, "hash", false, LocalDateTime.now())));
+
+		assertThrows(BlindedContentAccessDeniedException.class,
+			() -> postLikeService.likePost("free", 100L, 10L, adminAccess, null));
+		assertThrows(BlindedContentAccessDeniedException.class,
+			() -> postLikeService.unlikePost("free", 100L, 10L, adminAccess, null));
+
+		verifyNoInteractions(postLikeMapper, passwordEncoder);
+	}
+
 	private void prepareBoard(String readPermission, boolean likesEnabled) {
 		when(memberMapper.existsActiveMemberById(10L)).thenReturn(true);
 
@@ -213,11 +227,7 @@ class PostLikeServiceTest {
 	}
 
 	private void preparePost(Long authorId, boolean secret, String passwordHash) {
-		LocalDateTime createdAt = LocalDateTime.of(2026, 10, 15, 12, 0);
-
-		PostDetail post = new PostDetail(100L, 1L, "제목", "본문", authorId, "작성자", null, null, secret, passwordHash, false,
-			false, 0L, 0, createdAt, createdAt, null, null);
-
-		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(post));
+		when(postMapper.selectActiveCommentTargetForShare(1L, 100L)).thenReturn(
+			Optional.of(new PostCommentTarget(authorId, secret, passwordHash, false, null)));
 	}
 }

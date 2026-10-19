@@ -6,6 +6,7 @@ import LikeButton from '@/components/ui/LikeButton.vue'
 import {ApiError} from '@/api/http'
 import CommentEditForm from '@/features/comment/components/CommentEditForm.vue'
 import CommentCreateForm from '@/features/comment/components/CommentCreateForm.vue'
+import ReportAction from '@/features/report/components/ReportAction.vue'
 import {getAuthSession} from '@/features/auth/services/authSession'
 import type {WritePermission} from '@/features/board/types/board'
 import type {CommentItemResponse} from '@/features/comment/types/comment'
@@ -19,6 +20,8 @@ const props = defineProps<{
   locked: boolean
   secretPassword?: string
   commentLikesEnabled: boolean
+  postBlinded: boolean
+  boardArchived: boolean
 }>()
 
 const comments = ref<CommentItemResponse[]>([])
@@ -40,19 +43,32 @@ const actionErrorMessage = ref('')
 
 const session = computed(() => getAuthSession())
 
+const canCreateComment = computed(() => {
+  const member = session.value
+
+  if (
+      !member ||
+      props.boardArchived ||
+      props.postBlinded ||
+      !props.commentsEnabled ||
+      props.locked
+  ) {
+    return false
+  }
+
+  return props.commentPermission === 'MEMBER' || member.role === 'ADMIN'
+})
+
 const canCreateReply = computed(
-    () =>
-        canCreateComment.value &&
-        props.commentRepliesEnabled,
+    () => canCreateComment.value && props.commentRepliesEnabled,
 )
 
-function canOpenReplyForm(
-    comment: CommentItemResponse,
-): boolean {
+function canOpenReplyForm(comment: CommentItemResponse): boolean {
   return (
       canCreateReply.value &&
       comment.parentId === null &&
-      !comment.deleted
+      !comment.deleted &&
+      !comment.blinded
   )
 }
 
@@ -60,40 +76,39 @@ function canEditComment(comment: CommentItemResponse): boolean {
   const member = session.value
 
   return (
+      canCreateComment.value &&
       !comment.deleted &&
+      !comment.blinded &&
       member !== null &&
-      member.memberId === comment.authorId &&
-      canCreateComment.value
+      member.memberId === comment.authorId
   )
 }
 
 function canDeleteComment(comment: CommentItemResponse): boolean {
   const member = session.value
 
+  if (!member || comment.deleted || props.boardArchived) return false
+  if (member.memberId === comment.authorId) return true
+
   return (
-      !comment.deleted &&
-      member !== null &&
-      (member.memberId === comment.authorId || member.role === 'ADMIN')
+      member.role === 'ADMIN' &&
+      !props.postBlinded &&
+      !comment.blinded
   )
 }
 
 function canLikeComment(comment: CommentItemResponse): boolean {
   return (
-      !comment.deleted
-      && session.value !== null
-      && props.commentLikesEnabled
-      && !loading.value
-      && deletingCommentId.value !== comment.id
+      !props.boardArchived &&
+      !props.postBlinded &&
+      !comment.deleted &&
+      !comment.blinded &&
+      session.value !== null &&
+      props.commentLikesEnabled &&
+      !loading.value &&
+      deletingCommentId.value !== comment.id
   )
 }
-
-const canCreateComment = computed(() => {
-  const member = session.value
-
-  if (!member || !props.commentsEnabled || props.locked) return false
-
-  return props.commentPermission === 'MEMBER' || member.role === 'ADMIN'
-})
 
 function startCommentEdit(
     comment: CommentItemResponse,
@@ -364,7 +379,10 @@ watch(
       () => props.boardSlug,
       () => props.postId,
       () => props.secretPassword,
+      () => props.boardArchived,
+      () => props.postBlinded,
       () => session.value?.memberId ?? null,
+      () => session.value?.role ?? null,
     ],
     () => {
       comments.value = []
@@ -379,7 +397,7 @@ watch(
 
       void loadComments()
     },
-    {immediate: true},
+    {immediate: true, flush: 'sync'},
 )
 
 onBeforeUnmount(() => {
@@ -403,7 +421,20 @@ onBeforeUnmount(() => {
     </header>
 
     <p
-        v-if="!commentsEnabled"
+        v-if="boardArchived"
+        class="m-0 border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+    >
+      보관된 게시판의 댓글은 조회만 가능합니다.
+    </p>
+
+    <p
+        v-else-if="postBlinded"
+        class="m-0 border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+    >
+      블라인드된 게시글에서는 댓글을 작성하거나 수정할 수 없습니다.
+    </p>
+    <p
+        v-else-if="!commentsEnabled"
         class="m-0 border-b border-slate-200 bg-amber-50 px-4 py-3 text-sm font-medium text-slate-700"
     >
       댓글 작성이 비활성화되어 있습니다. 기존 댓글은 계속 조회할 수 있습니다.
@@ -467,7 +498,7 @@ onBeforeUnmount(() => {
           : 'border-l-2 border-slate-200 bg-slate-50/60 pl-8'"
       >
         <div
-            v-if="editingCommentId === comment.id"
+            v-if="editingCommentId === comment.id && canEditComment(comment)"
             @click.stop
         >
           <CommentEditForm
@@ -497,7 +528,12 @@ onBeforeUnmount(() => {
               <strong class="text-sm font-semibold text-slate-900">
                 {{ comment.deleted ? '삭제된 댓글' : comment.authorDisplayName }}
               </strong>
-
+              <span
+                  v-if="!comment.deleted && comment.blinded"
+                  class="rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+              >
+                블라인드
+              </span>
               <time
                   :datetime="comment.createdAt"
                   class="text-xs font-medium text-slate-500"
@@ -511,6 +547,13 @@ onBeforeUnmount(() => {
                 class="m-0 text-sm font-medium text-slate-500"
             >
               삭제된 댓글입니다.
+            </p>
+
+            <p
+                v-else-if="comment.blinded && comment.content === null"
+                class="m-0 text-sm text-slate-500"
+            >
+              신고로 블라인드된 댓글입니다.
             </p>
 
             <p
@@ -543,9 +586,19 @@ onBeforeUnmount(() => {
             />
 
             <div
-                v-if="canEditComment(comment) || canDeleteComment(comment)"
-                class="ml-auto flex gap-2"
+                v-if="session"
+                class="ml-auto flex flex-wrap items-start gap-2"
             >
+              <ReportAction
+                  v-if="!boardArchived && !postBlinded && !comment.blinded"
+                  :board-slug="boardSlug"
+                  :post-id="postId"
+                  :comment-id="comment.id"
+                  :author-id="comment.authorId"
+                  :secret-password="secretPassword"
+                  :disabled="loading || deletingCommentId === comment.id"
+              />
+
               <button
                   v-if="canEditComment(comment)"
                   type="button"
@@ -570,7 +623,7 @@ onBeforeUnmount(() => {
         </template>
 
         <div
-            v-if="selectedReplyParentId === comment.id"
+            v-if="selectedReplyParentId === comment.id && canOpenReplyForm(comment)"
             @click.stop
         >
           <CommentCreateForm
@@ -620,14 +673,14 @@ onBeforeUnmount(() => {
     />
 
     <p
-        v-else-if="commentsEnabled && !locked && session === null"
+        v-else-if="!boardArchived && !postBlinded && commentsEnabled && !locked && session === null"
         class="m-0 border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600"
     >
       로그인하면 댓글을 작성할 수 있습니다.
     </p>
 
     <p
-        v-else-if="commentsEnabled && !locked"
+        v-else-if="!boardArchived && !postBlinded && commentsEnabled && !locked"
         class="m-0 border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600"
     >
       댓글 작성 권한이 없습니다.

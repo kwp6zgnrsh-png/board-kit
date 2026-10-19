@@ -44,7 +44,7 @@ export function normalizeWebLink(value: string): string | null {
     }
 }
 
-export function createPostEditorExtensions(): Extensions {
+export function createTextEditorExtensions(): Extensions {
     return [
         StarterKit.configure({
             heading: {
@@ -61,6 +61,12 @@ export function createPostEditorExtensions(): Extensions {
                     context.defaultValidate(href) && normalizeWebLink(href) !== null,
             },
         }),
+    ]
+}
+
+export function createPostEditorExtensions(): Extensions {
+    return [
+        ...createTextEditorExtensions(),
         PostImage,
     ]
 }

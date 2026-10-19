@@ -13,5 +13,6 @@ public record CommentItemResponse(
 	LocalDateTime createdAt,
 	LocalDateTime updatedAt,
 	long likeCount,
-	boolean likedByMe
+	boolean likedByMe,
+	boolean blinded
 ) {}

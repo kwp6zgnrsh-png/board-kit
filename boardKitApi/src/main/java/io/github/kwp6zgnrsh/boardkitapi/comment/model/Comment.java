@@ -22,4 +22,6 @@ public class Comment {
 	private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
 	private LocalDateTime deletedAt;
+	private LocalDateTime blindedAt;
+	private Long blindReportBaseCount;
 }

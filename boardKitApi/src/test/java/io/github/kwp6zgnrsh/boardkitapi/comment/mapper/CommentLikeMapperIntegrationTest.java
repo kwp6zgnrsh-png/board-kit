@@ -146,35 +146,27 @@ class CommentLikeMapperIntegrationTest {
 	@Test
 	@DisplayName("댓글과 대댓글의 좋아요 수 및 회원별 선택 상태를 구분한다")
 	void readCommentLikesForCurrentMember() {
-		List<CommentItemResponse> initial =
-			commentMapper.selectActiveComments(postId, 50, 0L, memberId);
+		List<CommentItemResponse> initial = commentMapper.selectActiveComments(postId, 50, 0L, memberId, false);
 
-		assertTrue(initial.stream()
-			.allMatch(comment -> comment.likeCount() == 0 && !comment.likedByMe()));
+		assertTrue(initial.stream().allMatch(comment -> comment.likeCount() == 0 && !comment.likedByMe()));
 
 		commentLikeMapper.insertCommentLike(commentId, memberId);
 		commentLikeMapper.insertCommentLike(commentId, otherMemberId);
 		commentLikeMapper.insertCommentLike(replyId, otherMemberId);
 
-		List<CommentItemResponse> comments =
-			commentMapper.selectActiveComments(postId, 50, 0L, memberId);
+		List<CommentItemResponse> comments = commentMapper.selectActiveComments(postId, 50, 0L, memberId, false);
 
 		assertEquals(2, comments.size());
 
 		CommentItemResponse parent = comments.getFirst();
 		CommentItemResponse reply = comments.get(1);
 
-		assertAll(
-			() -> assertEquals(commentId, parent.id()),
-			() -> assertEquals(2L, parent.likeCount()),
-			() -> assertTrue(parent.likedByMe()),
-			() -> assertEquals(replyId, reply.id()),
-			() -> assertEquals(1L, reply.likeCount()),
-			() -> assertFalse(reply.likedByMe())
-		);
+		assertAll(() -> assertEquals(commentId, parent.id()), () -> assertEquals(2L, parent.likeCount()),
+			() -> assertTrue(parent.likedByMe()), () -> assertEquals(replyId, reply.id()),
+			() -> assertEquals(1L, reply.likeCount()), () -> assertFalse(reply.likedByMe()));
 
-		List<CommentItemResponse> otherMembersComments =
-			commentMapper.selectActiveComments(postId, 50, 0L, otherMemberId);
+		List<CommentItemResponse> otherMembersComments = commentMapper.selectActiveComments(postId, 50, 0L,
+			otherMemberId, false);
 
 		assertTrue(otherMembersComments.get(1).likedByMe());
 	}
@@ -185,12 +177,10 @@ class CommentLikeMapperIntegrationTest {
 		commentLikeMapper.insertCommentLike(commentId, memberId);
 		commentLikeMapper.insertCommentLike(replyId, otherMemberId);
 
-		List<CommentItemResponse> comments =
-			commentMapper.selectActiveComments(postId, 50, 0L, null);
+		List<CommentItemResponse> comments = commentMapper.selectActiveComments(postId, 50, 0L, null, false);
 
 		assertEquals(2, comments.size());
-		assertTrue(comments.stream()
-			.allMatch(comment -> comment.likeCount() == 1 && !comment.likedByMe()));
+		assertTrue(comments.stream().allMatch(comment -> comment.likeCount() == 1 && !comment.likedByMe()));
 	}
 
 	@Test
@@ -199,31 +189,20 @@ class CommentLikeMapperIntegrationTest {
 		commentLikeMapper.insertCommentLike(commentId, memberId);
 		commentLikeMapper.insertCommentLike(replyId, memberId);
 
-		jdbcTemplate.update(
-			"UPDATE comment SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?",
-			commentId
-		);
+		jdbcTemplate.update("UPDATE comment SET deleted_at = CURRENT_TIMESTAMP(6) WHERE id = ?", commentId);
 
-		List<CommentItemResponse> comments =
-			commentMapper.selectActiveComments(postId, 50, 0L, memberId);
+		List<CommentItemResponse> comments = commentMapper.selectActiveComments(postId, 50, 0L, memberId, false);
 
 		assertEquals(2, comments.size());
 
 		CommentItemResponse parent = comments.getFirst();
 		CommentItemResponse reply = comments.get(1);
 
-		assertAll(
-			() -> assertEquals(commentId, parent.id()),
-			() -> assertTrue(parent.deleted()),
-			() -> assertNull(parent.content()),
-			() -> assertEquals(0L, parent.likeCount()),
-			() -> assertFalse(parent.likedByMe()),
-			() -> assertEquals(replyId, reply.id()),
-			() -> assertFalse(reply.deleted()),
-			() -> assertEquals(1L, reply.likeCount()),
-			() -> assertTrue(reply.likedByMe()),
-			() -> assertEquals(1L, countLikes(commentId))
-		);
+		assertAll(() -> assertEquals(commentId, parent.id()), () -> assertTrue(parent.deleted()),
+			() -> assertNull(parent.content()), () -> assertEquals(0L, parent.likeCount()),
+			() -> assertFalse(parent.likedByMe()), () -> assertEquals(replyId, reply.id()),
+			() -> assertFalse(reply.deleted()), () -> assertEquals(1L, reply.likeCount()),
+			() -> assertTrue(reply.likedByMe()), () -> assertEquals(1L, countLikes(commentId)));
 	}
 
 	@Test
@@ -231,19 +210,33 @@ class CommentLikeMapperIntegrationTest {
 	void readReplyLikesWhenPageStartsWithReply() {
 		commentLikeMapper.insertCommentLike(replyId, memberId);
 
-		List<CommentItemResponse> comments =
-			commentMapper.selectActiveComments(postId, 1, 1L, memberId);
+		List<CommentItemResponse> comments = commentMapper.selectActiveComments(postId, 1, 1L, memberId, false);
 
 		assertEquals(1, comments.size());
 
 		CommentItemResponse reply = comments.getFirst();
 
-		assertAll(
-			() -> assertEquals(replyId, reply.id()),
-			() -> assertEquals(commentId, reply.parentId()),
-			() -> assertEquals(1L, reply.likeCount()),
-			() -> assertTrue(reply.likedByMe())
-		);
+		assertAll(() -> assertEquals(replyId, reply.id()), () -> assertEquals(commentId, reply.parentId()),
+			() -> assertEquals(1L, reply.likeCount()), () -> assertTrue(reply.likedByMe()));
+	}
+
+	@Test
+	@DisplayName("블라인드 댓글은 좋아요 대상에서 제외하고 기존 기록과 정상 대댓글은 유지한다")
+	void excludeBlindedCommentFromLikeTargets() {
+		Long boardId = jdbcTemplate.queryForObject("SELECT board_id FROM post WHERE id = ?", Long.class, postId);
+		commentLikeMapper.insertCommentLike(commentId, memberId);
+
+		assertEquals(commentId, commentMapper.selectActiveLikeTargetForShare(boardId, postId, commentId).orElseThrow());
+
+		jdbcTemplate.update("UPDATE comment SET blinded_at = CURRENT_TIMESTAMP(6) WHERE id = ?", commentId);
+
+		assertTrue(commentMapper.selectActiveLikeTargetForShare(boardId, postId, commentId).isEmpty());
+		assertEquals(replyId, commentMapper.selectActiveLikeTargetForShare(boardId, postId, replyId).orElseThrow());
+		assertEquals(1L, countLikes(commentId));
+
+		jdbcTemplate.update("UPDATE comment SET blinded_at = NULL WHERE id = ?", commentId);
+
+		assertEquals(commentId, commentMapper.selectActiveLikeTargetForShare(boardId, postId, commentId).orElseThrow());
 	}
 
 	private Long insertMember() {

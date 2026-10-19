@@ -27,6 +27,7 @@
             AND post_id = #{postId}
             AND parent_id IS NULL
             AND deleted_at IS NULL
+            AND blinded_at IS NULL
         FOR UPDATE
     </select>
 
@@ -38,7 +39,11 @@
             c.author_id AS authorId,
             m.display_name AS authorDisplayName,
             CASE
-                WHEN c.deleted_at IS NULL THEN c.content
+                WHEN c.deleted_at IS NOT NULL THEN NULL
+                WHEN c.blinded_at IS NULL
+                    OR #{adminAccess}
+                    OR c.author_id = #{memberId,jdbcType=BIGINT}
+                THEN c.content
                 ELSE NULL
             END AS content,
             (c.deleted_at IS NOT NULL) AS deleted,
@@ -68,7 +73,8 @@
                 <otherwise>
                     FALSE AS likedByMe
                 </otherwise>
-            </choose>
+            </choose>,
+            (c.blinded_at IS NOT NULL) AS blinded
         FROM comment c
             INNER JOIN member m
                 ON m.id = c.author_id
@@ -98,7 +104,7 @@
         LIMIT #{limit} OFFSET #{offset}
     </select>
 
-    <select id="selectActiveLikeTargetForShare" resultType="long">
+    <select id="selectActiveLikeTargetForShare" resultType="long" useCache="false" flushCache="true">
         SELECT c.id
         FROM comment c
             INNER JOIN post p ON p.id = c.post_id
@@ -107,6 +113,8 @@
             AND p.board_id = #{boardId}
             AND c.deleted_at IS NULL
             AND p.deleted_at IS NULL
+            AND c.blinded_at IS NULL
+            AND p.blinded_at IS NULL
         FOR SHARE
     </select>
 
@@ -140,7 +148,9 @@
             c.version,
             c.created_at AS createdAt,
             c.updated_at AS updatedAt,
-            c.deleted_at AS deletedAt
+            c.deleted_at AS deletedAt,
+            c.blinded_at AS blindedAt,
+            c.blind_report_base_count AS blindReportBaseCount
         FROM comment c
             INNER JOIN post p ON p.id = c.post_id
         WHERE c.id = #{commentId}
@@ -164,6 +174,8 @@
             AND c.version = #{version}
             AND c.deleted_at IS NULL
             AND p.deleted_at IS NULL
+            AND p.blinded_at IS NULL
+            AND c.blinded_at IS NULL
     </update>
 
     <update id="softDeleteComment">
@@ -179,5 +191,50 @@
             AND c.version = #{version}
             AND c.deleted_at IS NULL
             AND p.deleted_at IS NULL
+    </update>
+
+    <select id="selectCommentForModerationForUpdate"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.comment.model.Comment"
+            useCache="false"
+            flushCache="true">
+        SELECT
+            id,
+            post_id AS postId,
+            author_id AS authorId,
+            parent_id AS parentId,
+            version,
+            updated_at AS updatedAt,
+            deleted_at AS deletedAt,
+            blinded_at AS blindedAt,
+            blind_report_base_count AS blindReportBaseCount
+        FROM comment
+        WHERE id = #{commentId}
+            AND post_id = #{postId}
+        FOR UPDATE
+    </select>
+
+    <update id="blindComment">
+        UPDATE comment
+        SET blinded_at = CURRENT_TIMESTAMP(6),
+            version = version + 1,
+            updated_at = updated_at
+        WHERE id = #{commentId}
+            AND post_id = #{postId}
+            AND version = #{version}
+            AND deleted_at IS NULL
+            AND blinded_at IS NULL
+    </update>
+
+    <update id="unblindComment">
+        UPDATE comment
+        SET blinded_at = NULL,
+            blind_report_base_count = #{acceptedReportCount},
+            version = version + 1,
+            updated_at = updated_at
+        WHERE id = #{commentId}
+            AND post_id = #{postId}
+            AND version = #{version}
+            AND deleted_at IS NULL
+            AND blinded_at IS NOT NULL
     </update>
 </mapper>

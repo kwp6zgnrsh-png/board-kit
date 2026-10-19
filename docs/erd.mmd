@@ -73,6 +73,8 @@ erDiagram
         datetime(6) created_at
         datetime(6) updated_at
         datetime(6) deleted_at "nullable"
+        datetime(6) blinded_at "nullable"
+        bigint blind_report_base_count
     }
 
     POST_FILE {
@@ -99,6 +101,8 @@ erDiagram
         datetime(6) created_at
         datetime(6) updated_at
         datetime(6) deleted_at "nullable"
+        datetime(6) blinded_at "nullable"
+        bigint blind_report_base_count
     }
 
     POST_LIKE {
@@ -118,6 +122,8 @@ erDiagram
         bigint post_id FK, UK
         bigint author_id FK
         text content
+        json content_document "nullable"
+        int version
         datetime(6) created_at
         datetime(6) updated_at
     }

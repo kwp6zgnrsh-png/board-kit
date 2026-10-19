@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostReplyMapper">
+
+    <insert id="insertPostReply"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO post_reply (
+            post_id,
+            author_id,
+            content,
+            content_document
+        )
+        VALUES (
+            #{postId},
+            #{authorId},
+            #{content},
+            #{contentDocument,jdbcType=VARCHAR}
+        )
+    </insert>
+
+    <select id="selectPostReply"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostReplyResponse">
+        SELECT
+            r.id,
+            r.post_id AS postId,
+            r.author_id AS authorId,
+            m.display_name AS authorDisplayName,
+            r.content,
+            r.content_document AS contentDocument,
+            r.version,
+            r.created_at AS createdAt,
+            r.updated_at AS updatedAt
+        FROM post_reply r
+            INNER JOIN post p ON p.id = r.post_id
+            INNER JOIN member m ON m.id = r.author_id
+        WHERE p.board_id = #{boardId}
+            AND r.post_id = #{postId}
+            AND p.deleted_at IS NULL
+    </select>
+
+    <update id="updatePostReply">
+        UPDATE post_reply r
+            INNER JOIN post p ON p.id = r.post_id
+        SET
+            r.content = #{content},
+            r.content_document = #{contentDocument,jdbcType=VARCHAR},
+            r.version = r.version + 1,
+            r.updated_at = CURRENT_TIMESTAMP(6)
+        WHERE p.board_id = #{boardId}
+            AND r.post_id = #{postId}
+            AND r.id = #{replyId}
+            AND r.version = #{version}
+            AND p.deleted_at IS NULL
+    </update>
+
+    <delete id="deletePostReply">
+        DELETE r
+        FROM post_reply r
+            INNER JOIN post p ON p.id = r.post_id
+        WHERE p.board_id = #{boardId}
+            AND r.post_id = #{postId}
+            AND r.id = #{replyId}
+            AND r.version = #{version}
+            AND p.deleted_at IS NULL
+    </delete>
+
+    <sql id="adminPostReplyTargetFrom">
+        FROM post p
+            INNER JOIN board b ON b.id = p.board_id
+            INNER JOIN board_policy bp ON bp.board_id = b.id
+            LEFT JOIN post_reply r ON r.post_id = p.id
+    </sql>
+
+    <sql id="adminPostReplyTargetConditions">
+        b.status = 'ACTIVE'
+        AND p.deleted_at IS NULL
+        AND (
+            bp.official_reply_enabled = TRUE
+            OR r.id IS NOT NULL
+        )
+        <choose>
+            <when test="filter.name() == 'UNANSWERED'">
+                AND r.id IS NULL
+            </when>
+            <when test="filter.name() == 'ANSWERED'">
+                AND r.id IS NOT NULL
+            </when>
+        </choose>
+    </sql>
+
+    <select id="countAdminPostReplyTargets" resultType="long">
+        SELECT COUNT(*)
+        <include refid="adminPostReplyTargetFrom"/>
+        WHERE
+            <include refid="adminPostReplyTargetConditions"/>
+    </select>
+
+    <select id="selectAdminPostReplyTargets"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.post.dto.response.AdminPostReplySummaryResponse">
+        SELECT
+            p.id AS postId,
+            b.slug AS boardSlug,
+            b.name AS boardName,
+            p.title,
+            m.display_name AS authorDisplayName,
+            p.is_secret AS secret,
+            p.created_at AS createdAt,
+            r.id AS replyId,
+            bp.official_reply_enabled AS officialReplyEnabled
+        <include refid="adminPostReplyTargetFrom"/>
+            INNER JOIN member m ON m.id = p.author_id
+        WHERE
+            <include refid="adminPostReplyTargetConditions"/>
+        ORDER BY p.created_at DESC, p.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+</mapper>

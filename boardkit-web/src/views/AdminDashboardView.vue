@@ -1,23 +1,15 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import {onMounted, ref} from 'vue'
 
-import { getBoards } from '@/api/boardApi'
-import { ApiError } from '@/api/http'
-import type { BoardSummaryResponse } from '@/features/board/types/board'
+import {getBoards} from '@/api/boardApi'
+import {ApiError} from '@/api/http'
+import type {BoardSummaryResponse} from '@/features/board/types/board'
 
 const boards = ref<BoardSummaryResponse[]>([])
 const loading = ref(true)
 const errorMessage = ref('')
 
 const plannedMenus = [
-  {
-    title: '관리자 공식 답변',
-    description: '게시글에 등록된 공식 답변을 관리합니다.',
-  },
-  {
-    title: '신고 처리',
-    description: '게시글과 댓글 신고를 확인하고 처리합니다.',
-  },
   {
     title: '회원 제재',
     description: '회원 제재 사유와 기간을 관리합니다.',
@@ -141,6 +133,44 @@ onMounted(async () => {
     </section>
 
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <RouterLink
+          :to="{name: 'admin-post-replies'}"
+          class="block rounded-md border border-slate-200 bg-white p-5 no-underline transition hover:border-blue-300 hover:bg-blue-50"
+      >
+        <h2 class="text-lg font-semibold text-slate-900">
+          관리자 공식 답변
+        </h2>
+        <p class="mt-3 text-sm leading-6 text-slate-600">
+          미답변 게시글을 확인하고 공식 답변을 관리합니다.
+        </p>
+        <span class="mt-4 inline-block text-xs font-medium text-blue-600">관리하기 →</span>
+      </RouterLink>
+      <RouterLink
+          :to="{ name: 'admin-reports' }"
+          class="block rounded-md border border-slate-200 bg-white p-5 no-underline transition hover:border-blue-300 hover:bg-blue-50"
+      >
+        <h2 class="text-lg font-semibold text-slate-900">
+          신고 처리
+        </h2>
+        <p class="mt-3 text-sm leading-6 text-slate-600">
+          게시글과 댓글 신고를 확인하고 처리합니다.
+        </p>
+        <span class="mt-4 inline-block text-xs font-medium text-blue-600">관리하기 →</span>
+      </RouterLink>
+      <RouterLink
+          :to="{name: 'admin-blinded'}"
+          class="block rounded-md border border-slate-200 bg-white p-5 no-underline transition hover:border-blue-300 hover:bg-blue-50"
+      >
+        <h2 class="text-lg font-semibold text-slate-900">
+          블라인드 관리
+        </h2>
+        <p class="mt-3 text-sm leading-6 text-slate-600">
+          블라인드된 게시글과 댓글을 확인하고 해제하거나 삭제합니다.
+        </p>
+        <span class="mt-4 inline-block text-xs font-medium text-blue-600">
+          관리하기 →
+        </span>
+      </RouterLink>
       <article
           v-for="menu in plannedMenus"
           :key="menu.title"

@@ -4,6 +4,7 @@ export class ApiError extends Error {
     constructor(
         public readonly status: number,
         message: string,
+        public readonly code: string | null = null,
     ) {
         super(message)
         this.name = 'ApiError'
@@ -79,6 +80,7 @@ async function fetchApiResponse(
     if (!response.ok) {
         const body = (await response.json().catch(() => null)) as {
             message?: string
+            code?: string
         } | null
 
         if (response.status === 401 && url !== '/api/auth/login') {
@@ -88,6 +90,7 @@ async function fetchApiResponse(
         throw new ApiError(
             response.status,
             body?.message ?? `요청에 실패했습니다. (${response.status})`,
+            body?.code ?? null,
         )
     }
 

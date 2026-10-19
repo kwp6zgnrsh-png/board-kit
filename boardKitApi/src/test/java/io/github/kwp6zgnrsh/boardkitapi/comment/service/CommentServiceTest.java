@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -33,6 +34,7 @@ import io.github.kwp6zgnrsh.boardkitapi.comment.exception.CommentDeleteDeniedExc
 import io.github.kwp6zgnrsh.boardkitapi.comment.exception.CommentEditDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.comment.mapper.CommentMapper;
 import io.github.kwp6zgnrsh.boardkitapi.comment.model.Comment;
+import io.github.kwp6zgnrsh.boardkitapi.common.exception.BlindedContentAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
 import io.github.kwp6zgnrsh.boardkitapi.post.exception.SecretPostAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.post.mapper.PostMapper;
@@ -66,19 +68,15 @@ class CommentServiceTest {
 	@Test
 	@DisplayName("댓글 사용을 꺼도 기존 댓글은 조회할 수 있다")
 	void readExistingCommentsWhenCommentsAreDisabled() {
-		prepareBoard(false);
+		prepareReadableBoard(false, false);
 		when(postMapper.selectActiveCommentTarget(1L, 100L)).thenReturn(
-			Optional.of(new PostCommentTarget(20L, false, null, true)));
+			Optional.of(new PostCommentTarget(20L, false, null, true, null)));
 		when(commentMapper.countActiveComments(100L)).thenReturn(1L);
 
-		CommentItemResponse item = new CommentItemResponse(
-			50L, null, 10L, "작성자", "기존 댓글", false, 0,
-			LocalDateTime.of(2026, 9, 25, 10, 0),
-			LocalDateTime.of(2026, 9, 25, 10, 0),
-			0L, false
-		);
+		CommentItemResponse item = new CommentItemResponse(50L, null, 10L, "작성자", "기존 댓글", false, 0,
+			LocalDateTime.of(2026, 9, 25, 10, 0), LocalDateTime.of(2026, 9, 25, 10, 0), 0L, false, false);
 
-		when(commentMapper.selectActiveComments(100L, 20, 0L, null)).thenReturn(List.of(item));
+		when(commentMapper.selectActiveComments(100L, 20, 0L, null, false)).thenReturn(List.of(item));
 
 		CommentPageResponse response = commentService.getComments("free", 100L, 1, 20, null, false, false, null);
 
@@ -92,7 +90,7 @@ class CommentServiceTest {
 		when(memberMapper.existsActiveMemberById(10L)).thenReturn(true);
 		prepareBoard(false);
 		when(postMapper.selectActiveCommentTargetForUpdate(1L, 100L)).thenReturn(
-			Optional.of(new PostCommentTarget(20L, false, null, false)));
+			Optional.of(new PostCommentTarget(20L, false, null, false, null)));
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
 			() -> commentService.createComment("free", 100L, new CommentCreateRequest("새 댓글", null), 10L, false, null));
@@ -104,9 +102,9 @@ class CommentServiceTest {
 	@Test
 	@DisplayName("비밀번호를 모르면 비밀글의 댓글을 조회할 수 없다")
 	void rejectSecretPostCommentsWithoutPassword() {
-		prepareBoard(true);
+		prepareReadableBoard(true, false);
 		when(postMapper.selectActiveCommentTarget(1L, 100L)).thenReturn(
-			Optional.of(new PostCommentTarget(20L, true, "hash", false)));
+			Optional.of(new PostCommentTarget(20L, true, "hash", false, null)));
 
 		assertThrows(SecretPostAccessDeniedException.class,
 			() -> commentService.getComments("free", 100L, 1, 20, null, false, false, null));
@@ -123,7 +121,7 @@ class CommentServiceTest {
 		when(memberMapper.existsActiveMemberById(10L)).thenReturn(true);
 		prepareBoard(true);
 		when(postMapper.selectActiveCommentTargetForUpdate(1L, 100L)).thenReturn(
-			Optional.of(new PostCommentTarget(20L, false, null, false)));
+			Optional.of(new PostCommentTarget(20L, false, null, false, null)));
 		when(commentConverter.toComment(request, 100L, 10L)).thenReturn(comment);
 		when(commentMapper.insertComment(comment)).thenReturn(1);
 		when(commentConverter.toCreateResponse(comment)).thenReturn(new CommentCreateResponse(50L));
@@ -156,8 +154,8 @@ class CommentServiceTest {
 
 		prepareBoard(true);
 
-		when(postMapper.selectActiveCommentTarget(1L, 100L)).thenReturn(
-			Optional.of(new PostCommentTarget(20L, false, null, true)));
+		when(postMapper.selectActiveCommentTargetForUpdate(1L, 100L)).thenReturn(
+			Optional.of(new PostCommentTarget(20L, false, null, true, null)));
 
 		ResponseStatusException exception = assertThrows(ResponseStatusException.class,
 			() -> commentService.updateComment("free", 100L, 50L, new CommentUpdateRequest("수정 시도", 0), 10L, false,
@@ -276,32 +274,100 @@ class CommentServiceTest {
 	@ValueSource(booleans = {true, false})
 	@DisplayName("댓글 기능이 꺼져도 기존 댓글의 좋아요 정보와 회원별 선택 상태를 조회한다")
 	void getExistingCommentLikesWhenCommentsAreDisabled(boolean likedByMe) {
-		prepareBoard(false);
+		prepareReadableBoard(false, false);
 
-		when(postMapper.selectActiveCommentTarget(1L, 100L))
-			.thenReturn(Optional.of(
-				new PostCommentTarget(20L, false, null, true)
-			));
+		when(postMapper.selectActiveCommentTarget(1L, 100L)).thenReturn(
+			Optional.of(new PostCommentTarget(20L, false, null, true, null)));
 		when(commentMapper.countActiveComments(100L)).thenReturn(1L);
 
 		LocalDateTime createdAt = LocalDateTime.of(2026, 10, 17, 12, 0);
 
-		CommentItemResponse item = new CommentItemResponse(
-			50L, null, 10L, "작성자", "기존 댓글", false, 0,
-			createdAt, createdAt, 3L, likedByMe
-		);
+		CommentItemResponse item = new CommentItemResponse(50L, null, 10L, "작성자", "기존 댓글", false, 0, createdAt,
+			createdAt, 3L, likedByMe, false);
 
-		when(commentMapper.selectActiveComments(100L, 20, 0L, 10L))
-			.thenReturn(List.of(item));
+		when(commentMapper.selectActiveComments(100L, 20, 0L, 10L, false)).thenReturn(List.of(item));
 
-		CommentPageResponse response = commentService.getComments(
-			"free", 100L, 1, 20, 10L, true, false, null
-		);
+		CommentPageResponse response = commentService.getComments("free", 100L, 1, 20, 10L, true, false, null);
 
 		assertEquals(3L, response.comments().getFirst().likeCount());
 		assertEquals(likedByMe, response.comments().getFirst().likedByMe());
 
-		verify(commentMapper).selectActiveComments(100L, 20, 0L, 10L);
+		verify(commentMapper).selectActiveComments(100L, 20, 0L, 10L, false);
+	}
+
+	@ParameterizedTest
+	@CsvSource(value = {"null", "10"}, nullValues = "null")
+	@DisplayName("다른 사용자는 비밀번호를 알아도 블라인드된 게시글의 댓글을 조회할 수 없다")
+	void rejectCommentsOfBlindedPost(Long memberId) {
+		prepareReadableBoard(true, false);
+		when(postMapper.selectActiveCommentTarget(1L, 100L)).thenReturn(
+			Optional.of(new PostCommentTarget(20L, true, "hash", false, LocalDateTime.now())));
+
+		assertThrows(BlindedContentAccessDeniedException.class,
+			() -> commentService.getComments("free", 100L, 1, 20, memberId, memberId != null, false,
+				"correct-password"));
+
+		verifyNoInteractions(commentMapper, passwordEncoder);
+	}
+
+	@ParameterizedTest
+	@CsvSource({"20, false", "10, true"})
+	@DisplayName("게시글 작성자와 관리자는 블라인드된 게시글의 댓글을 조회할 수 있다")
+	void allowCommentsOfBlindedPostForAuthorOrAdmin(Long memberId, boolean adminAccess) {
+		prepareReadableBoard(true, adminAccess);
+		when(postMapper.selectActiveCommentTarget(1L, 100L)).thenReturn(
+			Optional.of(new PostCommentTarget(20L, true, "hash", false, LocalDateTime.now())));
+		when(commentMapper.countActiveComments(100L)).thenReturn(1L);
+
+		LocalDateTime createdAt = LocalDateTime.of(2026, 10, 18, 12, 0);
+		CommentItemResponse item = new CommentItemResponse(50L, null, 30L, "댓글 작성자", "일반 댓글", false, 0, createdAt,
+			createdAt, 0L, false, false);
+		when(commentMapper.selectActiveComments(100L, 20, 0L, memberId, adminAccess)).thenReturn(List.of(item));
+
+		var response = commentService.getComments("free", 100L, 1, 20, memberId, true, adminAccess, null);
+
+		assertEquals(List.of(item), response.comments());
+		verify(commentMapper).selectActiveComments(100L, 20, 0L, memberId, adminAccess);
+		verifyNoInteractions(passwordEncoder);
+	}
+
+	@ParameterizedTest
+	@ValueSource(booleans = {false, true})
+	@DisplayName("게시글 작성자와 관리자도 블라인드된 게시글에 댓글을 작성하거나 수정할 수 없다")
+	void rejectCommentWritingOnBlindedPost(boolean adminAccess) {
+		when(memberMapper.existsActiveMemberById(10L)).thenReturn(true);
+		prepareBoard(true);
+		when(postMapper.selectActiveCommentTargetForUpdate(1L, 100L)).thenReturn(
+			Optional.of(new PostCommentTarget(10L, true, "hash", false, LocalDateTime.now())));
+
+		assertThrows(BlindedContentAccessDeniedException.class,
+			() -> commentService.createComment("free", 100L, new CommentCreateRequest("댓글", null), 10L, adminAccess,
+				null));
+		assertThrows(BlindedContentAccessDeniedException.class,
+			() -> commentService.updateComment("free", 100L, 50L, new CommentUpdateRequest("수정", 0), 10L, adminAccess,
+				null));
+
+		verifyNoInteractions(commentMapper, commentConverter, passwordEncoder);
+	}
+
+	@Test
+	@DisplayName("게시글이 정상이더라도 블라인드된 댓글 자체는 수정할 수 없다")
+	void rejectUpdateOfBlindedComment() {
+		Comment comment = Comment.builder()
+			.id(50L)
+			.postId(100L)
+			.authorId(10L)
+			.content("기존 댓글")
+			.version(0)
+			.blindedAt(LocalDateTime.now())
+			.build();
+
+		prepareCommentUpdate(comment, true, false);
+
+		assertThrows(BlindedContentAccessDeniedException.class,
+			() -> commentService.updateComment("free", 100L, 50L, new CommentUpdateRequest("수정", 0), 10L, false, null));
+
+		verify(commentMapper, never()).updateComment(anyLong(), anyLong(), anyLong(), anyLong(), anyString(), anyInt());
 	}
 
 	private void prepareBoard(boolean commentsEnabled) {
@@ -321,8 +387,8 @@ class CommentServiceTest {
 
 		prepareBoard(commentsEnabled);
 
-		when(postMapper.selectActiveCommentTarget(1L, 100L)).thenReturn(
-			Optional.of(new PostCommentTarget(20L, false, null, commentsLocked)));
+		when(postMapper.selectActiveCommentTargetForUpdate(1L, 100L)).thenReturn(
+			Optional.of(new PostCommentTarget(20L, false, null, commentsLocked, null)));
 
 		when(commentMapper.selectActiveComment(1L, 100L, 50L)).thenReturn(Optional.of(comment));
 	}
@@ -344,4 +410,16 @@ class CommentServiceTest {
 
 		when(commentMapper.selectActiveComment(1L, 100L, 50L)).thenReturn(Optional.of(comment));
 	}
+
+	private void prepareReadableBoard(boolean commentsEnabled, boolean adminAccess) {
+		Board board = Board.builder().id(1L).slug("free").status("ACTIVE").build();
+		BoardPolicy policy = BoardPolicy.builder()
+			.readPermission("PUBLIC")
+			.commentPermission("MEMBER")
+			.commentsEnabled(commentsEnabled)
+			.build();
+		when(boardMapper.selectReadableBoardBySlug("free", adminAccess)).thenReturn(Optional.of(board));
+		when(boardMapper.selectPolicyByBoardId(1L)).thenReturn(Optional.of(policy));
+	}
+
 }

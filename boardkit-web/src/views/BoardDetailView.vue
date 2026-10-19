@@ -116,12 +116,14 @@ const hasActiveFilters = computed(
 
 const canWrite = computed(() => {
   const member = session.value
-  if (!board.value || !member) return false
+  const currentBoard = board.value
 
-  return (
-      board.value.policy.writePermission === 'MEMBER' ||
+  if (!member || !currentBoard || currentBoard.status !== 'ACTIVE') {
+    return false
+  }
+
+  return currentBoard.policy.writePermission === 'MEMBER' ||
       member.role === 'ADMIN'
-  )
 })
 
 let boardRequestSequence = 0
@@ -272,7 +274,13 @@ function changePage(page: number) {
 }
 
 // 게시판 정보 조회
-watch(boardSlug, loadBoard, {immediate: true})
+watch(
+    [boardSlug, session],
+    ([slug]) => {
+      void loadBoard(slug)
+    },
+    { immediate: true, flush: 'sync' },
+)
 
 // 검색창과 URL 검색어 동기화
 watch(
@@ -290,17 +298,12 @@ watch(
       requestedKeyword,
       requestedCategoryId,
       requestedSort,
+      session,
     ],
     ([slug, page, keyword, categoryId, sort]) => {
-      loadPosts(
-          slug,
-          page,
-          keyword,
-          categoryId,
-          sort,
-      )
+      void loadPosts(slug, page, keyword, categoryId, sort)
     },
-    {immediate: true},
+    { immediate: true, flush: 'sync' },
 )
 </script>
 
@@ -313,6 +316,13 @@ watch(
       {{ boardErrorMessage }}</p>
     <template v-else-if="board">
       <BoardHero :name="board.name" :slug="board.slug" :description="board.description"/>
+      <p
+          v-if="board.status === 'ARCHIVED'"
+          role="status"
+          class="m-0 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+      >
+        보관된 게시판입니다. 조회만 가능합니다.
+      </p>
       <section class="grid min-w-0 gap-4" aria-label="게시글 목록">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <p class="text-sm text-slate-500">

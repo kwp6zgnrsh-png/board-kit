@@ -11,6 +11,7 @@ public record BoardAdminDetailResponse(
 	Integer sortOrder,
 	Integer version,
 	BoardPolicyResponse policy,
-	List<BoardCategoryResponse> categories
+	List<BoardCategoryResponse> categories,
+	String status
 ) {
 }

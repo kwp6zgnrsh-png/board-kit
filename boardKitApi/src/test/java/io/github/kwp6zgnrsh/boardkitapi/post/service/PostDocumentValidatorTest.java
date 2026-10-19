@@ -355,16 +355,10 @@ class PostDocumentValidatorTest {
 
 		var result = validator.validate(source);
 
-		assertEquals(
-			"큰 제목\n첫 항목\n중첩 항목\n인용 내용\nint a = 1;\nint b = 2;\n작은 제목",
-			result.text()
-		);
+		assertEquals("큰 제목\n첫 항목\n중첩 항목\n인용 내용\nint a = 1;\nint b = 2;\n작은 제목", result.text());
 		assertEquals(List.of(new ImageReference(null, 0)), result.images());
 		assertEquals(2, result.document().at("/content/0/attrs/level").intValue());
-		assertEquals(
-			3,
-			result.document().at("/content/1/content/0/content/1/attrs/start").intValue()
-		);
+		assertEquals(3, result.document().at("/content/1/content/0/content/1/attrs/start").intValue());
 		assertFalse(result.document().at("/content/2/content/1/attrs").has("src"));
 		assertEquals("java", result.document().at("/content/3/attrs/language").asString());
 		assertEquals("horizontalRule", result.document().at("/content/4/type").asString());
@@ -375,9 +369,7 @@ class PostDocumentValidatorTest {
 	@DisplayName("H2와 H3 이외의 본문 제목은 거절한다")
 	void rejectUnsupportedHeadingLevels() {
 		for (String level : List.of("0", "1", "4", "6", "2.5", "\"2\"", "null")) {
-			JsonNode source = documentWithBlock(
-				"{\"type\":\"heading\",\"attrs\":{\"level\":" + level + "}}"
-			);
+			JsonNode source = documentWithBlock("{\"type\":\"heading\",\"attrs\":{\"level\":" + level + "}}");
 
 			assertThrows(InvalidPostRequestException.class, () -> validator.validate(source));
 		}
@@ -386,44 +378,34 @@ class PostDocumentValidatorTest {
 	@Test
 	@DisplayName("잘못된 목록과 문단 및 코드 블록 구조는 거절한다")
 	void rejectInvalidBlockStructures() {
-		for (String block : List.of(
-			"""
-				{"type":"listItem","content":[{"type":"paragraph"}]}
-				""",
-			"""
-				{"type":"bulletList","content":[{"type":"paragraph"}]}
-				""",
-			"""
-				{"type":"orderedList","content":[]}
-				""",
-			"""
-				{"type":"blockquote","content":[]}
-				""",
-			"""
-				{"type":"bulletList","content":[{"type":"listItem","content":[]}]}
-				""",
-			"""
-				{
-				  "type":"bulletList",
-				  "content":[{
-					"type":"listItem",
-					"content":[{"type":"heading","attrs":{"level":2}}]
-				  }]
-				}
-				""",
-			"""
-				{"type":"paragraph","content":[{"type":"image","attrs":{"fileIndex":0}}]}
-				""",
-			"""
-				{"type":"codeBlock","content":[{"type":"hardBreak"}]}
-				""",
-			"""
-				{
-				  "type":"codeBlock",
-				  "content":[{"type":"text","text":"code","marks":[{"type":"bold"}]}]
-				}
-				"""
-		)) {
+		for (String block : List.of("""
+			{"type":"listItem","content":[{"type":"paragraph"}]}
+			""", """
+			{"type":"bulletList","content":[{"type":"paragraph"}]}
+			""", """
+			{"type":"orderedList","content":[]}
+			""", """
+			{"type":"blockquote","content":[]}
+			""", """
+			{"type":"bulletList","content":[{"type":"listItem","content":[]}]}
+			""", """
+			{
+			  "type":"bulletList",
+			  "content":[{
+				"type":"listItem",
+				"content":[{"type":"heading","attrs":{"level":2}}]
+			  }]
+			}
+			""", """
+			{"type":"paragraph","content":[{"type":"image","attrs":{"fileIndex":0}}]}
+			""", """
+			{"type":"codeBlock","content":[{"type":"hardBreak"}]}
+			""", """
+			{
+			  "type":"codeBlock",
+			  "content":[{"type":"text","text":"code","marks":[{"type":"bold"}]}]
+			}
+			""")) {
 			JsonNode source = documentWithBlock(block);
 			assertThrows(InvalidPostRequestException.class, () -> validator.validate(source));
 		}
@@ -480,10 +462,7 @@ class PostDocumentValidatorTest {
 	@Test
 	@DisplayName("인라인 코드와 다른 글자 서식의 동시 적용은 거절한다")
 	void rejectCodeCombinedWithOtherMarks() {
-		assertThrows(
-			InvalidPostRequestException.class,
-			() -> validator.validate(documentWithMarks("code", "bold"))
-		);
+		assertThrows(InvalidPostRequestException.class, () -> validator.validate(documentWithMarks("code", "bold")));
 	}
 
 	@Test
@@ -513,10 +492,76 @@ class PostDocumentValidatorTest {
 		assertEquals(1, validator.validate(source).images().size());
 	}
 
+	@Test
+	@DisplayName("공식 답변은 서식을 보존하며 일반 텍스트 2,000자까지 허용한다")
+	void acceptFormattedReplyAtMaximumLength() {
+		ObjectNode source = documentWithMarks("bold");
+		ObjectNode text = (ObjectNode)source.at("/content/0/content/0");
+		text.put("text", "가".repeat(2000));
+
+		var result = validator.validateReply(source);
+
+		assertAll(() -> assertEquals("가".repeat(2000), result.text()),
+			() -> assertEquals("bold", result.document().at("/content/0/content/0/marks/0/type").asString()),
+			() -> assertTrue(result.images().isEmpty()));
+	}
+
+	@Test
+	@DisplayName("공식 답변의 일반 텍스트가 2,000자를 초과하면 거절한다")
+	void rejectReplyExceedingMaximumLength() {
+		ObjectNode source = documentWithMarks("bold");
+		ObjectNode text = (ObjectNode)source.at("/content/0/content/0");
+		text.put("text", "가".repeat(2001));
+
+		assertThrows(InvalidPostRequestException.class, () -> validator.validateReply(source));
+	}
+
+	@Test
+	@DisplayName("내용이 없거나 공백 또는 구분선만 있는 공식 답변은 거절한다")
+	void rejectReplyWithoutTextContent() {
+		for (String block : List.of("""
+			{"type":"paragraph"}
+			""", """
+			{
+			  "type":"paragraph",
+			  "content":[{"type":"text","text":"   "},{"type":"hardBreak"}]
+			}
+			""", """
+			{"type":"horizontalRule"}
+			""")) {
+			assertThrows(InvalidPostRequestException.class, () -> validator.validateReply(documentWithBlock(block)));
+		}
+	}
+
+	@Test
+	@DisplayName("공식 답변은 중첩된 기존 이미지와 새 이미지 참조를 모두 거절한다")
+	void rejectImagesInReply() {
+		for (String reference : List.of("\"fileId\":12", "\"fileIndex\":0")) {
+			JsonNode source = documentWithBlock("""
+				{
+				  "type":"blockquote",
+				  "content":[
+				    {"type":"image","attrs":{%s}}
+				  ]
+				}
+				""".formatted(reference));
+
+			InvalidPostRequestException exception = assertThrows(InvalidPostRequestException.class,
+				() -> validator.validateReply(source));
+
+			assertEquals("공식 답변에는 이미지를 첨부할 수 없습니다.", exception.getMessage());
+		}
+	}
+
+	@Test
+	@DisplayName("공식 답변에도 기존 웹 링크 검증을 적용한다")
+	void rejectUnsafeLinkInReply() {
+		assertThrows(InvalidPostRequestException.class,
+			() -> validator.validateReply(documentWithLink("javascript:alert(1)")));
+	}
+
 	private JsonNode documentWithBlock(String block) {
-		return mapper.readTree(
-			"{\"type\":\"doc\",\"content\":[" + block + "]}"
-		);
+		return mapper.readTree("{\"type\":\"doc\",\"content\":[" + block + "]}");
 	}
 
 	private ObjectNode documentWithLink(String href) {

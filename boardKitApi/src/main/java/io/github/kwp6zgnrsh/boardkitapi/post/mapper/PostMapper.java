@@ -24,15 +24,18 @@ public interface PostMapper {
 		@Param("categoryId") Long categoryId,
 		@Param("sort") PostSort sort,
 		@Param("limit") int limit,
-		@Param("offset") long offset
+		@Param("offset") long offset,
+		@Param("memberId") Long memberId,
+		@Param("adminAccess") boolean adminAccess
 	);
 
 	long countPostSummaries(
 		@Param("boardId") Long boardId,
 		@Param("keyword") String keyword,
-		@Param("categoryId") Long categoryId
+		@Param("categoryId") Long categoryId,
+		@Param("memberId") Long memberId,
+		@Param("adminAccess") boolean adminAccess
 	);
-
 	Optional<PostDetail> selectActivePostDetail(
 		@Param("boardId") Long boardId,
 		@Param("postId") Long postId
@@ -70,5 +73,23 @@ public interface PostMapper {
 		@Param("boardId") Long boardId,
 		@Param("postId") Long postId,
 		@Param("contentDocument") JsonNode contentDocument
+	);
+
+	Optional<Post> selectPostForModerationForUpdate(@Param("postId") Long postId);
+
+	int blindPost(
+		@Param("postId") Long postId,
+		@Param("version") Integer version
+	);
+
+	int unblindPost(
+		@Param("postId") Long postId,
+		@Param("version") Integer version,
+		@Param("acceptedReportCount") long acceptedReportCount
+	);
+
+	Optional<PostCommentTarget> selectActiveCommentTargetForShare(
+		@Param("boardId") Long boardId,
+		@Param("postId") Long postId
 	);
 }

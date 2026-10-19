@@ -3,6 +3,7 @@ package io.github.kwp6zgnrsh.boardkitapi.comment.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +25,7 @@ import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy;
 import io.github.kwp6zgnrsh.boardkitapi.comment.exception.CommentNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.comment.mapper.CommentLikeMapper;
 import io.github.kwp6zgnrsh.boardkitapi.comment.mapper.CommentMapper;
+import io.github.kwp6zgnrsh.boardkitapi.common.exception.BlindedContentAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberSanctionedException;
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberUnavailableException;
 import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
@@ -136,7 +138,7 @@ class CommentLikeServiceTest {
 	@DisplayName("대상 게시글이 없으면 댓글 좋아요 등록과 취소를 모두 거절한다")
 	void rejectLikeAndUnlikeWhenPostIsMissing() {
 		prepareBoard("PUBLIC", true);
-		when(postMapper.selectActiveCommentTarget(1L, 100L)).thenReturn(Optional.empty());
+		when(postMapper.selectActiveCommentTargetForShare(1L, 100L)).thenReturn(Optional.empty());
 
 		assertThrows(PostNotFoundException.class,
 			() -> commentLikeService.likeComment("free", 100L, 50L, 10L, false, null));
@@ -223,6 +225,22 @@ class CommentLikeServiceTest {
 		verifyNoInteractions(passwordEncoder);
 	}
 
+	@ParameterizedTest
+	@ValueSource(booleans = {false, true})
+	@DisplayName("블라인드 게시글에서는 작성자와 관리자도 댓글 좋아요를 추가하거나 취소할 수 없다")
+	void rejectCommentLikesOnBlindedPost(boolean adminAccess) {
+		prepareBoard("PUBLIC", true);
+		when(postMapper.selectActiveCommentTargetForShare(1L, 100L)).thenReturn(
+			Optional.of(new PostCommentTarget(10L, true, "hash", false, LocalDateTime.now())));
+
+		assertThrows(BlindedContentAccessDeniedException.class,
+			() -> commentLikeService.likeComment("free", 100L, 50L, 10L, adminAccess, null));
+		assertThrows(BlindedContentAccessDeniedException.class,
+			() -> commentLikeService.unlikeComment("free", 100L, 50L, 10L, adminAccess, null));
+
+		verifyNoInteractions(commentMapper, commentLikeMapper, passwordEncoder);
+	}
+
 	private void prepareBoard(String readPermission, boolean likesEnabled) {
 		when(memberMapper.existsActiveMemberById(10L)).thenReturn(true);
 
@@ -240,8 +258,8 @@ class CommentLikeServiceTest {
 	}
 
 	private void preparePost(Long authorId, boolean secret, String passwordHash, boolean locked) {
-		when(postMapper.selectActiveCommentTarget(1L, 100L)).thenReturn(
-			Optional.of(new PostCommentTarget(authorId, secret, passwordHash, locked)));
+		when(postMapper.selectActiveCommentTargetForShare(1L, 100L)).thenReturn(
+			Optional.of(new PostCommentTarget(authorId, secret, passwordHash, locked, null)));
 	}
 
 	private void prepareComment() {

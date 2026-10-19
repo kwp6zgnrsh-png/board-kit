@@ -70,6 +70,7 @@ export interface BoardDetailResponse {
   sortOrder: number
   policy: BoardPolicyResponse
   categories: BoardCategoryResponse[]
+  status: BoardStatus
 }
 
 export interface BoardCategoryUpdateRequest {

@@ -27,6 +27,11 @@ public interface BoardMapper {
 
 	Optional<Board> selectActiveBoardBySlug(@Param("slug") String slug);
 
+	Optional<Board> selectReadableBoardBySlug(
+		@Param("slug") String slug,
+		@Param("adminAccess") boolean adminAccess
+	);
+
 	Optional<BoardPolicy> selectPolicyByBoardId(@Param("boardId") Long boardId);
 
 	List<BoardCategory> selectActiveCategoriesByBoardId(@Param("boardId") Long boardId);
@@ -39,9 +44,12 @@ public interface BoardMapper {
 
 	int updatePolicy(BoardPolicy policy);
 
-	int updateCategory(BoardCategory category);
+	void updateCategory(BoardCategory category);
 
-	int deactivateActiveCategoriesExcept(@Param("boardId") Long boardId, @Param("retainedIds") List<Long> retainedIds);
+	void deactivateActiveCategoriesExcept(@Param("boardId") Long boardId, @Param("retainedIds") List<Long> retainedIds);
 
 	int archiveBoard(@Param("boardId") Long boardId);
+
+	Optional<Board> selectActiveBoardBySlugForShare(@Param("slug") String slug);
+
 }

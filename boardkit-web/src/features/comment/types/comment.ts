@@ -24,6 +24,7 @@ export interface CommentItemResponse {
     updatedAt: string
     likeCount: number
     likedByMe: boolean
+    blinded: boolean
 }
 
 export interface CommentPageResponse {

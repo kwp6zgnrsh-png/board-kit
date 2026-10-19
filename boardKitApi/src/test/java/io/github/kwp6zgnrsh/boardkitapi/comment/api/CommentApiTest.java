@@ -107,7 +107,7 @@ class CommentApiTest {
 			50L, null, 10L, "작성자", "첫 댓글", false, 0,
 			LocalDateTime.of(2026, 9, 25, 10, 0),
 			LocalDateTime.of(2026, 9, 25, 10, 0),
-			3L, false
+			3L, false, false
 		);
 
 		when(commentService.getComments(

@@ -38,6 +38,7 @@ export interface PostSummaryResponse {
     representativeFileId: number | null
     thumbnailAvailable: boolean
     likeCount: number
+    blinded: boolean
 }
 
 export interface PostPageResponse {
@@ -69,6 +70,7 @@ export interface PostDetailResponse {
     files: PostFileResponse[]
     likeCount: number
     likedByMe: boolean
+    blinded: boolean
 }
 
 export interface PostUpdateRequest {

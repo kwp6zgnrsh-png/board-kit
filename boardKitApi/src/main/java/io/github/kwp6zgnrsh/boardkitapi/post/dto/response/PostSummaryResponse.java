@@ -16,6 +16,7 @@ public record PostSummaryResponse(
 	LocalDateTime createdAt,
 	Long representativeFileId,
 	boolean thumbnailAvailable,
-	long likeCount
+	long likeCount,
+	boolean blinded
 ) {
 }

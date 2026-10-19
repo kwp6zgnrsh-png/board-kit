@@ -30,9 +30,14 @@ async function loadBoard(slug: string) {
   try {
     const response = await getBoardDetail(slug)
 
-    if (currentRequest === requestSequence) {
-      board.value = response
+    if (currentRequest !== requestSequence) return
+
+    if (response.status !== 'ACTIVE') {
+      errorMessage.value = '보관된 게시판에는 게시글을 작성할 수 없습니다.'
+      return
     }
+
+    board.value = response
 
   } catch (error) {
     if (currentRequest !== requestSequence) {

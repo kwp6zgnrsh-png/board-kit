@@ -10,6 +10,7 @@ public record BoardDetailResponse(
 	String displayType,
 	Integer sortOrder,
 	BoardPolicyResponse policy,
-	List<BoardCategoryResponse> categories
+	List<BoardCategoryResponse> categories,
+	String status
 ) {
 }

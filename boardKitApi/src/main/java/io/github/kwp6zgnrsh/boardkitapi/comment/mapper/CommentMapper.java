@@ -23,7 +23,8 @@ public interface CommentMapper {
 		@Param("postId") Long postId,
 		@Param("limit") int limit,
 		@Param("offset") long offset,
-		@Param("memberId") Long memberId
+		@Param("memberId") Long memberId,
+		@Param("adminAccess") boolean adminAccess
 	);
 
 	Optional<Comment> selectActiveComment(
@@ -56,5 +57,23 @@ public interface CommentMapper {
 		@Param("boardId") Long boardId,
 		@Param("postId") Long postId,
 		@Param("commentId") Long commentId
+	);
+
+	Optional<Comment> selectCommentForModerationForUpdate(
+		@Param("postId") Long postId,
+		@Param("commentId") Long commentId
+	);
+
+	int blindComment(
+		@Param("postId") Long postId,
+		@Param("commentId") Long commentId,
+		@Param("version") Integer version
+	);
+
+	int unblindComment(
+		@Param("postId") Long postId,
+		@Param("commentId") Long commentId,
+		@Param("version") Integer version,
+		@Param("acceptedReportCount") long acceptedReportCount
 	);
 }

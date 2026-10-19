@@ -22,6 +22,7 @@ public record PostDetail(
 	LocalDateTime createdAt,
 	LocalDateTime updatedAt,
 	Long representativeFileId,
-	JsonNode contentDocument
+	JsonNode contentDocument,
+	LocalDateTime blindedAt
 ) {
 }

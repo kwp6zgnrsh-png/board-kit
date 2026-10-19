@@ -34,6 +34,7 @@ import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardAccessDeniedExcepti
 import io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardMapper;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.Board;
 import io.github.kwp6zgnrsh.boardkitapi.board.model.BoardPolicy;
+import io.github.kwp6zgnrsh.boardkitapi.common.exception.BlindedContentAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.file.config.FileStorageProperties;
 import io.github.kwp6zgnrsh.boardkitapi.file.mapper.FileCleanupTaskMapper;
 import io.github.kwp6zgnrsh.boardkitapi.file.mapper.PostFileMapper;
@@ -110,13 +111,9 @@ class PostServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		postService = new PostService(
-			postMapper, boardMapper, memberMapper, postConverter, passwordEncoder,
-			postFileMapper,
-			new FileUploadValidator(properties, new FileSignatureDetector()),
-			localFileStorage, fileCleanupTaskMapper, new PostDocumentValidator(),
-			postLikeMapper, new PostSecretAccess(passwordEncoder)
-		);
+		postService = new PostService(postMapper, boardMapper, memberMapper, postConverter, passwordEncoder,
+			postFileMapper, new FileUploadValidator(properties, new FileSignatureDetector()), localFileStorage,
+			fileCleanupTaskMapper, new PostDocumentValidator(), postLikeMapper, new PostSecretAccess(passwordEncoder));
 	}
 
 	@Test
@@ -193,29 +190,25 @@ class PostServiceTest {
 	void getSecondPageFromPublicBoard() {
 		BoardPolicy policy = readPolicy("PUBLIC");
 
-		prepareBoard("free", policy);
+		prepareReadableBoard("free", policy, false);
 
 		LocalDateTime createdAt = LocalDateTime.of(2026, 9, 21, 10, 0);
 
 		List<PostSummaryResponse> posts = List.of(
-			new PostSummaryResponse(
-				11L, "게시글 제목", 10L, "작성자",
-				null, null, false, false,
-				3L, 2L, createdAt, null, false, 7L
-			)
-		);
+			new PostSummaryResponse(11L, "게시글 제목", 10L, "작성자", null, null, false, false, 3L, 2L, createdAt, null, false,
+				7L, false));
 
-		when(postMapper.countPostSummaries(1L, null, null)).thenReturn(21L);
+		when(postMapper.countPostSummaries(1L, null, null, null, false)).thenReturn(21L);
 
-		when(postMapper.selectPostSummaries(1L, null, null, PostSort.LATEST, 10, 10L)).thenReturn(posts);
+		when(postMapper.selectPostSummaries(1L, null, null, PostSort.LATEST, 10, 10L, null, false)).thenReturn(posts);
 
-		PostPageResponse response = postService.getPosts("free", 2, 10, defaultPostListRequest(), false, false);
+		PostPageResponse response = postService.getPosts("free", 2, 10, defaultPostListRequest(), null, false, false);
 
 		assertAll(() -> assertEquals(posts, response.posts()), () -> assertEquals(2, response.page()),
 			() -> assertEquals(10, response.size()), () -> assertEquals(21L, response.totalElements()),
 			() -> assertEquals(3, response.totalPages()));
 
-		verify(postMapper).selectPostSummaries(1L, null, null, PostSort.LATEST, 10, 10L);
+		verify(postMapper).selectPostSummaries(1L, null, null, PostSort.LATEST, 10, 10L, null, false);
 
 		assertEquals(7L, response.posts().getFirst().likeCount());
 		verifyNoInteractions(postLikeMapper);
@@ -224,10 +217,10 @@ class PostServiceTest {
 	@Test
 	@DisplayName("일반 회원은 관리자 전용 게시판 목록을 조회할 수 없다")
 	void rejectMemberFromAdminBoardPostList() {
-		prepareBoard("admin", readPolicy("ADMIN"));
+		prepareReadableBoard("admin", readPolicy("ADMIN"), false);
 
 		assertThrows(BoardAccessDeniedException.class,
-			() -> postService.getPosts("admin", 1, 10, defaultPostListRequest(), true, false));
+			() -> postService.getPosts("admin", 1, 10, defaultPostListRequest(), 10L, true, false));
 
 		verifyNoInteractions(postMapper);
 	}
@@ -235,16 +228,16 @@ class PostServiceTest {
 	@Test
 	@DisplayName("마지막 페이지를 넘으면 빈 게시글 목록을 반환한다")
 	void returnEmptyPostsWhenPageExceedsLastPage() {
-		prepareBoard("free", readPolicy("PUBLIC"));
+		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
 
-		when(postMapper.countPostSummaries(1L, null, null)).thenReturn(11L);
+		when(postMapper.countPostSummaries(1L, null, null, null, false)).thenReturn(11L);
 
-		PostPageResponse response = postService.getPosts("free", 3, 10, defaultPostListRequest(), false, false);
+		PostPageResponse response = postService.getPosts("free", 3, 10, defaultPostListRequest(), null, false, false);
 
 		assertAll(() -> assertTrue(response.posts().isEmpty()), () -> assertEquals(3, response.page()),
 			() -> assertEquals(11L, response.totalElements()), () -> assertEquals(2, response.totalPages()));
 
-		verify(postMapper).countPostSummaries(1L, null, null);
+		verify(postMapper).countPostSummaries(1L, null, null, null, false);
 		verifyNoMoreInteractions(postMapper);
 	}
 
@@ -254,12 +247,11 @@ class PostServiceTest {
 		PostDetail postDetail = postDetail(false, null);
 		PostDetailResponse expected = detailResponse(0L, false);
 
-		prepareBoard("free", readPolicy("PUBLIC"));
+		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
 
 		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
 		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false))
-			.thenReturn(expected);
+		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false)).thenReturn(expected);
 		PostDetailResponse response = postService.getPostDetail("free", 100L, null, false, false, null);
 
 		assertEquals(expected, response);
@@ -272,19 +264,14 @@ class PostServiceTest {
 		PostDetail postDetail = postDetail(false, null);
 		PostDetailResponse expected = detailResponse(4L, false);
 
-		prepareBoard("free", readPolicy("PUBLIC"));
+		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
 
-		when(postMapper.selectActivePostDetail(1L, 100L))
-			.thenReturn(Optional.of(postDetail));
+		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
 		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
 		when(postLikeMapper.countPostLikes(100L)).thenReturn(4L);
-		when(postConverter.toDetailResponse(
-			postDetail, 6L, List.of(), 4L, false
-		)).thenReturn(expected);
+		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 4L, false)).thenReturn(expected);
 
-		PostDetailResponse response = postService.getPostDetail(
-			"free", 100L, null, false, false, null
-		);
+		PostDetailResponse response = postService.getPostDetail("free", 100L, null, false, false, null);
 
 		assertEquals(4L, response.likeCount());
 		assertFalse(response.likedByMe());
@@ -300,25 +287,17 @@ class PostServiceTest {
 		PostDetail postDetail = postDetail(false, null);
 		PostDetailResponse expected = detailResponse(4L, likedByMe);
 
-		BoardPolicy policy = BoardPolicy.builder()
-			.readPermission("PUBLIC")
-			.postLikesEnabled(false)
-			.build();
+		BoardPolicy policy = BoardPolicy.builder().readPermission("PUBLIC").postLikesEnabled(false).build();
 
-		prepareBoard("free", policy);
+		prepareReadableBoard("free", policy, false);
 
-		when(postMapper.selectActivePostDetail(1L, 100L))
-			.thenReturn(Optional.of(postDetail));
+		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
 		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
 		when(postLikeMapper.countPostLikes(100L)).thenReturn(4L);
 		when(postLikeMapper.existsPostLike(100L, 10L)).thenReturn(likedByMe);
-		when(postConverter.toDetailResponse(
-			postDetail, 6L, List.of(), 4L, likedByMe
-		)).thenReturn(expected);
+		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 4L, likedByMe)).thenReturn(expected);
 
-		PostDetailResponse response = postService.getPostDetail(
-			"free", 100L, 10L, true, false, null
-		);
+		PostDetailResponse response = postService.getPostDetail("free", 100L, 10L, true, false, null);
 
 		assertEquals(4L, response.likeCount());
 		assertEquals(likedByMe, response.likedByMe());
@@ -333,12 +312,11 @@ class PostServiceTest {
 		PostDetail postDetail = postDetail(true, null);
 		PostDetailResponse expected = detailResponse(0L, false);
 
-		prepareBoard("free", readPolicy("PUBLIC"));
+		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
 
 		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
 		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false))
-			.thenReturn(expected);
+		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false)).thenReturn(expected);
 		PostDetailResponse response = postService.getPostDetail("free", 100L, null, false, false, null);
 
 		assertEquals(expected, response);
@@ -351,13 +329,12 @@ class PostServiceTest {
 		PostDetail postDetail = postDetail(true, "encoded-password");
 		PostDetailResponse expected = detailResponse(0L, false);
 
-		prepareBoard("free", readPolicy("PUBLIC"));
+		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
 
 		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
 		when(passwordEncoder.matches("1234", "encoded-password")).thenReturn(true);
 		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false))
-			.thenReturn(expected);
+		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false)).thenReturn(expected);
 		PostDetailResponse response = postService.getPostDetail("free", 100L, null, false, false, "1234");
 
 		assertEquals(expected, response);
@@ -369,7 +346,7 @@ class PostServiceTest {
 	void rejectSecretPostWithWrongPassword() {
 		PostDetail postDetail = postDetail(true, "encoded-password");
 
-		prepareBoard("free", readPolicy("PUBLIC"));
+		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
 
 		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
 		when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
@@ -388,12 +365,11 @@ class PostServiceTest {
 		PostDetail postDetail = postDetail(true, "encoded-password");
 		PostDetailResponse expected = detailResponse(0L, false);
 
-		prepareBoard("free", readPolicy("PUBLIC"));
+		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
 
 		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
 		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false))
-			.thenReturn(expected);
+		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false)).thenReturn(expected);
 		PostDetailResponse response = postService.getPostDetail("free", 100L, 10L, true, false, null);
 
 		assertEquals(expected, response);
@@ -667,34 +643,34 @@ class PostServiceTest {
 	void getPostsWithSearchFilters() {
 		BoardPolicy policy = policy("MEMBER", "OFF", true, false);
 
-		prepareBoard("free", policy);
+		prepareReadableBoard("free", policy, false);
 
 		when(boardMapper.existsActiveCategory(1L, 2L)).thenReturn(true);
 
-		when(postMapper.countPostSummaries(1L, "50=%=_off==", 2L)).thenReturn(1L);
+		when(postMapper.countPostSummaries(1L, "50=%=_off==", 2L, 10L, false)).thenReturn(1L);
 
-		when(postMapper.selectPostSummaries(1L, "50=%=_off==", 2L, PostSort.VIEWS, 10, 0L)).thenReturn(List.of());
+		when(postMapper.selectPostSummaries(1L, "50=%=_off==", 2L, PostSort.VIEWS, 10, 0L, 10L, false)).thenReturn(List.of());
 
 		PostListRequest request = new PostListRequest("50%_off=", 2L, PostSort.VIEWS);
 
-		PostPageResponse response = postService.getPosts("free", 1, 10, request, false, false);
+		PostPageResponse response = postService.getPosts("free", 1, 10, request, 10L, true, false);
 
 		assertAll(() -> assertEquals(1L, response.totalElements()), () -> assertEquals(1, response.totalPages()));
 
 		verify(boardMapper).existsActiveCategory(1L, 2L);
 
-		verify(postMapper).selectPostSummaries(1L, "50=%=_off==", 2L, PostSort.VIEWS, 10, 0L);
+		verify(postMapper).selectPostSummaries(1L, "50=%=_off==", 2L, PostSort.VIEWS, 10, 0L, 10L, false);
 	}
 
 	@Test
 	@DisplayName("카테고리를 사용하지 않는 게시판은 카테고리 필터를 거절한다")
 	void rejectCategoryFilterWhenCategoriesAreDisabled() {
-		prepareBoard("free", readPolicy("PUBLIC"));
+		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
 
 		PostListRequest request = new PostListRequest(null, 2L, PostSort.LATEST);
 
 		assertThrows(InvalidPostRequestException.class,
-			() -> postService.getPosts("free", 1, 10, request, false, false));
+			() -> postService.getPosts("free", 1, 10, request, null, false, false));
 
 		verifyNoInteractions(postMapper);
 	}
@@ -704,14 +680,14 @@ class PostServiceTest {
 	void rejectUnavailableCategoryFilter() {
 		BoardPolicy policy = policy("MEMBER", "OFF", true, false);
 
-		prepareBoard("free", policy);
+		prepareReadableBoard("free", policy, false);
 
 		when(boardMapper.existsActiveCategory(1L, 2L)).thenReturn(false);
 
 		PostListRequest request = new PostListRequest(null, 2L, PostSort.LATEST);
 
 		assertThrows(InvalidPostRequestException.class,
-			() -> postService.getPosts("free", 1, 10, request, false, false));
+			() -> postService.getPosts("free", 1, 10, request, null, false, false));
 
 		verifyNoInteractions(postMapper);
 	}
@@ -990,7 +966,7 @@ class PostServiceTest {
 			.build();
 		ByteArrayResource resource = new ByteArrayResource(new byte[] {1, 2, 3});
 
-		prepareBoard("free", readPolicy("PUBLIC"));
+		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
 		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail(false, null)));
 		when(postFileMapper.selectActivePostFile(100L, 11L)).thenReturn(Optional.of(file));
 		when(localFileStorage.load("posts/100/file")).thenReturn(resource);
@@ -1017,7 +993,7 @@ class PostServiceTest {
 			.storageKey("posts/100/body.png")
 			.build();
 
-		prepareBoard("free", readPolicy("PUBLIC"));
+		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
 		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail(false, null)));
 		when(postFileMapper.selectActivePostFile(100L, 11L)).thenReturn(Optional.of(file));
 		when(localFileStorage.load("posts/100/body.png")).thenReturn(new ByteArrayResource(new byte[] {1, 2, 3}));
@@ -1080,6 +1056,113 @@ class PostServiceTest {
 			rows -> rows.size() == 1 && "BODY_IMAGE".equals(rows.get(0).getFileUsage()) && Integer.valueOf(0)
 				.equals(rows.get(0).getSortOrder())));
 		verify(postMapper).refreshRepresentativeImage(1L, 100L);
+	}
+
+	@ParameterizedTest
+	@CsvSource(value = {"null", "20"}, nullValues = "null")
+	@DisplayName("비로그인과 다른 회원은 비밀글 비밀번호를 알아도 블라인드 원문을 조회할 수 없다")
+	void rejectBlindedPostReadByNonAuthor(Long memberId) {
+		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
+		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(blindedPostDetail()));
+
+		assertThrows(BlindedContentAccessDeniedException.class,
+			() -> postService.getPostDetail("free", 100L, memberId, memberId != null, false, "correct-password"));
+
+		verify(postMapper, never()).increaseViewCount(anyLong(), anyLong());
+		verifyNoInteractions(passwordEncoder, postFileMapper, localFileStorage, postConverter, postLikeMapper);
+	}
+
+	@ParameterizedTest
+	@CsvSource({"10, false", "20, true"})
+	@DisplayName("작성자와 관리자는 블라인드된 게시글 원문을 조회할 수 있다")
+	void allowBlindedPostReadByAuthorOrAdmin(Long memberId, boolean adminAccess) {
+		PostDetail post = blindedPostDetail();
+		PostDetailResponse expected = mock(PostDetailResponse.class);
+
+		prepareReadableBoard("free", readPolicy("PUBLIC"), adminAccess);
+		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(post));
+		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
+		when(postConverter.toDetailResponse(post, 6L, List.of(), 0L, false)).thenReturn(expected);
+
+		assertSame(expected, postService.getPostDetail("free", 100L, memberId, true, adminAccess, null));
+
+		verifyNoInteractions(passwordEncoder);
+	}
+
+	@ParameterizedTest
+	@CsvSource(value = {"null, false", "null, true", "20, false", "20, true"}, nullValues = "null")
+	@DisplayName("비로그인과 다른 회원은 블라인드된 게시글의 원본과 썸네일을 조회할 수 없다")
+	void rejectBlindedPostFileRead(Long memberId, boolean thumbnail) {
+		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
+		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(blindedPostDetail()));
+
+		assertThrows(BlindedContentAccessDeniedException.class,
+			() -> postService.getPostFile("free", 100L, 11L, thumbnail, memberId, memberId != null, false,
+				"correct-password"));
+
+		verifyNoInteractions(postFileMapper, localFileStorage, passwordEncoder);
+		verify(postMapper, never()).increaseViewCount(anyLong(), anyLong());
+	}
+
+	@ParameterizedTest
+	@CsvSource({"10, false, false", "10, false, true", "20, true, false", "20, true, true"})
+	@DisplayName("작성자와 관리자는 블라인드된 게시글의 원본과 썸네일을 조회할 수 있다")
+	void allowBlindedPostFileRead(Long memberId, boolean adminAccess, boolean thumbnail) {
+		var file = PostFile.builder()
+			.id(11L)
+			.postId(100L)
+			.originalName("image.png")
+			.contentType("image/png")
+			.fileUsage("BODY_IMAGE")
+			.storageKey("posts/100/image.png")
+			.thumbnailKey("thumbnails/100/image.png")
+			.build();
+		var resource = new ByteArrayResource(new byte[] {1, 2, 3});
+		String key = thumbnail ? file.getThumbnailKey() : file.getStorageKey();
+
+		prepareReadableBoard("free", readPolicy("PUBLIC"), adminAccess);
+		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(blindedPostDetail()));
+		when(postFileMapper.selectActivePostFile(100L, 11L)).thenReturn(Optional.of(file));
+		when(localFileStorage.load(key)).thenReturn(resource);
+
+		PostFileContent result = postService.getPostFile("free", 100L, 11L, thumbnail, memberId, true, adminAccess,
+			null);
+
+		assertSame(resource, result.resource());
+		verify(localFileStorage).load(key);
+		verifyNoInteractions(passwordEncoder);
+	}
+
+	@ParameterizedTest
+	@ValueSource(booleans = {false, true})
+	@DisplayName("블라인드된 게시글은 작성자가 관리자여도 수정할 수 없다")
+	void rejectBlindedPostUpdate(boolean adminAccess) {
+		allowActiveMember();
+		prepareBoard("free", policy("MEMBER", "OPTIONAL", false, false));
+		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(blindedPostDetail()));
+
+		var request = new PostUpdateRequest("수정 제목", document("수정 본문"), null, true, null, false, false, 1, List.of());
+
+		assertThrows(BlindedContentAccessDeniedException.class,
+			() -> postService.updatePost("free", 100L, request, List.of(), 10L, adminAccess));
+
+		verify(postMapper, never()).updatePost(any(Post.class));
+		verifyNoInteractions(postConverter, postFileMapper, localFileStorage);
+	}
+
+	@Test
+	@DisplayName("작성자는 블라인드된 자신의 게시글을 삭제할 수 있다")
+	void allowAuthorToDeleteBlindedPost() {
+		when(memberMapper.existsActiveMemberById(10L)).thenReturn(true);
+		prepareBoard("free");
+		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(blindedPostDetail()));
+		when(postMapper.softDeletePost(1L, 100L, 1)).thenReturn(1);
+		when(postFileMapper.selectActivePostFilesForUpdate(100L)).thenReturn(List.of());
+
+		postService.deletePost("free", 100L, 1, 10L, false);
+
+		verify(postMapper).softDeletePost(1L, 100L, 1);
+		verify(postFileMapper).softDeleteAllPostFiles(100L);
 	}
 
 	private MockMultipartFile createImage(String name) throws Exception {
@@ -1170,18 +1253,14 @@ class PostServiceTest {
 		LocalDateTime createdAt = LocalDateTime.of(2026, 9, 21, 10, 0);
 
 		return new PostDetail(100L, 1L, "게시글 제목", "게시글 본문", authorId, "작성자", null, null, secret, passwordHash, false,
-			false, 5L, version, createdAt, createdAt, null, null);
+			false, 5L, version, createdAt, createdAt, null, null, null);
 	}
 
 	private PostDetailResponse detailResponse(long likeCount, boolean likedByMe) {
 		LocalDateTime createdAt = LocalDateTime.of(2026, 9, 21, 10, 0);
 
-		return new PostDetailResponse(
-			100L, 1L, "게시글 제목", "게시글 본문",
-			10L, "작성자", null, null, false, false, false,
-			6L, 0, createdAt, createdAt, null, List.of(), null,
-			likeCount, likedByMe
-		);
+		return new PostDetailResponse(100L, 1L, "게시글 제목", "게시글 본문", 10L, "작성자", null, null, false, false, false, 6L, 0,
+			createdAt, createdAt, null, List.of(), null, likeCount, likedByMe, false);
 	}
 
 	private PostListRequest defaultPostListRequest() {
@@ -1199,4 +1278,18 @@ class PostServiceTest {
 
 		when(boardMapper.selectPolicyByBoardId(1L)).thenReturn(Optional.of(policy));
 	}
+
+	private PostDetail blindedPostDetail() {
+		LocalDateTime createdAt = LocalDateTime.of(2026, 9, 21, 10, 0);
+
+		return new PostDetail(100L, 1L, "게시글 제목", "게시글 본문", 10L, "작성자", null, null, true, "existing-hash", false, false,
+			5L, 1, createdAt, createdAt, null, null, createdAt.plusDays(1));
+	}
+
+	private void prepareReadableBoard(String boardSlug, BoardPolicy policy, boolean adminAccess) {
+		Board board = Board.builder().id(1L).slug(boardSlug).status("ACTIVE").build();
+		when(boardMapper.selectReadableBoardBySlug(boardSlug, adminAccess)).thenReturn(Optional.of(board));
+		when(boardMapper.selectPolicyByBoardId(1L)).thenReturn(Optional.of(policy));
+	}
+
 }

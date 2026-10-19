@@ -34,6 +34,7 @@ public interface BoardConverter {
 	@Mapping(target = "sortOrder", source = "board.sortOrder")
 	@Mapping(target = "policy", source = "policy")
 	@Mapping(target = "categories", source = "categories")
+	@Mapping(target = "status", source = "board.status")
 	BoardDetailResponse toDetailResponse(Board board, BoardPolicy policy, List<BoardCategory> categories);
 
 	@Mapping(target = "id", ignore = true)
@@ -64,6 +65,7 @@ public interface BoardConverter {
 	@Mapping(target = "version", source = "policy.version")
 	@Mapping(target = "policy", source = "policy")
 	@Mapping(target = "categories", source = "categories")
+	@Mapping(target = "status", source = "board.status")
 	BoardAdminDetailResponse toAdminDetailResponse(Board board, BoardPolicy policy, List<BoardCategory> categories);
 
 	@Mapping(target = "id", source = "boardId")

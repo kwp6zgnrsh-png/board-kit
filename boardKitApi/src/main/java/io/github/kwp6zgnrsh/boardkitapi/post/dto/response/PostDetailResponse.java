@@ -26,6 +26,7 @@ public record PostDetailResponse(
 	List<PostFileResponse> files,
 	JsonNode contentDocument,
 	long likeCount,
-	boolean likedByMe
+	boolean likedByMe,
+	boolean blinded
 ) {
 }

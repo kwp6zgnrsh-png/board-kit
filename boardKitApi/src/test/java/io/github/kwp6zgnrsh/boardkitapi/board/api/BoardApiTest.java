@@ -131,7 +131,8 @@ class BoardApiTest {
 			.andExpect(jsonPath("$.slug").value("free"))
 			.andExpect(jsonPath("$.policy.readPermission").value("PUBLIC"))
 			.andExpect(jsonPath("$.categories.length()").value(1))
-			.andExpect(jsonPath("$.categories[0].name").value("잡담"));
+			.andExpect(jsonPath("$.categories[0].name").value("잡담"))
+			.andExpect(jsonPath("$.status").value("ACTIVE"));
 
 		verify(boardService)
 			.getBoardDetail("free", false, false);
@@ -247,7 +248,8 @@ class BoardApiTest {
 			"LIST",
 			0,
 			policy,
-			List.of(new BoardCategoryResponse(1L, "잡담", 0))
+			List.of(new BoardCategoryResponse(1L, "잡담", 0)),
+			"ACTIVE"
 		);
 	}
 }

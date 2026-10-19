@@ -191,7 +191,8 @@ class AdminBoardApiTest {
 						"잡담",
 						0
 					)
-				)
+				),
+				"ACTIVE"
 			);
 
 		when(boardService.getBoardForAdmin("free"))
@@ -205,7 +206,8 @@ class AdminBoardApiTest {
 			.andExpect(jsonPath("$.slug").value("free"))
 			.andExpect(jsonPath("$.version").value(3))
 			.andExpect(jsonPath("$.categories.length()").value(1))
-			.andExpect(jsonPath("$.categories[0].id").value(10));
+			.andExpect(jsonPath("$.categories[0].id").value(10))
+			.andExpect(jsonPath("$.status").value("ACTIVE"));
 
 		verify(boardService).getBoardForAdmin("free");
 	}

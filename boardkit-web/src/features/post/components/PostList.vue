@@ -3,6 +3,7 @@ import type {PostSummaryResponse} from '@/features/post/types/post'
 import {useRoute} from 'vue-router'
 import CommunityIcon from '@/components/ui/CommunityIcon.vue'
 import PostThumbnail from '@/features/post/components/PostThumbnail.vue'
+import PostSummaryLink from '@/features/post/components/PostSummaryLink.vue'
 
 defineProps<{
   boardSlug: string
@@ -43,8 +44,12 @@ function formatDate(value: string): string {
           <template v-else>{{ post.id }}</template>
         </td>
         <td class="px-4 py-1.5">
-          <RouterLink :to="{ name: 'post-detail', params: { boardSlug, postId: post.id }, query: route.query }"
-                      class="flex min-w-0 items-center gap-1.5 text-slate-800 group-hover:text-blue-600 focus-visible:outline-2 focus-visible:outline-blue-600">
+          <PostSummaryLink
+              :board-slug="boardSlug"
+              :post="post"
+              :query="route.query"
+              class="flex min-w-0 items-center gap-1.5 text-slate-800 group-hover:text-blue-600 focus-visible:outline-2 focus-visible:outline-blue-600"
+          >
             <span v-if="post.pinned"
                   class="shrink-0 rounded bg-slate-400 px-1.5 py-0.5 text-[10px] font-medium text-white sm:hidden">공지</span>
             <CommunityIcon v-if="post.secret" name="lock" class="size-4 text-slate-500" aria-label="비밀글" role="img"
@@ -57,11 +62,12 @@ function formatDate(value: string): string {
                            :file-id="post.representativeFileId"
                            class="size-8 rounded"
             />
+            <span v-if="post.blinded" class="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">블라인드</span>
             <span class="truncate" :class="post.pinned ? 'font-semibold' : 'font-normal'">{{ post.title }}</span>
             <span v-if="post.commentCount > 0" class="shrink-0 text-xs tabular-nums text-red-500">[{{
                 post.commentCount
               }}]</span>
-          </RouterLink>
+          </PostSummaryLink>
           <p class="mt-1 text-xs text-slate-400 xl:hidden"><span class="md:hidden">{{
               post.authorDisplayName
             }} · </span>{{ formatDate(post.createdAt) }}</p>

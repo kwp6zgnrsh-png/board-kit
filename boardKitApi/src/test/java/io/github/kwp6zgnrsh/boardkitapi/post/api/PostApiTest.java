@@ -32,6 +32,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
+import io.github.kwp6zgnrsh.boardkitapi.common.exception.BlindedContentAccessDeniedException;
+import io.github.kwp6zgnrsh.boardkitapi.common.exception.ContentAccessExceptionHandler;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostListRequest;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostSort;
@@ -44,7 +46,10 @@ import io.github.kwp6zgnrsh.boardkitapi.post.exception.SecretPostAccessDeniedExc
 import io.github.kwp6zgnrsh.boardkitapi.post.service.PostService;
 
 @WebMvcTest(PostApi.class)
-@Import(PostApiTest.SecurityTestConfig.class)
+@Import({
+	PostApiTest.SecurityTestConfig.class,
+	ContentAccessExceptionHandler.class
+})
 class PostApiTest {
 
 	private static final String VALID_REQUEST = """
@@ -234,7 +239,8 @@ class PostApiTest {
 			LocalDateTime.of(2026, 9, 21, 10, 0),
 			20L,
 			true,
-			7
+			7,
+			false
 		);
 
 		PostPageResponse response = new PostPageResponse(
@@ -250,6 +256,7 @@ class PostApiTest {
 			1,
 			10,
 			DEFAULT_LIST_REQUEST,
+			null,
 			false,
 			false
 		)).thenReturn(response);
@@ -275,6 +282,7 @@ class PostApiTest {
 			1,
 			10,
 			DEFAULT_LIST_REQUEST,
+			null,
 			false,
 			false
 		);
@@ -298,6 +306,7 @@ class PostApiTest {
 			2,
 			5,
 			request,
+			1L,
 			true,
 			true
 		)).thenReturn(response);
@@ -317,6 +326,7 @@ class PostApiTest {
 			2,
 			5,
 			request,
+			1L,
 			true,
 			true
 		);
@@ -422,7 +432,8 @@ class PostApiTest {
 						"wrong-password"
 					)
 			)
-			.andExpect(status().isForbidden());
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.code").value("SECRET_POST_ACCESS_DENIED"));
 	}
 
 	private PostDetailResponse postDetailResponse() {
@@ -448,6 +459,7 @@ class PostApiTest {
 			List.of(),
 			null,
 			0L,
+			false,
 			false
 		);
 	}
@@ -616,6 +628,21 @@ class PostApiTest {
 			.andExpect(status().isBadRequest());
 
 		verifyNoInteractions(postService);
+	}
+
+	@Test
+	@DisplayName("블라인드 접근 거절은 비밀글 비밀번호 오류와 다른 코드를 반환한다")
+	void distinguishBlindedContentFromSecretPasswordFailure() throws Exception {
+		when(postService.getPostDetail(
+			"free", 100L, null, false, false, null
+		)).thenThrow(new BlindedContentAccessDeniedException(
+			"블라인드된 내용은 작성자와 관리자만 확인할 수 있습니다."
+		));
+
+		mockMvc.perform(get("/api/boards/free/posts/100"))
+			.andExpect(status().isForbidden())
+			.andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
+			.andExpect(jsonPath("$.code").value("CONTENT_BLINDED"));
 	}
 
 	private Authentication createAuthentication(Long memberId, String authority) {

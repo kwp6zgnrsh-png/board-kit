@@ -19,9 +19,9 @@ import tools.jackson.databind.node.ObjectNode;
 public class PostDocumentValidator {
 
 	private static final JsonNodeFactory NODES = JsonNodeFactory.instance;
-	private static final Set<String> TEXT_MARKS =
-		Set.of("bold", "italic", "underline", "strike", "code", "link");
+	private static final Set<String> TEXT_MARKS = Set.of("bold", "italic", "underline", "strike", "code", "link");
 	private static final int MAX_BLOCK_DEPTH = 64;
+	private static final int MAX_REPLY_TEXT_LENGTH = 2000;
 
 	public ValidatedDocument validate(JsonNode source) {
 		if (source == null || !source.isObject()
@@ -43,6 +43,24 @@ public class PostDocumentValidator {
 			String.join("\n", context.texts),
 			List.copyOf(context.images)
 		);
+	}
+
+	public ValidatedDocument validateReply(JsonNode source) {
+		ValidatedDocument document = validate(source);
+
+		if (!document.images().isEmpty()) {
+			throw new InvalidPostRequestException("공식 답변에는 이미지를 첨부할 수 없습니다.");
+		}
+
+		if (document.text().isBlank()) {
+			throw new InvalidPostRequestException("공식 답변 내용을 입력해 주세요.");
+		}
+
+		if (document.text().length() > MAX_REPLY_TEXT_LENGTH) {
+			throw new InvalidPostRequestException("공식 답변은 2,000자 이하여야 합니다.");
+		}
+
+		return document;
 	}
 
 	private ObjectNode normalizeBlock(

@@ -71,7 +71,7 @@ watch(
     () => {
       void loadHome()
     },
-    {immediate: true},
+    { immediate: true, flush: 'sync' },
 )
 </script>
 

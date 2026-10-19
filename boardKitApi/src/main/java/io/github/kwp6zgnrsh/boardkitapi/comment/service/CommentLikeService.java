@@ -14,6 +14,7 @@ import io.github.kwp6zgnrsh.boardkitapi.board.policy.BoardReadAccess;
 import io.github.kwp6zgnrsh.boardkitapi.comment.exception.CommentNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.comment.mapper.CommentLikeMapper;
 import io.github.kwp6zgnrsh.boardkitapi.comment.mapper.CommentMapper;
+import io.github.kwp6zgnrsh.boardkitapi.common.security.ContentBlindAccess;
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberSanctionedException;
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberUnavailableException;
 import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
@@ -82,8 +83,11 @@ public class CommentLikeService {
 			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글 좋아요를 사용할 수 없는 게시판입니다.");
 		}
 
-		PostCommentTarget post = postMapper.selectActiveCommentTarget(board.getId(), postId)
+		PostCommentTarget post = postMapper
+			.selectActiveCommentTargetForShare(board.getId(), postId)
 			.orElseThrow(PostNotFoundException::new);
+
+		ContentBlindAccess.validateWrite(post.blindedAt());
 
 		postSecretAccess.validate(
 			post.secret(), post.secretPasswordHash(), post.authorId(),

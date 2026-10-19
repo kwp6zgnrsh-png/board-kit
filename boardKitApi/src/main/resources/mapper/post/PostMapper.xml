@@ -36,6 +36,14 @@
         )
     </insert>
 
+    <sql id="postSummaryBlindAccess">
+        (
+            p.blinded_at IS NULL
+            OR #{adminAccess}
+            OR p.author_id = #{memberId,jdbcType=BIGINT}
+        )
+    </sql>
+
     <sql id="postSummaryConditions">
         p.board_id = #{boardId}
         AND p.deleted_at IS NULL
@@ -45,6 +53,7 @@
         </if>
 
         <if test="keyword != null">
+            AND <include refid="postSummaryBlindAccess"/>
             AND (
                 p.title LIKE CONCAT('%', #{keyword}, '%') ESCAPE '='
                 OR p.content LIKE CONCAT('%', #{keyword}, '%') ESCAPE '='
@@ -55,7 +64,11 @@
     <select id="selectPostSummaries" resultType="io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostSummaryResponse">
         SELECT
             p.id,
-            p.title,
+            CASE
+                WHEN <include refid="postSummaryBlindAccess"/>
+                THEN p.title
+                ELSE '블라인드된 게시글입니다.'
+            END AS title,
             p.author_id AS authorId,
             m.display_name AS authorDisplayName,
             p.category_id AS categoryId,
@@ -76,7 +89,8 @@
                 SELECT COUNT(*)
                 FROM post_like pl
                 WHERE pl.post_id = p.id
-            ) AS likeCount
+            ) AS likeCount,
+            (p.blinded_at IS NOT NULL) AS blinded
         FROM post p
             INNER JOIN member m
                 ON m.id = p.author_id
@@ -87,6 +101,8 @@
                 AND pf.post_id = p.id
                 AND pf.deleted_at IS NULL
                 AND pf.file_usage = 'BODY_IMAGE'
+                AND p.is_secret = FALSE
+                AND <include refid="postSummaryBlindAccess"/>
         WHERE
             <include refid="postSummaryConditions"/>
         ORDER BY
@@ -136,7 +152,8 @@
             p.created_at AS createdAt,
             p.updated_at AS updatedAt,
             p.representative_file_id AS representativeFileId,
-            p.content_document AS contentDocument
+            p.content_document AS contentDocument,
+            p.blinded_at AS blindedAt
         FROM post p
             INNER JOIN member m
                 ON m.id = p.author_id
@@ -171,6 +188,7 @@
             AND author_id = #{authorId}
             AND version = #{version}
             AND deleted_at IS NULL
+            AND blinded_at IS NULL
     </update>
 
     <update id="softDeletePost">
@@ -189,7 +207,8 @@
             author_id AS authorId,
             is_secret AS secret,
             secret_password_hash AS secretPasswordHash,
-            comments_locked AS commentsLocked
+            comments_locked AS commentsLocked,
+            blinded_at AS blindedAt
         FROM post
         WHERE id = #{postId}
             AND board_id = #{boardId}
@@ -203,7 +222,8 @@
             author_id AS authorId,
             is_secret AS secret,
             secret_password_hash AS secretPasswordHash,
-            comments_locked AS commentsLocked
+            comments_locked AS commentsLocked,
+            blinded_at AS blindedAt
         FROM post
         WHERE id = #{postId}
             AND board_id = #{boardId}
@@ -234,4 +254,61 @@
             AND board_id = #{boardId}
             AND deleted_at IS NULL
     </update>
+
+    <select id="selectPostForModerationForUpdate"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.post.model.Post"
+            useCache="false"
+            flushCache="true">
+        SELECT
+            id,
+            board_id AS boardId,
+            author_id AS authorId,
+            version,
+            updated_at AS updatedAt,
+            deleted_at AS deletedAt,
+            blinded_at AS blindedAt,
+            blind_report_base_count AS blindReportBaseCount
+        FROM post
+        WHERE id = #{postId}
+        FOR UPDATE
+    </select>
+
+    <update id="blindPost">
+        UPDATE post
+        SET blinded_at = CURRENT_TIMESTAMP(6),
+            version = version + 1
+        WHERE id = #{postId}
+            AND version = #{version}
+            AND deleted_at IS NULL
+            AND blinded_at IS NULL
+    </update>
+
+    <update id="unblindPost">
+        UPDATE post
+            SET blinded_at = NULL,
+            blind_report_base_count = #{acceptedReportCount},
+            version = version + 1
+        WHERE id = #{postId}
+            AND version = #{version}
+            AND deleted_at IS NULL
+            AND blinded_at IS NOT NULL
+    </update>
+
+    <select id="selectActiveCommentTargetForShare"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.post.model.PostCommentTarget"
+            useCache="false"
+            flushCache="true">
+        SELECT
+            author_id AS authorId,
+            is_secret AS secret,
+            secret_password_hash AS secretPasswordHash,
+            comments_locked AS commentsLocked,
+            blinded_at AS blindedAt
+        FROM post
+        WHERE id = #{postId}
+            AND board_id = #{boardId}
+            AND deleted_at IS NULL
+        FOR SHARE
+    </select>
+
 </mapper>

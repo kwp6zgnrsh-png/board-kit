@@ -69,14 +69,19 @@ public class PostApi {
 	}
 
 	@GetMapping
-	public PostPageResponse getPosts(@PathVariable String boardSlug, @RequestParam(defaultValue = "1") @Min(1) int page,
+	public ResponseEntity<PostPageResponse> getPosts(@PathVariable String boardSlug,
+		@RequestParam(defaultValue = "1") @Min(1) int page,
 		@RequestParam(defaultValue = "10") @Min(1) @Max(100) int size, @Valid @ModelAttribute PostListRequest request,
-		Authentication authentication) {
+		@AuthenticationPrincipal LoginMember loginMember, Authentication authentication) {
 
 		boolean adminAccess = hasAuthority(authentication, "ROLE_ADMIN");
 		boolean memberAccess = adminAccess || hasAuthority(authentication, "ROLE_MEMBER");
+		Long memberId = loginMember == null ? null : loginMember.id();
 
-		return postService.getPosts(boardSlug, page, size, request, memberAccess, adminAccess);
+		PostPageResponse response = postService.getPosts(boardSlug, page, size, request, memberId, memberAccess,
+			adminAccess);
+
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(response);
 	}
 
 	@GetMapping("/{postId}")

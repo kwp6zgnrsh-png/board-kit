@@ -8,6 +8,8 @@ import type {BoardDetailResponse,} from '@/features/board/types/board'
 import PostCommentsPanel from '@/features/comment/components/PostCommentsPanel.vue'
 import PostDetailSidebar from '@/features/post/components/PostDetailSidebar.vue'
 import SecretPostPasswordForm from '@/features/post/components/SecretPostPasswordForm.vue'
+import PostReplyPanel from '@/features/post/components/PostReplyPanel.vue'
+import ReportAction from '@/features/report/components/ReportAction.vue'
 import type {PostDetailResponse,} from '@/features/post/types/post'
 import {
   deletePost,
@@ -53,6 +55,9 @@ const postId = computed(() => {
 let requestSequence = 0
 
 async function loadPage(slug: string, id: number | null,) {
+  loading.value = false
+  passwordSubmitting.value = false
+
   const currentRequest = ++requestSequence
   likeSubmitting.value = false
   likeErrorMessage.value = ''
@@ -90,24 +95,34 @@ async function loadPage(slug: string, id: number | null,) {
       post.value = postResponse
     }
   } catch (error) {
-    if (currentRequest !== requestSequence) {
-      return
-    }
+    if (currentRequest !== requestSequence) return
 
-    if (error instanceof ApiError && error.status === 403 && boardLoaded) {
+    if (
+        error instanceof ApiError &&
+        error.status === 403 &&
+        error.code === 'CONTENT_BLINDED'
+    ) {
+      errorMessage.value =
+          '블라인드된 게시글은 작성자와 관리자만 열람할 수 있습니다.'
+    } else if (
+        error instanceof ApiError &&
+        error.status === 403 &&
+        error.code === 'SECRET_POST_ACCESS_DENIED' &&
+        boardLoaded
+    ) {
       passwordRequired.value = true
     } else if (error instanceof ApiError && error.status === 403) {
-      errorMessage.value = '게시판을 조회할 권한이 없습니다.'
+      errorMessage.value = boardLoaded
+          ? '게시글을 조회할 권한이 없습니다.'
+          : '게시판을 조회할 권한이 없습니다.'
     } else if (error instanceof ApiError && error.status === 404) {
-      errorMessage.value =
-          boardLoaded
-              ? '게시글을 찾을 수 없습니다.'
-              : '게시판을 찾을 수 없습니다.'
+      errorMessage.value = boardLoaded
+          ? '게시글을 찾을 수 없습니다.'
+          : '게시판을 찾을 수 없습니다.'
     } else {
-      errorMessage.value =
-          error instanceof Error
-              ? error.message
-              : '게시글을 불러오지 못했습니다.'
+      errorMessage.value = error instanceof Error
+          ? error.message
+          : '게시글을 불러오지 못했습니다.'
     }
   } finally {
     if (currentRequest === requestSequence) {
@@ -117,39 +132,44 @@ async function loadPage(slug: string, id: number | null,) {
 }
 
 async function submitPassword(password: string) {
-  if (postId.value === null) {
-    return
-  }
+  const id = postId.value
+  if (id === null || passwordSubmitting.value || !passwordRequired.value) return
 
   const currentRequest = ++requestSequence
-
   passwordSubmitting.value = true
   passwordErrorMessage.value = ''
 
   try {
-    const response = await getPostDetail(
-        boardSlug.value,
-        postId.value,
-        password,
-    )
+    const response = await getPostDetail(boardSlug.value, id, password)
+    if (currentRequest !== requestSequence) return
 
-    if (currentRequest === requestSequence) {
-      secretPostPassword.value = password
-      post.value = response
-      passwordRequired.value = false
-    }
+    secretPostPassword.value = password
+    post.value = response
+    passwordRequired.value = false
   } catch (error) {
-    if (currentRequest !== requestSequence) {
-      return
-    }
+    if (currentRequest !== requestSequence) return
 
-    if (error instanceof ApiError && error.status === 403) {
+    if (
+        error instanceof ApiError &&
+        error.status === 403 &&
+        error.code === 'SECRET_POST_ACCESS_DENIED'
+    ) {
       passwordErrorMessage.value = '비밀번호가 올바르지 않습니다.'
+    } else if (
+        error instanceof ApiError &&
+        (error.status === 403 || error.status === 404)
+    ) {
+      passwordRequired.value = false
+      post.value = null
+      errorMessage.value = error.code === 'CONTENT_BLINDED'
+          ? '블라인드된 게시글은 작성자와 관리자만 열람할 수 있습니다.'
+          : error.status === 404
+              ? '게시글을 찾을 수 없습니다.'
+              : '게시글을 조회할 권한이 없습니다.'
     } else {
-      passwordErrorMessage.value =
-          error instanceof Error
-              ? error.message
-              : '게시글을 열지 못했습니다.'
+      passwordErrorMessage.value = error instanceof Error
+          ? error.message
+          : '게시글을 열지 못했습니다.'
     }
   } finally {
     if (currentRequest === requestSequence) {
@@ -159,33 +179,43 @@ async function submitPassword(password: string) {
 }
 
 const canDelete = computed(() => {
-  const session = getAuthSession()
+  const session = authSession.value
   const currentPost = post.value
 
-  return session !== null &&
-      currentPost !== null &&
-      (session.memberId === currentPost.authorId ||
-          session.role === 'ADMIN')
+  if (
+      !session ||
+      !currentPost ||
+      board.value?.status !== 'ACTIVE'
+  ) {
+    return false
+  }
+
+  return session.memberId === currentPost.authorId ||
+      (!currentPost.blinded && session.role === 'ADMIN')
 })
 
 const canEdit = computed(() => {
-  const session = getAuthSession()
+  const session = authSession.value
   const currentPost = post.value
   const currentBoard = board.value
 
   return session !== null &&
       currentPost !== null &&
       currentBoard !== null &&
+      currentBoard.status === 'ACTIVE' &&
+      !currentPost.blinded &&
       session.memberId === currentPost.authorId &&
       (currentBoard.policy.writePermission === 'MEMBER' ||
           session.role === 'ADMIN')
 })
 
 const canToggleLike = computed(() =>
-    authSession.value !== null
-    && post.value !== null
-    && board.value?.policy.postLikesEnabled === true
-    && !deleting.value,
+    authSession.value !== null &&
+    post.value !== null &&
+    !post.value.blinded &&
+    board.value?.status === 'ACTIVE' &&
+    board.value.policy.postLikesEnabled &&
+    !deleting.value,
 )
 
 async function toggleLike() {
@@ -243,6 +273,11 @@ async function toggleLike() {
     }
   } catch (error) {
     if (currentRequest !== requestSequence) {
+      return
+    }
+
+    if (error instanceof ApiError && error.code === 'CONTENT_BLINDED') {
+      await loadPage(currentBoard.slug, currentPost.id)
       return
     }
 
@@ -312,9 +347,12 @@ watch(
       boardSlug,
       postId,
       () => authSession.value?.memberId ?? null,
+      () => authSession.value?.role ?? null,
     ],
-    ([slug, id]) => loadPage(slug, id),
-    {immediate: true},
+    ([slug, id]) => {
+      void loadPage(slug, id)
+    },
+    { immediate: true, flush: 'sync' },
 )
 
 onBeforeUnmount(() => {
@@ -345,6 +383,14 @@ onBeforeUnmount(() => {
           :slug="board.slug"
           :description="board.description"
       />
+
+      <p
+          v-if="board.status === 'ARCHIVED'"
+          role="status"
+          class="m-0 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+      >
+        보관된 게시판입니다. 조회만 가능합니다.
+      </p>
 
       <p
           v-if="loading"
@@ -406,6 +452,15 @@ onBeforeUnmount(() => {
               </dl>
             </header>
 
+            <p
+                v-if="post.blinded"
+                role="status"
+                class="my-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800"
+            >
+              블라인드된 게시글입니다.
+              작성자와 관리자만 원문을 볼 수 있으며 수정과 추가 활동이 제한됩니다.
+            </p>
+
             <PostContent
                 :key="`${board.slug}:${post.id}:${post.version}`"
                 :board-slug="board.slug"
@@ -453,6 +508,15 @@ onBeforeUnmount(() => {
 
             <footer
                 class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 py-3 max-sm:justify-stretch">
+              <ReportAction
+                  v-if="board.status === 'ACTIVE' && !post.blinded"
+                  :board-slug="board.slug"
+                  :post-id="post.id"
+                  :author-id="post.authorId"
+                  :secret-password="secretPostPassword"
+                  :disabled="deleting"
+                  size="md"
+              />
               <div v-if="canEdit || canDelete" class="flex flex-wrap gap-3 max-sm:flex-1 max-sm:[&>*]:flex-1">
                 <RouterLink
                     v-if="canEdit"
@@ -466,6 +530,7 @@ onBeforeUnmount(() => {
                   수정
                 </RouterLink>
                 <BaseButton
+                    v-if="canDelete"
                     variant="danger"
                     :disabled="deleting || likeSubmitting"
                     @click="removePost"
@@ -487,7 +552,18 @@ onBeforeUnmount(() => {
             </footer>
           </article>
 
+          <PostReplyPanel
+              :key="`${board.slug}:${post.id}`"
+              :post-blinded="post.blinded"
+              :board-slug="board.slug"
+              :post-id="post.id"
+              :enabled="board.policy.officialReplyEnabled"
+              :secret-password="secretPostPassword"
+              :board-archived="board.status === 'ARCHIVED'"
+          />
+
           <PostCommentsPanel
+              :post-blinded="post.blinded"
               :board-slug="board.slug"
               :post-id="post.id"
               :comments-enabled="board.policy.commentsEnabled"
@@ -496,6 +572,7 @@ onBeforeUnmount(() => {
               :locked="post.commentsLocked"
               :secret-password="secretPostPassword"
               :comment-likes-enabled="board.policy.commentLikesEnabled"
+              :board-archived="board.status === 'ARCHIVED'"
           />
         </div>
 

@@ -26,6 +26,7 @@ import io.github.kwp6zgnrsh.boardkitapi.comment.exception.CommentEditDeniedExcep
 import io.github.kwp6zgnrsh.boardkitapi.comment.exception.CommentNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.comment.mapper.CommentMapper;
 import io.github.kwp6zgnrsh.boardkitapi.comment.model.Comment;
+import io.github.kwp6zgnrsh.boardkitapi.common.security.ContentBlindAccess;
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberSanctionedException;
 import io.github.kwp6zgnrsh.boardkitapi.member.exception.MemberUnavailableException;
 import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
@@ -66,11 +67,7 @@ public class CommentService {
 
 		BoardReadAccess.validate(policy.getReadPermission(), true, adminAccess);
 
-		PostCommentTarget post = postMapper.selectActiveCommentTargetForUpdate(board.getId(), postId)
-			.orElseThrow(PostNotFoundException::new);
-
-		postSecretAccess.validate(post.secret(), post.secretPasswordHash(), post.authorId(), memberId, adminAccess,
-			secretPassword);
+		PostCommentTarget post = requireWritablePost(board.getId(), postId, memberId, adminAccess, secretPassword);
 
 		validateCommentWritePolicy(policy, adminAccess);
 
@@ -91,7 +88,8 @@ public class CommentService {
 	public CommentPageResponse getComments(@NotBlank String boardSlug, @NotNull @Positive Long postId, @Min(1) int page,
 		@Min(1) @Max(100) int size, Long memberId, boolean memberAccess, boolean adminAccess, String secretPassword) {
 
-		Board board = requireActiveBoard(boardSlug);
+		Board board = boardMapper.selectReadableBoardBySlug(boardSlug, adminAccess)
+			.orElseThrow(BoardNotFoundException::new);
 		BoardPolicy policy = requireBoardPolicy(board.getId());
 
 		BoardReadAccess.validate(policy.getReadPermission(), memberAccess, adminAccess);
@@ -105,7 +103,9 @@ public class CommentService {
 		List<CommentItemResponse> comments =
 			totalElements == 0 || offset >= totalElements
 				? List.of()
-				: commentMapper.selectActiveComments(postId, size, offset, memberId);
+				: commentMapper.selectActiveComments(
+				postId, size, offset, memberId, adminAccess
+			);
 
 		long calculatedTotalPages = totalElements / size + (totalElements % size == 0 ? 0 : 1);
 
@@ -126,7 +126,7 @@ public class CommentService {
 
 		validateCommentWritePolicy(policy, adminAccess);
 
-		PostCommentTarget post = validatePostAccess(board.getId(), postId, memberId, adminAccess, secretPassword);
+		PostCommentTarget post = requireWritablePost(board.getId(), postId, memberId, adminAccess, secretPassword);
 
 		if (post.commentsLocked()) {
 			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글 작성이 잠긴 게시글입니다.");
@@ -137,6 +137,8 @@ public class CommentService {
 		if (!Objects.equals(currentComment.getAuthorId(), memberId)) {
 			throw new CommentEditDeniedException();
 		}
+
+		ContentBlindAccess.validateWrite(currentComment.getBlindedAt());
 
 		if (!Objects.equals(currentComment.getVersion(), request.version())) {
 			throw new CommentConflictException();
@@ -194,14 +196,26 @@ public class CommentService {
 
 	private PostCommentTarget validatePostAccess(Long boardId, Long postId, Long memberId, boolean adminAccess,
 		String secretPassword) {
-
 		PostCommentTarget post = postMapper.selectActiveCommentTarget(boardId, postId)
 			.orElseThrow(PostNotFoundException::new);
 
-		postSecretAccess.validate(
-			post.secret(), post.secretPasswordHash(), post.authorId(),
-			memberId, adminAccess, secretPassword
-		);
+		ContentBlindAccess.validateRead(post.blindedAt(), post.authorId(), memberId, adminAccess);
+
+		postSecretAccess.validate(post.secret(), post.secretPasswordHash(), post.authorId(), memberId, adminAccess,
+			secretPassword);
+
+		return post;
+	}
+
+	private PostCommentTarget requireWritablePost(Long boardId, Long postId, Long memberId, boolean adminAccess,
+		String secretPassword) {
+		PostCommentTarget post = postMapper.selectActiveCommentTargetForUpdate(boardId, postId)
+			.orElseThrow(PostNotFoundException::new);
+
+		ContentBlindAccess.validateWrite(post.blindedAt());
+
+		postSecretAccess.validate(post.secret(), post.secretPasswordHash(), post.authorId(), memberId, adminAccess,
+			secretPassword);
 
 		return post;
 	}

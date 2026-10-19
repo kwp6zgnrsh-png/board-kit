@@ -86,7 +86,8 @@ public class BoardService {
 
 	@Transactional(readOnly = true)
 	public BoardDetailResponse getBoardDetail(String slug, boolean memberAccess, boolean adminAccess) {
-		Board board = boardMapper.selectActiveBoardBySlug(slug).orElseThrow(BoardNotFoundException::new);
+		Board board = boardMapper.selectReadableBoardBySlug(slug, adminAccess)
+			.orElseThrow(BoardNotFoundException::new);
 
 		BoardPolicy policy = boardMapper.selectPolicyByBoardId(board.getId())
 			.orElseThrow(() -> new IllegalStateException("게시판 정책을 찾을 수 없습니다. boardId=" + board.getId()));

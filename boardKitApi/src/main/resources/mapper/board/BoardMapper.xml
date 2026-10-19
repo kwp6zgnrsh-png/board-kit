@@ -199,6 +199,25 @@
         FOR UPDATE
     </select>
 
+    <select id="selectActiveBoardBySlugForShare"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.board.model.Board">
+        SELECT
+            id,
+            name,
+            slug,
+            description,
+            display_type,
+            status,
+            sort_order,
+            created_by,
+            created_at,
+            updated_at
+        FROM board
+        WHERE slug = #{slug}
+            AND status = 'ACTIVE'
+        FOR SHARE
+    </select>
+
     <update id="updateBoard">
         UPDATE board
         SET
@@ -274,4 +293,28 @@
         WHERE id = #{boardId}
             AND status = 'ACTIVE'
     </update>
+
+    <select id="selectReadableBoardBySlug"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.board.model.Board">
+        SELECT
+            id,
+            name,
+            slug,
+            description,
+            display_type,
+            status,
+            sort_order,
+            created_by,
+            created_at,
+            updated_at
+        FROM board
+        WHERE slug = #{slug}
+            AND (
+                status = 'ACTIVE'
+                OR (
+                    #{adminAccess} = TRUE
+                    AND status = 'ARCHIVED'
+                )
+            )
+    </select>
 </mapper>
