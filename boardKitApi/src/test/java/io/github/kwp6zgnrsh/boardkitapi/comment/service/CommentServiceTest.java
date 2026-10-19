@@ -211,30 +211,17 @@ class CommentServiceTest {
 			() -> commentService.updateComment("free", 100L, 50L, request, 10L, false, null));
 	}
 
-	@Test
-	@DisplayName("작성자는 현재 버전으로 자기 댓글을 삭제할 수 있다")
-	void deleteOwnCommentWithCurrentVersion() {
-		prepareCommentDeletion(10L, 10L, 2);
+	@ParameterizedTest(name = "memberId={0}, authorId={1}, version={2}, adminAccess={3}")
+	@CsvSource({"10, 10, 2, false", "1, 10, 0, true"})
+	@DisplayName("작성자와 관리자는 현재 버전으로 댓글을 삭제할 수 있다")
+	void deleteCommentByAuthorOrAdmin(Long memberId, Long authorId, int version, boolean adminAccess) {
+		prepareCommentDeletion(memberId, authorId, version);
+		when(commentMapper.softDeleteComment(1L, 100L, 50L, version)).thenReturn(1);
 
-		when(commentMapper.softDeleteComment(1L, 100L, 50L, 2)).thenReturn(1);
+		commentService.deleteComment("free", 100L, 50L, version, memberId, adminAccess);
 
-		commentService.deleteComment("free", 100L, 50L, 2, 10L, false);
-
-		verify(commentMapper).softDeleteComment(1L, 100L, 50L, 2);
-
-		verify(memberMapper, never()).existsActiveSanctionByMemberId(10L);
-	}
-
-	@Test
-	@DisplayName("관리자는 다른 회원의 댓글을 삭제할 수 있다")
-	void deleteOtherMembersCommentWithAdminAccess() {
-		prepareCommentDeletion(1L, 10L, 0);
-
-		when(commentMapper.softDeleteComment(1L, 100L, 50L, 0)).thenReturn(1);
-
-		commentService.deleteComment("free", 100L, 50L, 0, 1L, true);
-
-		verify(commentMapper).softDeleteComment(1L, 100L, 50L, 0);
+		verify(commentMapper).softDeleteComment(1L, 100L, 50L, version);
+		verify(memberMapper, never()).existsActiveSanctionByMemberId(anyLong());
 	}
 
 	@Test
@@ -421,5 +408,4 @@ class CommentServiceTest {
 		when(boardMapper.selectReadableBoardBySlug("free", adminAccess)).thenReturn(Optional.of(board));
 		when(boardMapper.selectPolicyByBoardId(1L)).thenReturn(Optional.of(policy));
 	}
-
 }

@@ -7,14 +7,17 @@ import java.time.Instant;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.ResponseCookie;
 
 class AuthCookieFactoryTest {
 
-	@Test
-	@DisplayName("JWT의 남은 수명과 보안 속성을 적용해 인증 쿠키를 발급한다")
-	void createSecureCookieWithJwtLifetime() {
-		AuthCookieFactory factory = new AuthCookieFactory(true);
+	@ParameterizedTest(name = "secure={0}")
+	@ValueSource(booleans = {true, false})
+	@DisplayName("환경별 Secure 설정과 JWT 수명 및 공통 보안 속성을 적용해 인증 쿠키를 발급한다")
+	void createCookieWithJwtLifetimeAndSecuritySettings(boolean secure) {
+		AuthCookieFactory factory = new AuthCookieFactory(secure);
 		Instant expiresAt = Instant.now().plusSeconds(1800);
 
 		Instant before = Instant.now();
@@ -24,7 +27,7 @@ class AuthCookieFactoryTest {
 		assertEquals(AuthCookieFactory.ACCESS_TOKEN_COOKIE_NAME, cookie.getName());
 		assertEquals("test-token", cookie.getValue());
 		assertTrue(cookie.isHttpOnly());
-		assertTrue(cookie.isSecure());
+		assertEquals(secure, cookie.isSecure());
 		assertEquals("Lax", cookie.getSameSite());
 		assertEquals("/api", cookie.getPath());
 		assertNull(cookie.getDomain());
@@ -35,17 +38,6 @@ class AuthCookieFactoryTest {
 
 		assertTrue(actualAge > 0);
 		assertTrue(actualAge >= minimumAge && actualAge <= maximumAge);
-	}
-
-	@Test
-	@DisplayName("로컬 HTTP 설정에서는 Secure만 해제하고 HttpOnly는 유지한다")
-	void createCookieForLocalHttp() {
-		AuthCookieFactory factory = new AuthCookieFactory(false);
-
-		ResponseCookie cookie = factory.createAccessTokenCookie("test-token", Instant.now().plusSeconds(1800));
-
-		assertFalse(cookie.isSecure());
-		assertTrue(cookie.isHttpOnly());
 	}
 
 	@Test

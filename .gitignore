@@ -48,3 +48,6 @@ replay_pid*
 *.sql.gz
 *.sql.zip
 *.dump
+
+# Local test refactoring notes
+/docs/test-refactoring.md

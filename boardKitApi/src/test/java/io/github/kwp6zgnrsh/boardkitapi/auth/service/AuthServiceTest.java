@@ -11,6 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataAccessResourceFailureException;
@@ -100,32 +102,19 @@ class AuthServiceTest {
 		verifyNoInteractions(jwtTokenProvider);
 	}
 
-	@Test
-	@DisplayName("로그아웃하면 현재 JWT 식별자와 UTC 만료 시각을 저장한다")
-	void revokeCurrentTokenOnLogout() {
+	@ParameterizedTest(name = "insertedRows={0}")
+	@ValueSource(ints = {1, 0})
+	@DisplayName("JWT 무효화는 신규 등록과 중복 등록 모두 성공하며 UTC 만료 시각을 저장한다")
+	void revokeCurrentTokenRegardlessOfDuplicate(int insertedRows) {
 		JwtPayload payload = new JwtPayload(10L, "MEMBER", "00000000-0000-0000-0000-000000000001",
 			Instant.parse("2030-01-01T12:30:00Z"), 0L);
 		LocalDateTime expiresAt = LocalDateTime.of(2030, 1, 1, 12, 30);
+		when(revokedTokenMapper.insertRevokedToken(payload.tokenId(), expiresAt)).thenReturn(insertedRows);
 
-		when(revokedTokenMapper.insertRevokedToken(payload.tokenId(), expiresAt)).thenReturn(1);
-
-		authService.logout(payload);
+		assertDoesNotThrow(() -> authService.logout(payload));
 
 		verify(revokedTokenMapper).insertRevokedToken(payload.tokenId(), expiresAt);
 		verifyNoInteractions(memberMapper, passwordEncoder, jwtTokenProvider);
-	}
-
-	@Test
-	@DisplayName("같은 JWT의 중복 무효화 등록도 성공으로 처리한다")
-	void allowDuplicateTokenRevocation() {
-		JwtPayload payload = new JwtPayload(10L, "MEMBER", "00000000-0000-0000-0000-000000000001",
-			Instant.parse("2030-01-01T12:30:00Z"), 0L);
-		LocalDateTime expiresAt = LocalDateTime.of(2030, 1, 1, 12, 30);
-
-		when(revokedTokenMapper.insertRevokedToken(payload.tokenId(), expiresAt)).thenReturn(0);
-
-		assertDoesNotThrow(() -> authService.logout(payload));
-		verify(revokedTokenMapper).insertRevokedToken(payload.tokenId(), expiresAt);
 	}
 
 	@Test

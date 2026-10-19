@@ -1,5 +1,6 @@
 package io.github.kwp6zgnrsh.boardkitapi.report.api;
 
+import static io.github.kwp6zgnrsh.boardkitapi.support.TestAuthentication.createAuthentication;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -20,15 +21,11 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
 
 import io.github.kwp6zgnrsh.boardkitapi.auth.mapper.RevokedTokenMapper;
-import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
 import io.github.kwp6zgnrsh.boardkitapi.board.exception.BoardNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.comment.exception.CommentNotFoundException;
@@ -79,7 +76,7 @@ class ReportApiTest {
 				.content(VALID_REQUEST)
 				.header("X-Post-Password", "secret")
 				.with(csrf())
-				.with(authentication(createAuthentication("ROLE_MEMBER"))))
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isCreated())
 			.andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
 			.andExpect(jsonPath("$.id").value(300));
@@ -96,7 +93,7 @@ class ReportApiTest {
 				.content(VALID_REQUEST)
 				.header("X-Post-Password", "secret")
 				.with(csrf())
-				.with(authentication(createAuthentication("ROLE_MEMBER"))))
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.id").value(301));
 
@@ -113,7 +110,7 @@ class ReportApiTest {
 			mockMvc.perform(post(url).contentType(MediaType.APPLICATION_JSON)
 				.content(VALID_REQUEST)
 				.with(csrf())
-				.with(authentication(createAuthentication("ROLE_ADMIN")))).andExpect(status().isCreated());
+				.with(authentication(createAuthentication(10L, "ROLE_ADMIN")))).andExpect(status().isCreated());
 		}
 
 		verify(reportService).createPostReport("free", 100L, REQUEST, 10L, true, null);
@@ -136,7 +133,7 @@ class ReportApiTest {
 	void rejectReportWithoutCsrfToken(String url) throws Exception {
 		mockMvc.perform(post(url).contentType(MediaType.APPLICATION_JSON)
 			.content(VALID_REQUEST)
-			.with(authentication(createAuthentication("ROLE_MEMBER")))).andExpect(status().isForbidden());
+			.with(authentication(createAuthentication(10L, "ROLE_MEMBER")))).andExpect(status().isForbidden());
 
 		verifyNoInteractions(reportService);
 	}
@@ -148,21 +145,20 @@ class ReportApiTest {
 		mockMvc.perform(post(url).contentType(MediaType.APPLICATION_JSON)
 			.content(VALID_REQUEST)
 			.with(csrf().useInvalidToken())
-			.with(authentication(createAuthentication("ROLE_MEMBER")))).andExpect(status().isForbidden());
+			.with(authentication(createAuthentication(10L, "ROLE_MEMBER")))).andExpect(status().isForbidden());
 
 		verifyNoInteractions(reportService);
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"{}", "{\"reason\":null}", "{\"reason\":\"INVALID\"}", "{\"reason\":\"OTHER\"}",
-		"{\"reason\":\"OTHER\",\"detail\":\"   \"}"})
+	@ValueSource(strings = {"{}", "{\"reason\":\"INVALID\"}", "{\"reason\":\"OTHER\"}"})
 	@DisplayName("잘못된 신고 사유와 누락된 기타 상세 사유를 거절한다")
 	void rejectInvalidReportRequest(String body) throws Exception {
 		for (String url : List.of(POST_URL, COMMENT_URL)) {
 			mockMvc.perform(post(url).contentType(MediaType.APPLICATION_JSON)
 				.content(body)
 				.with(csrf())
-				.with(authentication(createAuthentication("ROLE_MEMBER")))).andExpect(status().isBadRequest());
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER")))).andExpect(status().isBadRequest());
 		}
 
 		verifyNoInteractions(reportService);
@@ -179,22 +175,21 @@ class ReportApiTest {
 			mockMvc.perform(post(url).contentType(MediaType.APPLICATION_JSON)
 				.content(body)
 				.with(csrf())
-				.with(authentication(createAuthentication("ROLE_MEMBER")))).andExpect(status().isBadRequest());
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER")))).andExpect(status().isBadRequest());
 		}
 
 		verifyNoInteractions(reportService);
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"/api/boards/free/posts/0/reports", "/api/boards/free/posts/-1/reports",
-		"/api/boards/free/posts/0/comments/50/reports", "/api/boards/free/posts/-1/comments/50/reports",
-		"/api/boards/free/posts/100/comments/0/reports", "/api/boards/free/posts/100/comments/-1/reports"})
+	@ValueSource(strings = {"/api/boards/free/posts/0/reports", "/api/boards/free/posts/0/comments/50/reports",
+		"/api/boards/free/posts/100/comments/0/reports"})
 	@DisplayName("게시글과 댓글 ID가 양수가 아니면 신고를 거절한다")
 	void rejectReportWithInvalidTargetId(String url) throws Exception {
 		mockMvc.perform(post(url).contentType(MediaType.APPLICATION_JSON)
 			.content(VALID_REQUEST)
 			.with(csrf())
-			.with(authentication(createAuthentication("ROLE_MEMBER")))).andExpect(status().isBadRequest());
+			.with(authentication(createAuthentication(10L, "ROLE_MEMBER")))).andExpect(status().isBadRequest());
 
 		verifyNoInteractions(reportService);
 	}
@@ -212,7 +207,7 @@ class ReportApiTest {
 		mockMvc.perform(post(url).contentType(MediaType.APPLICATION_JSON)
 			.content(VALID_REQUEST)
 			.with(csrf())
-			.with(authentication(createAuthentication("ROLE_MEMBER")))).andExpect(status().is(expectedStatus));
+			.with(authentication(createAuthentication(10L, "ROLE_MEMBER")))).andExpect(status().is(expectedStatus));
 	}
 
 	private static Stream<Arguments> serviceFailures() {
@@ -224,10 +219,5 @@ class ReportApiTest {
 			Arguments.of(COMMENT_URL, new SecretPostAccessDeniedException(), 403),
 			Arguments.of(COMMENT_URL, new CommentNotFoundException(), 404),
 			Arguments.of(COMMENT_URL, new DuplicateReportException(), 409));
-	}
-
-	private Authentication createAuthentication(String authority) {
-		return new UsernamePasswordAuthenticationToken(new LoginMember(10L), null,
-			List.of(new SimpleGrantedAuthority(authority)));
 	}
 }

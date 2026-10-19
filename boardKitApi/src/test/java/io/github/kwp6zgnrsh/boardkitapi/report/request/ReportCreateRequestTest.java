@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -52,20 +53,13 @@ class ReportCreateRequestTest {
 		assertFalse(validator.validate(request).isEmpty());
 	}
 
-	@Test
-	@DisplayName("기타 신고의 상세 사유는 2,000자까지 허용한다")
-	void allowDetailAtMaximumLength() {
-		var request = new ReportCreateRequest(ReportReason.OTHER, "가".repeat(2000));
+	@ParameterizedTest(name = "length={0}, valid={1}")
+	@CsvSource({"2000, true", "2001, false"})
+	@DisplayName("신고 상세 사유의 2,000자 경계를 검증한다")
+	void validateDetailLengthBoundary(int length, boolean valid) {
+		var request = new ReportCreateRequest(ReportReason.OTHER, "가".repeat(length));
 
-		assertTrue(validator.validate(request).isEmpty());
-	}
-
-	@Test
-	@DisplayName("상세 사유가 2,000자를 초과하면 거절한다")
-	void rejectDetailExceedingMaximumLength() {
-		var request = new ReportCreateRequest(ReportReason.OTHER, "가".repeat(2001));
-
-		assertFalse(validator.validate(request).isEmpty());
+		assertEquals(valid, validator.validate(request).isEmpty());
 	}
 
 	@Test

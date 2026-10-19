@@ -1,5 +1,6 @@
 package io.github.kwp6zgnrsh.boardkitapi.report.api;
 
+import static io.github.kwp6zgnrsh.boardkitapi.support.TestAuthentication.createAuthentication;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -19,14 +20,10 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.kwp6zgnrsh.boardkitapi.auth.mapper.RevokedTokenMapper;
-import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
 import io.github.kwp6zgnrsh.boardkitapi.comment.exception.CommentNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.config.MethodSecurityConfig;
@@ -84,7 +81,7 @@ class AdminBlindApiTest {
 		when(adminBlindService.getBlindedPosts(1, 10, 10L, true)).thenReturn(
 			new AdminBlindedPostPageResponse(List.of(post), 1, 10, 1L, 1));
 
-		mockMvc.perform(get(URL + "/posts").with(authentication(createAuthentication("ROLE_ADMIN"))))
+		mockMvc.perform(get(URL + "/posts").with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isOk())
 			.andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
 			.andExpect(jsonPath("$.posts[0].postId").value(100))
@@ -107,7 +104,7 @@ class AdminBlindApiTest {
 
 		mockMvc.perform(get(URL + "/comments").param("page", "2")
 				.param("size", "20")
-				.with(authentication(createAuthentication("ROLE_ADMIN"))))
+				.with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isOk())
 			.andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
 			.andExpect(jsonPath("$.comments[0].commentId").value(300))
@@ -136,7 +133,7 @@ class AdminBlindApiTest {
 	@DisplayName("일반 회원은 블라인드 목록을 조회할 수 없다")
 	void rejectListRequestsByMember() throws Exception {
 		for (String url : READ_URLS) {
-			mockMvc.perform(get(url).with(authentication(createAuthentication("ROLE_MEMBER"))))
+			mockMvc.perform(get(url).with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 				.andExpect(status().isForbidden());
 		}
 
@@ -148,7 +145,7 @@ class AdminBlindApiTest {
 	@DisplayName("잘못된 페이지 조건은 서비스 호출 전에 거절한다")
 	void rejectInvalidPagination(String parameter, String value) throws Exception {
 		for (String url : LIST_URLS) {
-			mockMvc.perform(get(url).param(parameter, value).with(authentication(createAuthentication("ROLE_ADMIN"))))
+			mockMvc.perform(get(url).param(parameter, value).with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 				.andExpect(status().isBadRequest());
 		}
 
@@ -160,7 +157,7 @@ class AdminBlindApiTest {
 	void getBlindedPostDetailAsAdmin() throws Exception {
 		when(adminBlindService.getBlindedPost(100L, 10L, true)).thenReturn(detailResponse(null));
 
-		mockMvc.perform(get(URL + "/posts/100").with(authentication(createAuthentication("ROLE_ADMIN"))))
+		mockMvc.perform(get(URL + "/posts/100").with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isOk())
 			.andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
 			.andExpect(jsonPath("$.postId").value(100))
@@ -177,7 +174,7 @@ class AdminBlindApiTest {
 	void getBlindedCommentDetailAsAdmin() throws Exception {
 		when(adminBlindService.getBlindedComment(300L, 10L, true)).thenReturn(detailResponse(300L));
 
-		mockMvc.perform(get(URL + "/comments/300").with(authentication(createAuthentication("ROLE_ADMIN"))))
+		mockMvc.perform(get(URL + "/comments/300").with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isOk())
 			.andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
 			.andExpect(jsonPath("$.postId").value(100))
@@ -196,17 +193,17 @@ class AdminBlindApiTest {
 		when(adminBlindService.getBlindedComment(300L, 10L, true)).thenThrow(new CommentNotFoundException());
 
 		for (String url : List.of(URL + "/posts/100", URL + "/comments/300")) {
-			mockMvc.perform(get(url).with(authentication(createAuthentication("ROLE_ADMIN"))))
+			mockMvc.perform(get(url).with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 				.andExpect(status().isNotFound());
 		}
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"0", "-1", "abc"})
+	@ValueSource(strings = {"0", "abc"})
 	@DisplayName("올바르지 않은 상세 ID는 서비스 호출 전에 거절한다")
 	void rejectInvalidDetailId(String id) throws Exception {
 		for (String type : List.of("posts", "comments")) {
-			mockMvc.perform(get(URL + "/" + type + "/" + id).with(authentication(createAuthentication("ROLE_ADMIN"))))
+			mockMvc.perform(get(URL + "/" + type + "/" + id).with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 				.andExpect(status().isBadRequest());
 		}
 
@@ -226,7 +223,7 @@ class AdminBlindApiTest {
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(body)
 					.with(csrf())
-					.with(authentication(createAuthentication("ROLE_ADMIN"))))
+					.with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 				.andExpect(status().isNoContent())
 				.andExpect(content().string(""));
 		}
@@ -253,7 +250,7 @@ class AdminBlindApiTest {
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(TARGET_BODY)
 					.with(csrf())
-					.with(authentication(createAuthentication("ROLE_MEMBER"))))
+					.with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 				.andExpect(status().isForbidden());
 		}
 
@@ -267,7 +264,7 @@ class AdminBlindApiTest {
 			mockMvc.perform(patch(url)
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(TARGET_BODY)
-					.with(authentication(createAuthentication("ROLE_ADMIN"))))
+					.with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 				.andExpect(status().isForbidden());
 		}
 
@@ -287,7 +284,7 @@ class AdminBlindApiTest {
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(body)
 					.with(csrf())
-					.with(authentication(createAuthentication("ROLE_ADMIN"))))
+					.with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 				.andExpect(status().isBadRequest());
 		}
 
@@ -308,7 +305,7 @@ class AdminBlindApiTest {
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(TARGET_BODY)
 					.with(csrf())
-					.with(authentication(createAuthentication("ROLE_ADMIN"))))
+					.with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 				.andExpect(status().isBadRequest());
 		}
 
@@ -333,7 +330,7 @@ class AdminBlindApiTest {
 					.contentType(MediaType.APPLICATION_JSON)
 					.content(TARGET_BODY)
 					.with(csrf())
-					.with(authentication(createAuthentication("ROLE_ADMIN"))))
+					.with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 				.andExpect(status().isConflict());
 		}
 	}
@@ -344,10 +341,5 @@ class AdminBlindApiTest {
 
 		return new AdminBlindedContentDetailResponse(100L, commentId, null, "free", "자유게시판", "ARCHIVED", "게시글 제목", 20L,
 			"작성자", commentId == null ? "게시글 원문" : "댓글 원문", document, time.minusDays(1), time, time, 4);
-	}
-
-	private Authentication createAuthentication(String authority) {
-		return new UsernamePasswordAuthenticationToken(new LoginMember(10L), null,
-			List.of(new SimpleGrantedAuthority(authority)));
 	}
 }

@@ -139,7 +139,7 @@ class AuthApiTest {
 	@Test
 	@DisplayName("로그아웃하면 현재 JWT를 무효화하고 인증 쿠키를 만료시킨다")
 	void logoutAndExpireAuthenticationCookie() throws Exception {
-		JwtPayload payload = prepareLogoutAuthentication();
+		JwtPayload payload = prepareAuthentication("logout-token");
 
 		mockMvc.perform(logoutRequest())
 			.andExpect(status().isNoContent())
@@ -176,7 +176,7 @@ class AuthApiTest {
 	@Test
 	@DisplayName("이미 무효화된 JWT로는 로그아웃 API에 접근할 수 없다")
 	void rejectLogoutWithRevokedToken() throws Exception {
-		JwtPayload payload = prepareLogoutAuthentication();
+		JwtPayload payload = prepareAuthentication("logout-token");
 		when(revokedTokenMapper.existsRevokedToken(payload.tokenId())).thenReturn(true);
 
 		mockMvc.perform(logoutRequest()).andExpect(status().isUnauthorized());
@@ -188,7 +188,7 @@ class AuthApiTest {
 	@Test
 	@DisplayName("무효화 기록 저장에 실패하면 인증 쿠키를 만료시키지 않는다")
 	void preserveCookieWhenRevocationStorageFails() {
-		JwtPayload payload = prepareLogoutAuthentication();
+		JwtPayload payload = prepareAuthentication("logout-token");
 		doThrow(new DataAccessResourceFailureException("DB 연결 실패")).when(authService).logout(payload);
 
 		ServletException exception = assertThrows(ServletException.class, () -> mockMvc.perform(logoutRequest()));
@@ -200,7 +200,7 @@ class AuthApiTest {
 	@Test
 	@DisplayName("인증 쿠키로 현재 회원 정보를 조회한다")
 	void getCurrentMemberWithAuthenticationCookie() throws Exception {
-		prepareCurrentMemberAuthentication();
+		prepareAuthentication("member-token");
 		when(authService.getCurrentMember(10L)).thenReturn(new CurrentMemberResponse(10L, "회원닉네임", "MEMBER"));
 
 		mockMvc.perform(currentMemberRequest())
@@ -226,7 +226,7 @@ class AuthApiTest {
 	@Test
 	@DisplayName("무효화된 JWT로는 현재 회원 정보를 조회할 수 없다")
 	void rejectCurrentMemberRequestWithRevokedToken() throws Exception {
-		JwtPayload payload = prepareCurrentMemberAuthentication();
+		JwtPayload payload = prepareAuthentication("member-token");
 		when(revokedTokenMapper.existsRevokedToken(payload.tokenId())).thenReturn(true);
 
 		mockMvc.perform(currentMemberRequest()).andExpect(status().isUnauthorized());
@@ -237,7 +237,7 @@ class AuthApiTest {
 	@Test
 	@DisplayName("JWT가 유효해도 삭제된 회원이면 현재 회원 조회를 거절한다")
 	void rejectCurrentMemberRequestForUnavailableMember() throws Exception {
-		prepareCurrentMemberAuthentication();
+		prepareAuthentication("member-token");
 		when(authService.getCurrentMember(10L)).thenThrow(new MemberUnavailableException());
 
 		mockMvc.perform(currentMemberRequest()).andExpect(status().isUnauthorized());
@@ -248,7 +248,7 @@ class AuthApiTest {
 	@Test
 	@DisplayName("이전 인증 버전의 JWT로는 현재 회원 정보를 조회할 수 없다")
 	void rejectCurrentMemberRequestWithOutdatedAuthVersion() throws Exception {
-		prepareCurrentMemberAuthentication();
+		prepareAuthentication("member-token");
 		when(memberMapper.existsActiveMemberByIdAndAuthVersion(10L, 0L)).thenReturn(false);
 
 		mockMvc.perform(currentMemberRequest()).andExpect(status().isUnauthorized());
@@ -256,21 +256,11 @@ class AuthApiTest {
 		verifyNoInteractions(authService);
 	}
 
-	private JwtPayload prepareLogoutAuthentication() {
+	private JwtPayload prepareAuthentication(String token) {
 		JwtPayload payload = new JwtPayload(10L, "MEMBER", "00000000-0000-0000-0000-000000000001",
 			Instant.now().plusSeconds(1800), 0L);
 
-		when(jwtTokenProvider.parseAccessToken("logout-token")).thenReturn(payload);
-		when(memberMapper.existsActiveMemberByIdAndAuthVersion(10L, 0L)).thenReturn(true);
-
-		return payload;
-	}
-
-	private JwtPayload prepareCurrentMemberAuthentication() {
-		JwtPayload payload = new JwtPayload(10L, "MEMBER", "00000000-0000-0000-0000-000000000001",
-			Instant.now().plusSeconds(1800), 0L);
-
-		when(jwtTokenProvider.parseAccessToken("member-token")).thenReturn(payload);
+		when(jwtTokenProvider.parseAccessToken(token)).thenReturn(payload);
 		when(memberMapper.existsActiveMemberByIdAndAuthVersion(10L, 0L)).thenReturn(true);
 
 		return payload;

@@ -1,5 +1,6 @@
 package io.github.kwp6zgnrsh.boardkitapi.comment.api;
 
+import static io.github.kwp6zgnrsh.boardkitapi.support.TestAuthentication.createAuthentication;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
@@ -19,16 +20,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.comment.dto.request.CommentCreateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.comment.dto.response.CommentCreateResponse;
 import io.github.kwp6zgnrsh.boardkitapi.comment.dto.response.CommentItemResponse;
@@ -75,7 +72,7 @@ class CommentApiTest {
 		)).thenReturn(new CommentCreateResponse(50L));
 
 		mockMvc.perform(post("/api/boards/free/posts/100/comments")
-				.with(authentication(member(10L)))
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER")))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
                     {"content":"첫 댓글","parentId":null}
@@ -139,7 +136,7 @@ class CommentApiTest {
 				.param("page", "2")
 				.param("size", "5")
 				.header("X-Post-Password", "secret")
-				.with(authentication(member(10L))))
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.comments.length()").value(0));
 
@@ -154,7 +151,7 @@ class CommentApiTest {
 	void updateCommentWithMemberAuthentication() throws Exception {
 		mockMvc.perform(patch("/api/boards/free/posts/100/comments/50")
 				.header("X-Post-Password", "secret")
-				.with(authentication(member(10L)))
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER")))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
                 {
@@ -198,7 +195,7 @@ class CommentApiTest {
 	@DisplayName("음수 버전으로 댓글을 수정할 수 없다")
 	void rejectCommentUpdateWithNegativeVersion() throws Exception {
 		mockMvc.perform(patch("/api/boards/free/posts/100/comments/50")
-				.with(authentication(member(10L)))
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER")))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
                 {
@@ -218,7 +215,7 @@ class CommentApiTest {
 				"/api/boards/free/posts/100/comments/50"
 			)
 				.param("version", "2")
-				.with(authentication(member(10L))))
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isNoContent());
 
 		verify(commentService).deleteComment(
@@ -250,17 +247,9 @@ class CommentApiTest {
 				"/api/boards/free/posts/100/comments/50"
 			)
 				.param("version", "-1")
-				.with(authentication(member(10L))))
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isBadRequest());
 
 		verifyNoInteractions(commentService);
-	}
-
-	private Authentication member(Long id) {
-		return new UsernamePasswordAuthenticationToken(
-			new LoginMember(id),
-			null,
-			List.of(new SimpleGrantedAuthority("ROLE_MEMBER"))
-		);
 	}
 }

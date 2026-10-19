@@ -407,31 +407,18 @@ class MemberServiceTest {
 		verifyNoInteractions(passwordEncoder);
 	}
 
-	@Test
-	@DisplayName("작성한 댓글이 없으면 전체 페이지 수가 0인 빈 목록을 반환한다")
-	void returnEmptyMyCommentsWhenNoCommentsExist() {
+	@ParameterizedTest(name = "total={0}, page={1}, totalPages={2}")
+	@CsvSource({"0, 1, 0", "11, 3, 2"})
+	@DisplayName("내 댓글이 없거나 마지막 페이지를 넘으면 목록 쿼리 없이 빈 페이지를 반환한다")
+	void returnEmptyMyCommentsWithoutListQuery(long total, int page, int totalPages) {
 		when(memberMapper.existsActiveMemberById(10L)).thenReturn(true);
-		when(memberMapper.countMyComments(10L)).thenReturn(0L);
+		when(memberMapper.countMyComments(10L)).thenReturn(total);
 
-		MyCommentPageResponse response = memberService.getMyComments(10L, 1, 10);
+		MyCommentPageResponse response = memberService.getMyComments(10L, page, 10);
 
-		assertAll(() -> assertTrue(response.comments().isEmpty()), () -> assertEquals(1, response.page()),
-			() -> assertEquals(10, response.size()), () -> assertEquals(0L, response.totalElements()),
-			() -> assertEquals(0, response.totalPages()));
-
-		verify(memberMapper, never()).selectMyComments(anyLong(), anyInt(), anyLong());
-	}
-
-	@Test
-	@DisplayName("마지막 페이지를 넘으면 요청한 페이지 번호와 빈 댓글 목록을 반환한다")
-	void returnEmptyMyCommentsWhenPageExceedsLastPage() {
-		when(memberMapper.existsActiveMemberById(10L)).thenReturn(true);
-		when(memberMapper.countMyComments(10L)).thenReturn(11L);
-
-		MyCommentPageResponse response = memberService.getMyComments(10L, 3, 10);
-
-		assertAll(() -> assertTrue(response.comments().isEmpty()), () -> assertEquals(3, response.page()),
-			() -> assertEquals(11L, response.totalElements()), () -> assertEquals(2, response.totalPages()));
+		assertAll(() -> assertTrue(response.comments().isEmpty()), () -> assertEquals(page, response.page()),
+			() -> assertEquals(10, response.size()), () -> assertEquals(total, response.totalElements()),
+			() -> assertEquals(totalPages, response.totalPages()));
 
 		verify(memberMapper, never()).selectMyComments(anyLong(), anyInt(), anyLong());
 	}
@@ -448,31 +435,18 @@ class MemberServiceTest {
 		verifyNoInteractions(passwordEncoder);
 	}
 
-	@Test
-	@DisplayName("작성한 게시글이 없으면 전체 페이지 수가 0인 빈 목록을 반환한다")
-	void returnEmptyMyPostsWhenNoPostsExist() {
+	@ParameterizedTest(name = "total={0}, page={1}, totalPages={2}")
+	@CsvSource({"0, 1, 0", "11, 3, 2"})
+	@DisplayName("내 게시글이 없거나 마지막 페이지를 넘으면 목록 쿼리 없이 빈 페이지를 반환한다")
+	void returnEmptyMyPostsWithoutListQuery(long total, int page, int totalPages) {
 		when(memberMapper.existsActiveMemberById(10L)).thenReturn(true);
-		when(memberMapper.countMyPosts(10L)).thenReturn(0L);
+		when(memberMapper.countMyPosts(10L)).thenReturn(total);
 
-		MyPostPageResponse response = memberService.getMyPosts(10L, 1, 10);
+		MyPostPageResponse response = memberService.getMyPosts(10L, page, 10);
 
-		assertAll(() -> assertTrue(response.posts().isEmpty()), () -> assertEquals(1, response.page()),
-			() -> assertEquals(10, response.size()), () -> assertEquals(0L, response.totalElements()),
-			() -> assertEquals(0, response.totalPages()));
-
-		verify(memberMapper, never()).selectMyPosts(anyLong(), anyInt(), anyLong());
-	}
-
-	@Test
-	@DisplayName("마지막 페이지를 넘으면 요청한 페이지 번호와 빈 목록을 반환한다")
-	void returnEmptyMyPostsWhenPageExceedsLastPage() {
-		when(memberMapper.existsActiveMemberById(10L)).thenReturn(true);
-		when(memberMapper.countMyPosts(10L)).thenReturn(11L);
-
-		MyPostPageResponse response = memberService.getMyPosts(10L, 3, 10);
-
-		assertAll(() -> assertTrue(response.posts().isEmpty()), () -> assertEquals(3, response.page()),
-			() -> assertEquals(11L, response.totalElements()), () -> assertEquals(2, response.totalPages()));
+		assertAll(() -> assertTrue(response.posts().isEmpty()), () -> assertEquals(page, response.page()),
+			() -> assertEquals(10, response.size()), () -> assertEquals(total, response.totalElements()),
+			() -> assertEquals(totalPages, response.totalPages()));
 
 		verify(memberMapper, never()).selectMyPosts(anyLong(), anyInt(), anyLong());
 	}

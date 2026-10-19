@@ -1,5 +1,6 @@
 package io.github.kwp6zgnrsh.boardkitapi.post.api;
 
+import static io.github.kwp6zgnrsh.boardkitapi.support.TestAuthentication.createAuthentication;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
@@ -22,16 +23,12 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.common.exception.BlindedContentAccessDeniedException;
 import io.github.kwp6zgnrsh.boardkitapi.common.exception.ContentAccessExceptionHandler;
 import io.github.kwp6zgnrsh.boardkitapi.post.dto.request.PostCreateRequest;
@@ -217,7 +214,6 @@ class PostApiTest {
 				.with(authentication(
 					createAuthentication(10L, "ROLE_MEMBER")
 				))).andExpect(status().isBadRequest());
-
 
 		verifyNoInteractions(postService);
 	}
@@ -643,14 +639,6 @@ class PostApiTest {
 			.andExpect(status().isForbidden())
 			.andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
 			.andExpect(jsonPath("$.code").value("CONTENT_BLINDED"));
-	}
-
-	private Authentication createAuthentication(Long memberId, String authority) {
-		return new UsernamePasswordAuthenticationToken(
-			new LoginMember(memberId),
-			null,
-			List.of(new SimpleGrantedAuthority(authority))
-		);
 	}
 
 	private MockMultipartFile requestPart(String json) {

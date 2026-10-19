@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -59,12 +60,12 @@ class CommentLikeServiceTest {
 			memberMapper, new PostSecretAccess(passwordEncoder));
 	}
 
-	@ParameterizedTest
-	@ValueSource(booleans = {false, true})
-	@DisplayName("댓글 작성 잠금 여부와 관계없이 좋아요 등록과 취소를 허용한다")
-	void allowLikeAndUnlikeRegardlessOfCommentLock(boolean locked) {
+	@ParameterizedTest(name = "secret={0}, locked={1}")
+	@CsvSource({"false, false", "false, true", "true, false"})
+	@DisplayName("일반 글과 비밀번호 없는 비밀글에서 댓글 잠금과 별개로 댓글 좋아요를 변경한다")
+	void allowCommentLikesWithoutSecretPassword(boolean secret, boolean locked) {
 		prepareBoard("PUBLIC", true);
-		preparePost(20L, false, null, locked);
+		preparePost(20L, secret, null, locked);
 		prepareComment();
 
 		commentLikeService.likeComment("free", 100L, 50L, 10L, false, null);
@@ -204,21 +205,6 @@ class CommentLikeServiceTest {
 
 		commentLikeService.likeComment("free", 100L, 50L, 10L, adminAccess, null);
 		commentLikeService.unlikeComment("free", 100L, 50L, 10L, adminAccess, null);
-
-		verify(commentLikeMapper).insertCommentLike(50L, 10L);
-		verify(commentLikeMapper).deleteCommentLike(50L, 10L);
-		verifyNoInteractions(passwordEncoder);
-	}
-
-	@Test
-	@DisplayName("비밀번호 없는 비밀글의 댓글 좋아요는 비밀번호 없이 변경한다")
-	void allowPasswordlessSecretPostCommentLikes() {
-		prepareBoard("PUBLIC", true);
-		preparePost(20L, true, null, false);
-		prepareComment();
-
-		commentLikeService.likeComment("free", 100L, 50L, 10L, false, null);
-		commentLikeService.unlikeComment("free", 100L, 50L, 10L, false, null);
 
 		verify(commentLikeMapper).insertCommentLike(50L, 10L);
 		verify(commentLikeMapper).deleteCommentLike(50L, 10L);

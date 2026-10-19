@@ -9,13 +9,16 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 import javax.imageio.ImageIO;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.util.unit.DataSize;
 
@@ -41,15 +44,27 @@ class FileUploadValidatorTest {
 		assertEquals(0, result.getFirst().sortOrder());
 	}
 
-	@Test
-	@DisplayName("확장자와 실제 파일 형식이 다르면 거절한다")
-	void rejectMismatchedExtension() throws Exception {
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("invalidFileContents")
+	@DisplayName("허용되지 않는 실제 내용이나 확장자로 위장한 파일을 거절한다")
+	void rejectInvalidFileContents(String scenario, String profile, MockMultipartFile file) {
 		FileUploadValidator validator = validator(DataSize.ofMegabytes(20), DataSize.ofMegabytes(50));
-		MockMultipartFile file = new MockMultipartFile("files", "image.jpg", "image/jpeg", createPng());
 
-		assertThrows(
-			InvalidFileRequestException.class,
-			() -> validator.validate(List.of(file), policy("IMAGE", 3, 1024 * 1024, false))
+		assertThrows(InvalidFileRequestException.class,
+			() -> validator.validate(List.of(file), policy(profile, 3, 1024 * 1024, false)));
+	}
+
+	private static Stream<Arguments> invalidFileContents() throws Exception {
+		return Stream.of(
+			Arguments.of("PNG를 JPG로 위장", "IMAGE",
+				new MockMultipartFile("files", "image.jpg", "image/jpeg", createPng())),
+			Arguments.of("NUL 문자를 포함한 TXT", "IMAGE_AND_FILE",
+				new MockMultipartFile("files", "notes.txt", "text/plain",
+					"hello\u0000world".getBytes(StandardCharsets.UTF_8))),
+			Arguments.of("ZIP을 TXT로 위장", "IMAGE_AND_FILE", zipFile("fake.txt")),
+			Arguments.of("일반 텍스트를 PDF로 위장", "IMAGE_AND_FILE",
+				new MockMultipartFile("files", "fake.pdf", "application/pdf",
+					"plain text".getBytes(StandardCharsets.UTF_8)))
 		);
 	}
 
@@ -132,42 +147,28 @@ class FileUploadValidatorTest {
 		assertEquals(FileFormat.ZIP, result.getFirst().format());
 	}
 
-	@Test
-	@DisplayName("새 묶음에서는 UTF-8 한글과 이모지가 포함된 TXT를 허용한다")
-	void acceptUtf8TextFile() {
-		FileUploadValidator validator =
-			validator(DataSize.ofMegabytes(20), DataSize.ofMegabytes(50));
-		MockMultipartFile file = new MockMultipartFile(
-			"files", "notes.TXT", "application/octet-stream",
-			"\uFEFF안녕하세요 😀\n다음 줄\t내용".getBytes(StandardCharsets.UTF_8)
-		);
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("validDocumentFiles")
+	@DisplayName("새 파일 묶음에서 UTF-8 TXT와 PDF의 실제 형식과 Content-Type을 판별한다")
+	void acceptSupportedDocumentFile(String name, byte[] content, FileFormat format, String contentType) {
+		FileUploadValidator validator = validator(DataSize.ofMegabytes(20), DataSize.ofMegabytes(50));
+		MockMultipartFile file = new MockMultipartFile("files", name, "application/octet-stream", content);
 
 		List<ValidatedUploadFile> result = validator.validate(
-			List.of(file), policy("IMAGE_AND_FILE", 3, 1024 * 1024, false)
-		);
+			List.of(file), policy("IMAGE_AND_FILE", 3, 1024 * 1024, false));
 
-		assertEquals(FileFormat.TXT, result.getFirst().format());
-		assertEquals("text/plain;charset=UTF-8", result.getFirst().contentType());
+		assertEquals(format, result.getFirst().format());
+		assertEquals(contentType, result.getFirst().contentType());
 		assertFalse(result.getFirst().isImage());
 	}
 
-	@Test
-	@DisplayName("새 묶음에서는 PDF 시그니처가 있는 파일을 허용한다")
-	void acceptPdfFile() {
-		FileUploadValidator validator =
-			validator(DataSize.ofMegabytes(20), DataSize.ofMegabytes(50));
-		MockMultipartFile file = new MockMultipartFile(
-			"files", "guide.pdf", "application/octet-stream",
-			"%PDF-1.7\n".getBytes(StandardCharsets.US_ASCII)
+	private static Stream<Arguments> validDocumentFiles() {
+		return Stream.of(
+			Arguments.of("notes.TXT", "\uFEFF안녕하세요 😀\n다음 줄\t내용".getBytes(StandardCharsets.UTF_8),
+				FileFormat.TXT, "text/plain;charset=UTF-8"),
+			Arguments.of("guide.pdf", "%PDF-1.7\n".getBytes(StandardCharsets.US_ASCII),
+				FileFormat.PDF, "application/pdf")
 		);
-
-		List<ValidatedUploadFile> result = validator.validate(
-			List.of(file), policy("IMAGE_AND_FILE", 3, 1024 * 1024, false)
-		);
-
-		assertEquals(FileFormat.PDF, result.getFirst().format());
-		assertEquals("application/pdf", result.getFirst().contentType());
-		assertFalse(result.getFirst().isImage());
 	}
 
 	@Test
@@ -182,57 +183,6 @@ class FileUploadValidatorTest {
 
 		MockMultipartFile file = new MockMultipartFile(
 			"files", "notes.txt", "text/plain", bytes
-		);
-
-		assertThrows(
-			InvalidFileRequestException.class,
-			() -> validator.validate(
-				List.of(file), policy("IMAGE_AND_FILE", 3, 1024 * 1024, false)
-			)
-		);
-	}
-
-	@Test
-	@DisplayName("TXT에 NUL 문자가 포함되어 있으면 거절한다")
-	void rejectTextFileContainingNullCharacter() {
-		FileUploadValidator validator =
-			validator(DataSize.ofMegabytes(20), DataSize.ofMegabytes(50));
-		MockMultipartFile file = new MockMultipartFile(
-			"files", "notes.txt", "text/plain",
-			"hello\u0000world".getBytes(StandardCharsets.UTF_8)
-		);
-
-		assertThrows(
-			InvalidFileRequestException.class,
-			() -> validator.validate(
-				List.of(file), policy("IMAGE_AND_FILE", 3, 1024 * 1024, false)
-			)
-		);
-	}
-
-	@Test
-	@DisplayName("ZIP 파일을 TXT 확장자로 바꾸면 거절한다")
-	void rejectZipRenamedAsTextFile() {
-		FileUploadValidator validator =
-			validator(DataSize.ofMegabytes(20), DataSize.ofMegabytes(50));
-
-		assertThrows(
-			InvalidFileRequestException.class,
-			() -> validator.validate(
-				List.of(zipFile("fake.txt")),
-				policy("IMAGE_AND_FILE", 3, 1024 * 1024, false)
-			)
-		);
-	}
-
-	@Test
-	@DisplayName("텍스트 파일을 PDF 확장자로 바꾸면 거절한다")
-	void rejectTextRenamedAsPdfFile() {
-		FileUploadValidator validator =
-			validator(DataSize.ofMegabytes(20), DataSize.ofMegabytes(50));
-		MockMultipartFile file = new MockMultipartFile(
-			"files", "fake.pdf", "application/pdf",
-			"plain text".getBytes(StandardCharsets.UTF_8)
 		);
 
 		assertThrows(
@@ -262,8 +212,6 @@ class FileUploadValidatorTest {
 		);
 	}
 
-
-
 	private FileUploadValidator validator(DataSize maxFileSize, DataSize maxPostSize) {
 		FileStorageProperties properties = new FileStorageProperties(
 			Path.of("build/test-store"),
@@ -286,12 +234,12 @@ class FileUploadValidatorTest {
 			.build();
 	}
 
-	private MockMultipartFile zipFile(String name) {
+	private static MockMultipartFile zipFile(String name) {
 		byte[] content = { 0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0 };
 		return new MockMultipartFile("files", name, "application/zip", content);
 	}
 
-	private byte[] createPng() throws Exception {
+	private static byte[] createPng() throws Exception {
 		BufferedImage image = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
 		ByteArrayOutputStream output = new ByteArrayOutputStream();
 		ImageIO.write(image, "png", output);

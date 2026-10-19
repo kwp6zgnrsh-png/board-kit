@@ -58,17 +58,7 @@ class JwtTokenProviderTest {
 	@Test
 	@DisplayName("서명이 유효해도 식별자가 없는 JWT는 거절한다")
 	void rejectTokenWithoutIdentifier() {
-		Instant now = Instant.now();
-		String token = Jwts.builder()
-			.issuer("boardkit")
-			.subject("10")
-			.claim("role", "MEMBER")
-			.claim("type", "access")
-			.claim("authVersion", 0L)
-			.issuedAt(Date.from(now))
-			.expiration(Date.from(now.plusSeconds(3600)))
-			.signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET)))
-			.compact();
+		String token = signedToken(null, 0L);
 
 		assertThrows(JwtException.class, () -> provider.parseAccessToken(token));
 	}
@@ -78,10 +68,16 @@ class JwtTokenProviderTest {
 	@ValueSource(longs = {-1L})
 	@DisplayName("인증 버전이 없거나 음수인 JWT는 거절한다")
 	void rejectTokenWithInvalidAuthVersion(Long authVersion) {
+		String token = signedToken(UUID.randomUUID().toString(), authVersion);
+
+		assertThrows(JwtException.class, () -> provider.parseAccessToken(token));
+	}
+
+	private String signedToken(String identifier, Long authVersion) {
 		Instant now = Instant.now();
-		String token = Jwts.builder()
+		return Jwts.builder()
 			.issuer("boardkit")
-			.id(UUID.randomUUID().toString())
+			.id(identifier)
 			.subject("10")
 			.claim("role", "MEMBER")
 			.claim("type", "access")
@@ -90,7 +86,5 @@ class JwtTokenProviderTest {
 			.expiration(Date.from(now.plusSeconds(3600)))
 			.signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET)))
 			.compact();
-
-		assertThrows(JwtException.class, () -> provider.parseAccessToken(token));
 	}
 }

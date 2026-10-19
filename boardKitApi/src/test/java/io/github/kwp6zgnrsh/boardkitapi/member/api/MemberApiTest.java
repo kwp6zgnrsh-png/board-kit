@@ -5,8 +5,13 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -84,78 +89,25 @@ class MemberApiTest {
 		);
 	}
 
-	@Test
-	@DisplayName("아이디 형식이 올바르지 않으면 회원가입할 수 없다")
-	void rejectMemberCreationWithInvalidLoginId()
-		throws Exception {
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("invalidMemberRequests")
+	@DisplayName("잘못된 회원가입 입력은 서비스 호출 전에 거절한다")
+	void rejectInvalidMemberCreationRequest(String scenario, String request) throws Exception {
+		mockMvc.perform(post("/api/members")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(request))
+			.andExpect(status().isBadRequest());
 
-		String invalidRequest = VALID_REQUEST.replace(
-			"\"member01\"",
-			"\"Member 01\""
+		verifyNoInteractions(memberService);
+	}
+
+	private static Stream<Arguments> invalidMemberRequests() {
+		return Stream.of(
+			Arguments.of("아이디 형식", VALID_REQUEST.replace("\"member01\"", "\"Member 01\"")),
+			Arguments.of("짧은 비밀번호", VALID_REQUEST.replace("\"Boardkit1234!\"", "\"short\"")),
+			Arguments.of("허용하지 않는 비밀번호 문자", VALID_REQUEST.replace("\"Boardkit1234!\"", "\"보드키트비밀번호1234!\"")),
+			Arguments.of("공백 닉네임", VALID_REQUEST.replace("\"새회원\"", "\"   \""))
 		);
-
-		mockMvc.perform(post("/api/members")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(invalidRequest))
-			.andExpect(status().isBadRequest());
-
-		verifyNoInteractions(memberService);
-	}
-
-	@Test
-	@DisplayName("비밀번호가 12자보다 짧으면 회원가입할 수 없다")
-	void rejectMemberCreationWithShortPassword()
-		throws Exception {
-
-		String invalidRequest = VALID_REQUEST
-			.replace(
-				"\"Boardkit1234!\"",
-				"\"short\""
-			);
-
-		mockMvc.perform(post("/api/members")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(invalidRequest))
-			.andExpect(status().isBadRequest());
-
-		verifyNoInteractions(memberService);
-	}
-
-	@Test
-	@DisplayName("비밀번호에 허용되지 않은 문자가 있으면 회원가입할 수 없다")
-	void rejectMemberCreationWithUnsupportedPasswordCharacter()
-		throws Exception {
-
-		String invalidRequest = VALID_REQUEST
-			.replace(
-				"\"Boardkit1234!\"",
-				"\"보드키트비밀번호1234!\""
-			);
-
-		mockMvc.perform(post("/api/members")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(invalidRequest))
-			.andExpect(status().isBadRequest());
-
-		verifyNoInteractions(memberService);
-	}
-
-	@Test
-	@DisplayName("닉네임이 비어 있으면 회원가입할 수 없다")
-	void rejectMemberCreationWithBlankDisplayName()
-		throws Exception {
-
-		String invalidRequest = VALID_REQUEST.replace(
-			"\"새회원\"",
-			"\"   \""
-		);
-
-		mockMvc.perform(post("/api/members")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(invalidRequest))
-			.andExpect(status().isBadRequest());
-
-		verifyNoInteractions(memberService);
 	}
 
 	@Test

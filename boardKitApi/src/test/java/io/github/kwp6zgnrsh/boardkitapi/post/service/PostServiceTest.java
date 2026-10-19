@@ -242,65 +242,44 @@ class PostServiceTest {
 	}
 
 	@Test
-	@DisplayName("일반 게시글 상세를 조회하고 조회수를 증가시킨다")
-	void getRegularPostDetailAndIncreaseViewCount() {
+	@DisplayName("비로그인은 게시글과 좋아요 수를 조회하고 조회수를 증가시키되 내 좋아요 여부는 조회하지 않는다")
+	void getPostDetailWithoutAuthentication() {
+		long likeCount = 4L;
 		PostDetail postDetail = postDetail(false, null);
-		PostDetailResponse expected = detailResponse(0L, false);
+		PostDetailResponse expected = detailResponse(likeCount, false);
 
 		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
+		preparePostDetailRead(postDetail, expected);
+		when(postLikeMapper.countPostLikes(100L)).thenReturn(likeCount);
 
-		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
-		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false)).thenReturn(expected);
 		PostDetailResponse response = postService.getPostDetail("free", 100L, null, false, false, null);
 
 		assertEquals(expected, response);
-		verify(postMapper).increaseViewCount(1L, 100L);
-	}
-
-	@Test
-	@DisplayName("비로그인은 좋아요 수를 조회하고 내 좋아요 여부는 조회하지 않는다")
-	void getLikeCountWithoutAuthentication() {
-		PostDetail postDetail = postDetail(false, null);
-		PostDetailResponse expected = detailResponse(4L, false);
-
-		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
-
-		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
-		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
-		when(postLikeMapper.countPostLikes(100L)).thenReturn(4L);
-		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 4L, false)).thenReturn(expected);
-
-		PostDetailResponse response = postService.getPostDetail("free", 100L, null, false, false, null);
-
-		assertEquals(4L, response.likeCount());
+		assertEquals(likeCount, response.likeCount());
 		assertFalse(response.likedByMe());
-
+		verify(postMapper).increaseViewCount(1L, 100L);
 		verify(postLikeMapper).countPostLikes(100L);
 		verify(postLikeMapper, never()).existsPostLike(anyLong(), anyLong());
 	}
 
-	@ParameterizedTest
-	@ValueSource(booleans = {true, false})
+	@Test
 	@DisplayName("좋아요 기능이 꺼져도 기존 좋아요 수와 내 좋아요 상태를 조회한다")
-	void getExistingLikesWhenLikesAreDisabled(boolean likedByMe) {
+	void getExistingLikesWhenLikesAreDisabled() {
 		PostDetail postDetail = postDetail(false, null);
-		PostDetailResponse expected = detailResponse(4L, likedByMe);
+		PostDetailResponse expected = detailResponse(4L, true);
 
 		BoardPolicy policy = BoardPolicy.builder().readPermission("PUBLIC").postLikesEnabled(false).build();
 
 		prepareReadableBoard("free", policy, false);
 
-		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
-		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
+		preparePostDetailRead(postDetail, expected);
 		when(postLikeMapper.countPostLikes(100L)).thenReturn(4L);
-		when(postLikeMapper.existsPostLike(100L, 10L)).thenReturn(likedByMe);
-		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 4L, likedByMe)).thenReturn(expected);
+		when(postLikeMapper.existsPostLike(100L, 10L)).thenReturn(true);
 
 		PostDetailResponse response = postService.getPostDetail("free", 100L, 10L, true, false, null);
 
 		assertEquals(4L, response.likeCount());
-		assertEquals(likedByMe, response.likedByMe());
+		assertTrue(response.likedByMe());
 
 		verify(postLikeMapper).countPostLikes(100L);
 		verify(postLikeMapper).existsPostLike(100L, 10L);
@@ -314,9 +293,7 @@ class PostServiceTest {
 
 		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
 
-		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
-		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false)).thenReturn(expected);
+		preparePostDetailRead(postDetail, expected);
 		PostDetailResponse response = postService.getPostDetail("free", 100L, null, false, false, null);
 
 		assertEquals(expected, response);
@@ -331,10 +308,8 @@ class PostServiceTest {
 
 		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
 
-		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
+		preparePostDetailRead(postDetail, expected);
 		when(passwordEncoder.matches("1234", "encoded-password")).thenReturn(true);
-		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false)).thenReturn(expected);
 		PostDetailResponse response = postService.getPostDetail("free", 100L, null, false, false, "1234");
 
 		assertEquals(expected, response);
@@ -367,52 +342,17 @@ class PostServiceTest {
 
 		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
 
-		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
-		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
-		when(postConverter.toDetailResponse(postDetail, 6L, List.of(), 0L, false)).thenReturn(expected);
+		preparePostDetailRead(postDetail, expected);
 		PostDetailResponse response = postService.getPostDetail("free", 100L, 10L, true, false, null);
 
 		assertEquals(expected, response);
 		verifyNoInteractions(passwordEncoder);
 	}
 
-	@Test
-	@DisplayName("작성자는 기존 비밀글 비밀번호를 유지하며 게시글을 수정할 수 있다")
-	void updateOwnPostAndKeepSecretPassword() {
-		PostUpdateRequest request = new PostUpdateRequest("수정 제목", document("수정 본문"), null, true, null, false, false, 0,
-			List.of());
-
-		PostDetail currentPost = postDetail(10L, true, "existing-hash", 0);
-
-		Post updatedPost = Post.builder()
-			.id(100L)
-			.boardId(1L)
-			.authorId(10L)
-			.title("수정 제목")
-			.content("수정 본문")
-			.isSecret(true)
-			.secretPasswordHash("existing-hash")
-			.commentsLocked(false)
-			.version(0)
-			.build();
-
-		allowActiveMember();
-		prepareBoard("free", policy("MEMBER", "OPTIONAL", false, false));
-
-		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(currentPost));
-		when(postConverter.toUpdatedPost(eq(request), eq(100L), eq(1L), eq(10L), eq("existing-hash"),
-			any(ValidatedDocument.class))).thenReturn(updatedPost);
-		when(postMapper.updatePost(updatedPost)).thenReturn(1);
-
-		postService.updatePost("free", 100L, request, List.of(), 10L, false);
-
-		verify(postMapper).updatePost(updatedPost);
-		verifyNoInteractions(passwordEncoder);
-	}
-
-	@Test
-	@DisplayName("비밀글 정책을 끈 뒤에도 기존 비밀글의 비밀번호를 유지하며 수정할 수 있다")
-	void updateExistingSecretPostWhenSecretModeIsOff() {
+	@ParameterizedTest(name = "secretMode={0}")
+	@ValueSource(strings = {"OPTIONAL", "OFF"})
+	@DisplayName("작성자는 현재 비밀글 정책과 관계없이 기존 비밀번호를 유지하며 수정할 수 있다")
+	void updateOwnPostAndKeepSecretPassword(String secretMode) {
 		PostUpdateRequest request = new PostUpdateRequest("수정 제목", document("수정 본문"), null, true, null, false, false, 0,
 			List.of());
 		PostDetail currentPost = postDetail(10L, true, "existing-hash", 0);
@@ -429,7 +369,7 @@ class PostServiceTest {
 			.build();
 
 		allowActiveMember();
-		prepareBoard("free", policy("MEMBER", "OFF", false, false));
+		prepareBoard("free", policy("MEMBER", secretMode, false, false));
 		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(currentPost));
 		when(postConverter.toUpdatedPost(eq(request), eq(100L), eq(1L), eq(10L), eq("existing-hash"),
 			any(ValidatedDocument.class))).thenReturn(updatedPost);
@@ -1286,10 +1226,16 @@ class PostServiceTest {
 			5L, 1, createdAt, createdAt, null, null, createdAt.plusDays(1));
 	}
 
+	private void preparePostDetailRead(PostDetail postDetail, PostDetailResponse expected) {
+		when(postMapper.selectActivePostDetail(1L, 100L)).thenReturn(Optional.of(postDetail));
+		when(postMapper.increaseViewCount(1L, 100L)).thenReturn(1);
+		when(postConverter.toDetailResponse(postDetail, expected.viewCount(), List.of(), expected.likeCount(),
+			expected.likedByMe())).thenReturn(expected);
+	}
+
 	private void prepareReadableBoard(String boardSlug, BoardPolicy policy, boolean adminAccess) {
 		Board board = Board.builder().id(1L).slug(boardSlug).status("ACTIVE").build();
 		when(boardMapper.selectReadableBoardBySlug(boardSlug, adminAccess)).thenReturn(Optional.of(board));
 		when(boardMapper.selectPolicyByBoardId(1L)).thenReturn(Optional.of(policy));
 	}
-
 }

@@ -1,5 +1,6 @@
 package io.github.kwp6zgnrsh.boardkitapi.board.api;
 
+import static io.github.kwp6zgnrsh.boardkitapi.support.TestAuthentication.createAuthentication;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
@@ -14,13 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.request.BoardCreateRequest;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardAdminDetailResponse;
 import io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardCategoryResponse;
@@ -274,14 +271,6 @@ class AdminBoardApiTest {
 			.andExpect(status().isForbidden());
 
 		verifyNoInteractions(boardService);
-	}
-
-	private Authentication createAuthentication(Long memberId, String authority) {
-		return new UsernamePasswordAuthenticationToken(
-			new LoginMember(memberId),
-			null,
-			List.of(new SimpleGrantedAuthority(authority))
-		);
 	}
 
 	private BoardPolicyResponse policyResponse() {

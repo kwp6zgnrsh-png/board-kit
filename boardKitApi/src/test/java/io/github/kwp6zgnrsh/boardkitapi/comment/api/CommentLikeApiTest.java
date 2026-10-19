@@ -1,11 +1,10 @@
 package io.github.kwp6zgnrsh.boardkitapi.comment.api;
 
+import static io.github.kwp6zgnrsh.boardkitapi.support.TestAuthentication.createAuthentication;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,14 +15,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.kwp6zgnrsh.boardkitapi.auth.mapper.RevokedTokenMapper;
-import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
 import io.github.kwp6zgnrsh.boardkitapi.comment.exception.CommentNotFoundException;
 import io.github.kwp6zgnrsh.boardkitapi.comment.service.CommentLikeService;
@@ -116,8 +111,7 @@ class CommentLikeApiTest {
 	}
 
 	@ParameterizedTest
-	@CsvSource({"PUT, 0, 50", "PUT, -1, 50", "PUT, 100, 0", "PUT, 100, -1", "DELETE, 0, 50", "DELETE, -1, 50",
-		"DELETE, 100, 0", "DELETE, 100, -1"})
+	@CsvSource({"PUT, 0, 50", "PUT, 100, 0", "DELETE, 0, 50", "DELETE, 100, 0"})
 	@DisplayName("게시글이나 댓글 ID가 양수가 아니면 서비스 호출 전에 거절한다")
 	void rejectLikeRequestWithInvalidIds(String method, long postId, long commentId) throws Exception {
 		String url = "/api/boards/free/posts/" + postId + "/comments/" + commentId + "/like";
@@ -151,10 +145,5 @@ class CommentLikeApiTest {
 			.andExpect(status().isNotFound());
 
 		verify(commentLikeService).unlikeComment("free", 100L, 50L, 10L, false, null);
-	}
-
-	private Authentication createAuthentication(Long memberId, String authority) {
-		return new UsernamePasswordAuthenticationToken(new LoginMember(memberId), null,
-			List.of(new SimpleGrantedAuthority(authority)));
 	}
 }

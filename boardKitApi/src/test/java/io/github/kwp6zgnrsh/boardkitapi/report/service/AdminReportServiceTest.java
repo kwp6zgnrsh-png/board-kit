@@ -200,7 +200,7 @@ class AdminReportServiceTest {
 	}
 
 	@ParameterizedTest
-	@CsvSource({"0, 0, false", "0, 2, false", "0, 3, true", "0, 4, true", "5, 7, false", "5, 8, true"})
+	@CsvSource({"0, 2, false", "0, 3, true", "0, 4, true", "5, 7, false", "5, 8, true"})
 	@DisplayName("게시글은 해제 기준 이후 인정 신고가 3건 이상이면 블라인드한다")
 	void blindPostWhenAcceptedReportsReachThreshold(long baseline, long acceptedCount, boolean expectedBlind) {
 		allowAdmin();

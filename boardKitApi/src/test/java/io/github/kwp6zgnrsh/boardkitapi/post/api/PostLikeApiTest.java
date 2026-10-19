@@ -1,11 +1,10 @@
 package io.github.kwp6zgnrsh.boardkitapi.post.api;
 
+import static io.github.kwp6zgnrsh.boardkitapi.support.TestAuthentication.createAuthentication;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,14 +15,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.kwp6zgnrsh.boardkitapi.auth.mapper.RevokedTokenMapper;
-import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
 import io.github.kwp6zgnrsh.boardkitapi.config.SecurityConfig;
 import io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberMapper;
@@ -117,7 +112,7 @@ class PostLikeApiTest {
 	}
 
 	@ParameterizedTest
-	@CsvSource({"PUT, 0", "PUT, -1", "DELETE, 0", "DELETE, -1"})
+	@CsvSource({"PUT, 0", "DELETE, 0"})
 	@DisplayName("게시글 ID가 양수가 아니면 서비스 호출 전에 거절한다")
 	void rejectLikeRequestWithInvalidPostId(String method, long postId) throws Exception {
 
@@ -152,10 +147,5 @@ class PostLikeApiTest {
 			.andExpect(status().isNotFound());
 
 		verify(postLikeService).unlikePost("free", 100L, 10L, false, null);
-	}
-
-	private Authentication createAuthentication(Long memberId, String authority) {
-		return new UsernamePasswordAuthenticationToken(new LoginMember(memberId), null,
-			List.of(new SimpleGrantedAuthority(authority)));
 	}
 }

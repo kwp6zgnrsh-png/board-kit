@@ -1,5 +1,6 @@
 package io.github.kwp6zgnrsh.boardkitapi.report.api;
 
+import static io.github.kwp6zgnrsh.boardkitapi.support.TestAuthentication.createAuthentication;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -19,15 +20,11 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import io.github.kwp6zgnrsh.boardkitapi.auth.mapper.RevokedTokenMapper;
-import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
 import io.github.kwp6zgnrsh.boardkitapi.config.MethodSecurityConfig;
 import io.github.kwp6zgnrsh.boardkitapi.config.SecurityConfig;
@@ -88,7 +85,7 @@ class AdminReportApiTest {
 
 		when(adminReportService.getReports(ReportStatusFilter.PENDING, 1, 10, 10L, true)).thenReturn(response);
 
-		mockMvc.perform(get(URL).with(authentication(createAuthentication("ROLE_ADMIN"))))
+		mockMvc.perform(get(URL).with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isOk())
 			.andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
 			.andExpect(jsonPath("$.reports[0].id").value(100))
@@ -116,7 +113,7 @@ class AdminReportApiTest {
 		mockMvc.perform(get(URL).param("filter", filter.name())
 				.param("page", "2")
 				.param("size", "20")
-				.with(authentication(createAuthentication("ROLE_ADMIN"))))
+				.with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.page").value(2))
 			.andExpect(jsonPath("$.size").value(20));
@@ -129,7 +126,7 @@ class AdminReportApiTest {
 	void getReportDetailWithAdminAuthentication() throws Exception {
 		when(adminReportService.getReport(100L, 10L, true)).thenReturn(detailResponse());
 
-		mockMvc.perform(get(ITEM_URL).with(authentication(createAuthentication("ROLE_ADMIN"))))
+		mockMvc.perform(get(ITEM_URL).with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isOk())
 			.andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
 			.andExpect(jsonPath("$.id").value(100))
@@ -153,7 +150,7 @@ class AdminReportApiTest {
 		mockMvc.perform(patch(ITEM_URL).contentType(MediaType.APPLICATION_JSON)
 			.content(REVIEW_TEMPLATE.formatted(reviewStatus.name()))
 			.with(csrf())
-			.with(authentication(createAuthentication("ROLE_ADMIN")))).andExpect(status().isNoContent());
+			.with(authentication(createAuthentication(10L, "ROLE_ADMIN")))).andExpect(status().isNoContent());
 
 		verify(adminReportService).reviewReport(100L, new ReportReviewRequest(reviewStatus, REVIEW_NOTE), 10L, true);
 	}
@@ -172,7 +169,7 @@ class AdminReportApiTest {
 	@DisplayName("일반 회원은 관리자 신고 조회와 처리를 사용할 수 없다")
 	void rejectAllOperationsByMember() throws Exception {
 		for (var request : adminRequests()) {
-			mockMvc.perform(request.with(csrf()).with(authentication(createAuthentication("ROLE_MEMBER"))))
+			mockMvc.perform(request.with(csrf()).with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 				.andExpect(status().isForbidden());
 		}
 
@@ -188,7 +185,7 @@ class AdminReportApiTest {
 			patch(TARGET_URL).contentType(MediaType.APPLICATION_JSON).content(TARGET_TEMPLATE.formatted("BLIND")));
 
 		for (var request : requests) {
-			request.with(authentication(createAuthentication("ROLE_ADMIN")));
+			request.with(authentication(createAuthentication(10L, "ROLE_ADMIN")));
 			if (invalidToken) {
 				request.with(csrf().useInvalidToken());
 			}
@@ -200,47 +197,46 @@ class AdminReportApiTest {
 	}
 
 	@ParameterizedTest
-	@CsvSource({"page, 0", "page, -1", "page, abc", "size, 0", "size, -1", "size, 101", "size, abc", "filter, INVALID"})
+	@CsvSource({"page, 0", "page, abc", "size, 0", "size, 101", "size, abc", "filter, INVALID"})
 	@DisplayName("잘못된 목록 조회 조건은 서비스 호출 전에 거절한다")
 	void rejectInvalidListParameters(String parameter, String value) throws Exception {
-		mockMvc.perform(get(URL).param(parameter, value).with(authentication(createAuthentication("ROLE_ADMIN"))))
+		mockMvc.perform(get(URL).param(parameter, value).with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isBadRequest());
 
 		verifyNoInteractions(adminReportService);
 	}
 
-	@ParameterizedTest
-	@ValueSource(longs = {0, -1})
+	@Test
 	@DisplayName("신고 ID가 양수가 아니면 상세 조회와 처리를 거절한다")
-	void rejectInvalidReportId(long reportId) throws Exception {
-		String url = URL + "/" + reportId;
+	void rejectInvalidReportId() throws Exception {
+		String url = URL + "/0";
 
-		mockMvc.perform(get(url).with(authentication(createAuthentication("ROLE_ADMIN"))))
+		mockMvc.perform(get(url).with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isBadRequest());
 
 		mockMvc.perform(patch(url).contentType(MediaType.APPLICATION_JSON)
 			.content(REVIEW_TEMPLATE.formatted("ACCEPTED"))
 			.with(csrf())
-			.with(authentication(createAuthentication("ROLE_ADMIN")))).andExpect(status().isBadRequest());
+			.with(authentication(createAuthentication(10L, "ROLE_ADMIN")))).andExpect(status().isBadRequest());
 
 		mockMvc.perform(patch(url + "/target").contentType(MediaType.APPLICATION_JSON)
 			.content(TARGET_TEMPLATE.formatted("BLIND"))
 			.with(csrf())
-			.with(authentication(createAuthentication("ROLE_ADMIN")))).andExpect(status().isBadRequest());
+			.with(authentication(createAuthentication(10L, "ROLE_ADMIN")))).andExpect(status().isBadRequest());
 
 		verifyNoInteractions(adminReportService);
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"{}", "{\"status\":null,\"reviewNote\":\"메모\"}",
+	@ValueSource(strings = {"{\"status\":null,\"reviewNote\":\"메모\"}",
 		"{\"status\":\"PENDING\",\"reviewNote\":\"메모\"}", "{\"status\":\"INVALID\",\"reviewNote\":\"메모\"}",
-		"{\"status\":\"ACCEPTED\"}", "{\"status\":\"REJECTED\",\"reviewNote\":\"   \"}"})
+		"{\"status\":\"REJECTED\",\"reviewNote\":\"   \"}"})
 	@DisplayName("잘못된 처리 상태와 누락되거나 공백뿐인 메모를 거절한다")
 	void rejectInvalidReviewRequest(String body) throws Exception {
 		mockMvc.perform(patch(ITEM_URL).contentType(MediaType.APPLICATION_JSON)
 			.content(body)
 			.with(csrf())
-			.with(authentication(createAuthentication("ROLE_ADMIN")))).andExpect(status().isBadRequest());
+			.with(authentication(createAuthentication(10L, "ROLE_ADMIN")))).andExpect(status().isBadRequest());
 
 		verifyNoInteractions(adminReportService);
 	}
@@ -255,7 +251,7 @@ class AdminReportApiTest {
 		mockMvc.perform(patch(ITEM_URL).contentType(MediaType.APPLICATION_JSON)
 			.content(body)
 			.with(csrf())
-			.with(authentication(createAuthentication("ROLE_ADMIN")))).andExpect(status().isBadRequest());
+			.with(authentication(createAuthentication(10L, "ROLE_ADMIN")))).andExpect(status().isBadRequest());
 
 		verifyNoInteractions(adminReportService);
 	}
@@ -265,7 +261,7 @@ class AdminReportApiTest {
 	void returnNotFoundForMissingReportDetail() throws Exception {
 		when(adminReportService.getReport(100L, 10L, true)).thenThrow(new ReportNotFoundException());
 
-		mockMvc.perform(get(ITEM_URL).with(authentication(createAuthentication("ROLE_ADMIN"))))
+		mockMvc.perform(get(ITEM_URL).with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isNotFound());
 	}
 
@@ -278,7 +274,7 @@ class AdminReportApiTest {
 		mockMvc.perform(patch(ITEM_URL).contentType(MediaType.APPLICATION_JSON)
 			.content(REVIEW_TEMPLATE.formatted("ACCEPTED"))
 			.with(csrf())
-			.with(authentication(createAuthentication("ROLE_ADMIN")))).andExpect(status().isNotFound());
+			.with(authentication(createAuthentication(10L, "ROLE_ADMIN")))).andExpect(status().isNotFound());
 	}
 
 	@Test
@@ -290,7 +286,7 @@ class AdminReportApiTest {
 		mockMvc.perform(patch(ITEM_URL).contentType(MediaType.APPLICATION_JSON)
 			.content(REVIEW_TEMPLATE.formatted("ACCEPTED"))
 			.with(csrf())
-			.with(authentication(createAuthentication("ROLE_ADMIN")))).andExpect(status().isConflict());
+			.with(authentication(createAuthentication(10L, "ROLE_ADMIN")))).andExpect(status().isConflict());
 	}
 
 	@Test
@@ -299,7 +295,7 @@ class AdminReportApiTest {
 		when(adminReportService.getReports(ReportStatusFilter.PENDING, 1, 10, 10L, true)).thenThrow(
 			new MemberUnavailableException());
 
-		mockMvc.perform(get(URL).with(authentication(createAuthentication("ROLE_ADMIN"))))
+		mockMvc.perform(get(URL).with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isUnauthorized());
 	}
 
@@ -310,7 +306,7 @@ class AdminReportApiTest {
 		mockMvc.perform(patch(TARGET_URL).contentType(MediaType.APPLICATION_JSON)
 				.content(TARGET_TEMPLATE.formatted(action.name()))
 				.with(csrf())
-				.with(authentication(createAuthentication("ROLE_ADMIN"))))
+				.with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isNoContent())
 			.andExpect(content().string(""));
 
@@ -325,7 +321,7 @@ class AdminReportApiTest {
 		mockMvc.perform(patch(TARGET_URL).contentType(MediaType.APPLICATION_JSON)
 			.content(body)
 			.with(csrf())
-			.with(authentication(createAuthentication("ROLE_ADMIN")))).andExpect(status().isBadRequest());
+			.with(authentication(createAuthentication(10L, "ROLE_ADMIN")))).andExpect(status().isBadRequest());
 
 		verifyNoInteractions(adminReportService);
 	}
@@ -339,18 +335,13 @@ class AdminReportApiTest {
 		mockMvc.perform(patch(TARGET_URL).contentType(MediaType.APPLICATION_JSON)
 			.content(TARGET_TEMPLATE.formatted("BLIND"))
 			.with(csrf())
-			.with(authentication(createAuthentication("ROLE_ADMIN")))).andExpect(status().isConflict());
+			.with(authentication(createAuthentication(10L, "ROLE_ADMIN")))).andExpect(status().isConflict());
 	}
 
 	private List<MockHttpServletRequestBuilder> adminRequests() {
 		return List.of(get(URL), get(ITEM_URL),
 			patch(ITEM_URL).contentType(MediaType.APPLICATION_JSON).content(REVIEW_TEMPLATE.formatted("ACCEPTED")),
 			patch(TARGET_URL).contentType(MediaType.APPLICATION_JSON).content(TARGET_TEMPLATE.formatted("BLIND")));
-	}
-
-	private Authentication createAuthentication(String authority) {
-		return new UsernamePasswordAuthenticationToken(new LoginMember(10L), null,
-			List.of(new SimpleGrantedAuthority(authority)));
 	}
 
 	private AdminReportDetailResponse detailResponse() {

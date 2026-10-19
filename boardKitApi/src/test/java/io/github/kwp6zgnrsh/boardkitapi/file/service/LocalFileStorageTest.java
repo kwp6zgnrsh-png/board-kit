@@ -60,24 +60,20 @@ class LocalFileStorageTest {
 	@Test
 	@DisplayName("검증된 파일을 임시 디렉터리에 저장한다")
 	void storeValidatedFileInTemporaryDirectory() throws Exception {
-		byte[] content = { 0x50, 0x4B, 0x03, 0x04 };
-		MockMultipartFile source = new MockMultipartFile("files", "archive.zip", "application/zip", content);
-		ValidatedUploadFile upload = new ValidatedUploadFile(source, "archive.zip", FileFormat.ZIP, content.length, 0);
+		ValidatedUploadFile upload = zipUpload("archive.zip");
 
 		TempStoredFile storedFile = fileStorage.storeTemporary(List.of(upload)).getFirst();
 		Path storedPath = storageRoot.resolve(storedFile.tempKey());
 
 		assertTrue(storedFile.tempKey().startsWith("temp/upload-"));
 		assertTrue(Files.exists(storedPath));
-		assertArrayEquals(content, Files.readAllBytes(storedPath));
+		assertArrayEquals(upload.source().getBytes(), Files.readAllBytes(storedPath));
 	}
 
 	@Test
 	@DisplayName("저장된 임시 파일을 삭제한다")
 	void deleteStoredTemporaryFile() {
-		byte[] content = { 0x50, 0x4B, 0x03, 0x04 };
-		MockMultipartFile source = new MockMultipartFile("files", "archive.zip", "application/zip", content);
-		ValidatedUploadFile upload = new ValidatedUploadFile(source, "archive.zip", FileFormat.ZIP, content.length, 0);
+		ValidatedUploadFile upload = zipUpload("archive.zip");
 
 		TempStoredFile storedFile = fileStorage.storeTemporary(List.of(upload)).getFirst();
 		Path storedPath = storageRoot.resolve(storedFile.tempKey());
@@ -90,15 +86,12 @@ class LocalFileStorageTest {
 	@Test
 	@DisplayName("여러 파일 중 하나의 저장이 실패하면 앞서 저장한 임시 파일도 삭제한다")
 	void deletePreviouslyStoredFilesWhenBatchStorageFails() throws Exception {
-		byte[] content = { 0x50, 0x4B, 0x03, 0x04 };
-		MockMultipartFile validSource = new MockMultipartFile("files", "valid.zip", "application/zip", content);
-		ValidatedUploadFile validUpload =
-			new ValidatedUploadFile(validSource, "valid.zip", FileFormat.ZIP, content.length, 0);
+		ValidatedUploadFile validUpload = zipUpload("valid.zip");
 
 		MultipartFile brokenSource = mock(MultipartFile.class);
 		when(brokenSource.getInputStream()).thenThrow(new IOException("읽기 실패"));
 		ValidatedUploadFile brokenUpload =
-			new ValidatedUploadFile(brokenSource, "broken.zip", FileFormat.ZIP, content.length, 1);
+			new ValidatedUploadFile(brokenSource, "broken.zip", FileFormat.ZIP, validUpload.sizeBytes(), 1);
 
 		assertThrows(
 			FileStorageException.class,
@@ -201,5 +194,11 @@ class LocalFileStorageTest {
 		fileStorage.deleteIfUnchanged(snapshot, now.minus(Duration.ofHours(24)));
 
 		assertTrue(Files.exists(file));
+	}
+
+	private ValidatedUploadFile zipUpload(String name) {
+		byte[] content = {0x50, 0x4B, 0x03, 0x04};
+		MockMultipartFile source = new MockMultipartFile("files", name, "application/zip", content);
+		return new ValidatedUploadFile(source, name, FileFormat.ZIP, content.length, 0);
 	}
 }

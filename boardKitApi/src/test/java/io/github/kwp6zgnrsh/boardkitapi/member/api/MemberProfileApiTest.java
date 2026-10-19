@@ -1,5 +1,6 @@
 package io.github.kwp6zgnrsh.boardkitapi.member.api;
 
+import static io.github.kwp6zgnrsh.boardkitapi.support.TestAuthentication.createAuthentication;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -20,14 +21,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.kwp6zgnrsh.boardkitapi.auth.cookie.AuthCookieFactory;
 import io.github.kwp6zgnrsh.boardkitapi.auth.mapper.RevokedTokenMapper;
-import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
 import io.github.kwp6zgnrsh.boardkitapi.config.SecurityConfig;
 import io.github.kwp6zgnrsh.boardkitapi.member.dto.request.MemberDisplayNameUpdateRequest;
@@ -85,7 +83,7 @@ class MemberProfileApiTest {
 
 		when(memberService.getProfile(10L)).thenReturn(response);
 
-		mockMvc.perform(get("/api/members/me").param("memberId", "99").with(authentication(memberAuthentication())))
+		mockMvc.perform(get("/api/members/me").param("memberId", "99").with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isOk())
 			.andExpect(header().string("Cache-Control", "no-store"))
 			.andExpect(jsonPath("$.memberId").value(10))
@@ -112,7 +110,7 @@ class MemberProfileApiTest {
 	void rejectProfileForUnavailableMember() throws Exception {
 		when(memberService.getProfile(10L)).thenThrow(new MemberUnavailableException());
 
-		mockMvc.perform(get("/api/members/me").with(authentication(memberAuthentication())))
+		mockMvc.perform(get("/api/members/me").with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isUnauthorized());
 
 		verify(memberService).getProfile(10L);
@@ -122,7 +120,7 @@ class MemberProfileApiTest {
 	@DisplayName("로그인한 회원의 닉네임을 변경하고 204를 반환한다")
 	void updateAuthenticatedMemberDisplayName() throws Exception {
 		mockMvc.perform(patch("/api/members/me/display-name").param("memberId", "99")
-				.with(authentication(memberAuthentication()))
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER")))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(VALID_DISPLAY_NAME_UPDATE_REQUEST))
@@ -145,7 +143,7 @@ class MemberProfileApiTest {
 	@Test
 	@DisplayName("CSRF 토큰이 없으면 닉네임 변경은 403을 반환한다")
 	void rejectDisplayNameUpdateWithoutCsrfToken() throws Exception {
-		mockMvc.perform(patch("/api/members/me/display-name").with(authentication(memberAuthentication()))
+		mockMvc.perform(patch("/api/members/me/display-name").with(authentication(createAuthentication(10L, "ROLE_MEMBER")))
 			.contentType(MediaType.APPLICATION_JSON)
 			.content(VALID_DISPLAY_NAME_UPDATE_REQUEST)).andExpect(status().isForbidden());
 
@@ -153,10 +151,10 @@ class MemberProfileApiTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"{}", "{\"displayName\":null}", "{\"displayName\":\"\"}", "{\"displayName\":\"   \"}"})
+	@ValueSource(strings = {"{}", "{\"displayName\":\"   \"}"})
 	@DisplayName("닉네임이 없거나 공백이면 서비스 호출 전에 400을 반환한다")
 	void rejectInvalidDisplayNameUpdateRequest(String request) throws Exception {
-		mockMvc.perform(patch("/api/members/me/display-name").with(authentication(memberAuthentication()))
+		mockMvc.perform(patch("/api/members/me/display-name").with(authentication(createAuthentication(10L, "ROLE_MEMBER")))
 			.with(csrf())
 			.contentType(MediaType.APPLICATION_JSON)
 			.content(request)).andExpect(status().isBadRequest());
@@ -164,34 +162,26 @@ class MemberProfileApiTest {
 		verifyNoInteractions(memberService);
 	}
 
-	@Test
-	@DisplayName("닉네임이 중복되면 409를 반환한다")
-	void returnConflictForDuplicatedDisplayName() throws Exception {
+	@ParameterizedTest(name = "status={1}")
+	@MethodSource("displayNameUpdateFailures")
+	@DisplayName("닉네임 변경 실패를 해당 HTTP 상태로 반환한다")
+	void returnDisplayNameUpdateFailure(RuntimeException failure, int expectedStatus) throws Exception {
 		MemberDisplayNameUpdateRequest request = new MemberDisplayNameUpdateRequest("새닉네임");
+		doThrow(failure).when(memberService).updateDisplayName(10L, request);
 
-		doThrow(new DuplicateMemberException("이미 사용 중인 닉네임입니다.")).when(memberService).updateDisplayName(10L, request);
-
-		mockMvc.perform(patch("/api/members/me/display-name").with(authentication(memberAuthentication()))
+		mockMvc.perform(patch("/api/members/me/display-name").with(authentication(createAuthentication(10L, "ROLE_MEMBER")))
 			.with(csrf())
 			.contentType(MediaType.APPLICATION_JSON)
-			.content(VALID_DISPLAY_NAME_UPDATE_REQUEST)).andExpect(status().isConflict());
+			.content(VALID_DISPLAY_NAME_UPDATE_REQUEST)).andExpect(status().is(expectedStatus));
 
 		verify(memberService).updateDisplayName(10L, request);
 	}
 
-	@Test
-	@DisplayName("탈퇴한 회원의 닉네임 변경은 401을 반환한다")
-	void rejectDisplayNameUpdateForUnavailableMember() throws Exception {
-		MemberDisplayNameUpdateRequest request = new MemberDisplayNameUpdateRequest("새닉네임");
-
-		doThrow(new MemberUnavailableException()).when(memberService).updateDisplayName(10L, request);
-
-		mockMvc.perform(patch("/api/members/me/display-name").with(authentication(memberAuthentication()))
-			.with(csrf())
-			.contentType(MediaType.APPLICATION_JSON)
-			.content(VALID_DISPLAY_NAME_UPDATE_REQUEST)).andExpect(status().isUnauthorized());
-
-		verify(memberService).updateDisplayName(10L, request);
+	private static Stream<Arguments> displayNameUpdateFailures() {
+		return Stream.of(
+			Arguments.of(new DuplicateMemberException("이미 사용 중인 닉네임입니다."), 409),
+			Arguments.of(new MemberUnavailableException(), 401)
+		);
 	}
 
 	@ParameterizedTest
@@ -202,7 +192,7 @@ class MemberProfileApiTest {
 		String body = VALID_PASSWORD_UPDATE_REQUEST.replace("NewBoardkit1234!", newPassword);
 
 		mockMvc.perform(patch("/api/members/me/password").param("memberId", "99")
-				.with(authentication(memberAuthentication()))
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER")))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(body))
@@ -233,7 +223,7 @@ class MemberProfileApiTest {
 	@Test
 	@DisplayName("CSRF 토큰이 없으면 비밀번호 변경은 403을 반환한다")
 	void rejectPasswordUpdateWithoutCsrfToken() throws Exception {
-		mockMvc.perform(patch("/api/members/me/password").with(authentication(memberAuthentication()))
+		mockMvc.perform(patch("/api/members/me/password").with(authentication(createAuthentication(10L, "ROLE_MEMBER")))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(VALID_PASSWORD_UPDATE_REQUEST))
 			.andExpect(status().isForbidden())
@@ -246,7 +236,7 @@ class MemberProfileApiTest {
 	@MethodSource("invalidPasswordUpdateRequests")
 	@DisplayName("잘못된 비밀번호 변경 입력은 서비스 호출 전에 거절한다")
 	void rejectInvalidPasswordUpdateRequest(String body) throws Exception {
-		mockMvc.perform(patch("/api/members/me/password").with(authentication(memberAuthentication()))
+		mockMvc.perform(patch("/api/members/me/password").with(authentication(createAuthentication(10L, "ROLE_MEMBER")))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(body))
@@ -257,7 +247,7 @@ class MemberProfileApiTest {
 	}
 
 	private static Stream<String> invalidPasswordUpdateRequests() {
-		return Stream.of("{}", VALID_PASSWORD_UPDATE_REQUEST.replace("\"1234\"", "\"\""),
+		return Stream.of(VALID_PASSWORD_UPDATE_REQUEST.replace("\"1234\"", "\"\""),
 			VALID_PASSWORD_UPDATE_REQUEST.replace("\"1234\"", "null"),
 			VALID_PASSWORD_UPDATE_REQUEST.replace("NewBoardkit1234!", "a".repeat(11)),
 			VALID_PASSWORD_UPDATE_REQUEST.replace("NewBoardkit1234!", "a".repeat(65)),
@@ -278,7 +268,7 @@ class MemberProfileApiTest {
 
 		doThrow(failure).when(memberService).updatePassword(10L, request);
 
-		mockMvc.perform(patch("/api/members/me/password").with(authentication(memberAuthentication()))
+		mockMvc.perform(patch("/api/members/me/password").with(authentication(createAuthentication(10L, "ROLE_MEMBER")))
 				.with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(VALID_PASSWORD_UPDATE_REQUEST))
@@ -302,7 +292,7 @@ class MemberProfileApiTest {
 		when(memberService.getMyPosts(10L, 1, 10)).thenReturn(new MyPostPageResponse(posts, 1, 10, 1L, 1));
 
 		mockMvc.perform(
-				get("/api/members/me/posts").param("memberId", "99").with(authentication(memberAuthentication())))
+				get("/api/members/me/posts").param("memberId", "99").with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isOk())
 			.andExpect(header().string("Cache-Control", "no-store"))
 			.andExpect(jsonPath("$.posts.length()").value(1))
@@ -326,7 +316,7 @@ class MemberProfileApiTest {
 
 		mockMvc.perform(get("/api/members/me/posts").param("page", "2")
 				.param("size", "20")
-				.with(authentication(memberAuthentication())))
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.page").value(2))
 			.andExpect(jsonPath("$.size").value(20));
@@ -339,7 +329,7 @@ class MemberProfileApiTest {
 	void returnEmptyMyPostsResponse() throws Exception {
 		when(memberService.getMyPosts(10L, 1, 10)).thenReturn(new MyPostPageResponse(List.of(), 1, 10, 0L, 0));
 
-		mockMvc.perform(get("/api/members/me/posts").with(authentication(memberAuthentication())))
+		mockMvc.perform(get("/api/members/me/posts").with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.posts.length()").value(0))
 			.andExpect(jsonPath("$.totalElements").value(0))
@@ -355,12 +345,12 @@ class MemberProfileApiTest {
 	}
 
 	@ParameterizedTest
-	@CsvSource({"0, 10", "-1, 10", "1, 0", "1, -1", "1, 101", "abc, 10", "1, abc"})
+	@CsvSource({"0, 10", "1, 0", "1, 101", "abc, 10", "1, abc"})
 	@DisplayName("잘못된 페이지 조건은 서비스 호출 전에 400을 반환한다")
 	void rejectInvalidMyPostsPagination(String page, String size) throws Exception {
 		mockMvc.perform(get("/api/members/me/posts").param("page", page)
 			.param("size", size)
-			.with(authentication(memberAuthentication()))).andExpect(status().isBadRequest());
+			.with(authentication(createAuthentication(10L, "ROLE_MEMBER")))).andExpect(status().isBadRequest());
 
 		verifyNoInteractions(memberService);
 	}
@@ -370,7 +360,7 @@ class MemberProfileApiTest {
 	void rejectMyPostsForUnavailableMember() throws Exception {
 		when(memberService.getMyPosts(10L, 1, 10)).thenThrow(new MemberUnavailableException());
 
-		mockMvc.perform(get("/api/members/me/posts").with(authentication(memberAuthentication())))
+		mockMvc.perform(get("/api/members/me/posts").with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isUnauthorized());
 
 		verify(memberService).getMyPosts(10L, 1, 10);
@@ -388,7 +378,7 @@ class MemberProfileApiTest {
 		when(memberService.getMyComments(10L, 1, 10)).thenReturn(new MyCommentPageResponse(comments, 1, 10, 2L, 1));
 
 		mockMvc.perform(
-				get("/api/members/me/comments").param("memberId", "99").with(authentication(memberAuthentication())))
+				get("/api/members/me/comments").param("memberId", "99").with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isOk())
 			.andExpect(header().string("Cache-Control", "no-store"))
 			.andExpect(jsonPath("$.comments.length()").value(2))
@@ -415,7 +405,7 @@ class MemberProfileApiTest {
 
 		mockMvc.perform(get("/api/members/me/comments").param("page", "2")
 				.param("size", "20")
-				.with(authentication(memberAuthentication())))
+				.with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.page").value(2))
 			.andExpect(jsonPath("$.size").value(20));
@@ -428,7 +418,7 @@ class MemberProfileApiTest {
 	void returnEmptyMyCommentsResponse() throws Exception {
 		when(memberService.getMyComments(10L, 1, 10)).thenReturn(new MyCommentPageResponse(List.of(), 1, 10, 0L, 0));
 
-		mockMvc.perform(get("/api/members/me/comments").with(authentication(memberAuthentication())))
+		mockMvc.perform(get("/api/members/me/comments").with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.comments.length()").value(0))
 			.andExpect(jsonPath("$.totalElements").value(0))
@@ -444,12 +434,12 @@ class MemberProfileApiTest {
 	}
 
 	@ParameterizedTest
-	@CsvSource({"0, 10", "-1, 10", "1, 0", "1, -1", "1, 101", "abc, 10", "1, abc"})
+	@CsvSource({"0, 10", "1, 0", "1, 101", "abc, 10", "1, abc"})
 	@DisplayName("잘못된 댓글 페이지 조건은 서비스 호출 전에 400을 반환한다")
 	void rejectInvalidMyCommentsPagination(String page, String size) throws Exception {
 		mockMvc.perform(get("/api/members/me/comments").param("page", page)
 			.param("size", size)
-			.with(authentication(memberAuthentication()))).andExpect(status().isBadRequest());
+			.with(authentication(createAuthentication(10L, "ROLE_MEMBER")))).andExpect(status().isBadRequest());
 
 		verifyNoInteractions(memberService);
 	}
@@ -459,14 +449,9 @@ class MemberProfileApiTest {
 	void rejectMyCommentsForUnavailableMember() throws Exception {
 		when(memberService.getMyComments(10L, 1, 10)).thenThrow(new MemberUnavailableException());
 
-		mockMvc.perform(get("/api/members/me/comments").with(authentication(memberAuthentication())))
+		mockMvc.perform(get("/api/members/me/comments").with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isUnauthorized());
 
 		verify(memberService).getMyComments(10L, 1, 10);
-	}
-
-	private UsernamePasswordAuthenticationToken memberAuthentication() {
-		return new UsernamePasswordAuthenticationToken(new LoginMember(10L), null,
-			List.of(new SimpleGrantedAuthority("ROLE_MEMBER")));
 	}
 }

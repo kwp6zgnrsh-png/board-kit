@@ -328,32 +328,18 @@ class PostReplyServiceTest {
 		verify(memberMapper, never()).existsActiveSanctionByMemberId(anyLong());
 	}
 
-	@Test
-	@DisplayName("공식 답변 관리 대상이 없으면 목록 쿼리 없이 빈 페이지를 반환한다")
-	void returnEmptyAdminReplyPageWhenNoTargetsExist() {
+	@ParameterizedTest(name = "filter={0}, total={1}, page={2}")
+	@CsvSource({"UNANSWERED, 0, 1, 0", "ALL, 10, 2, 1"})
+	@DisplayName("공식 답변 관리 대상이 없거나 마지막 페이지를 넘으면 목록 쿼리 없이 빈 페이지를 반환한다")
+	void returnEmptyAdminReplyPageWithoutListQuery(PostReplyFilter filter, long total, int page, int totalPages) {
 		when(memberMapper.existsActiveMemberById(10L)).thenReturn(true);
-		when(postReplyMapper.countAdminPostReplyTargets(PostReplyFilter.UNANSWERED)).thenReturn(0L);
+		when(postReplyMapper.countAdminPostReplyTargets(filter)).thenReturn(total);
 
-		AdminPostReplyPageResponse result = service.getAdminPostReplyTargets(PostReplyFilter.UNANSWERED, 1, 10, 10L,
-			true);
+		AdminPostReplyPageResponse result = service.getAdminPostReplyTargets(filter, page, 10, 10L, true);
 
-		assertAll(() -> assertTrue(result.posts().isEmpty()), () -> assertEquals(1, result.page()),
-			() -> assertEquals(10, result.size()), () -> assertEquals(0L, result.totalElements()),
-			() -> assertEquals(0, result.totalPages()));
-
-		verify(postReplyMapper, never()).selectAdminPostReplyTargets(any(PostReplyFilter.class), anyInt(), anyLong());
-	}
-
-	@Test
-	@DisplayName("마지막 페이지를 넘으면 전체 개수를 유지하고 빈 목록을 반환한다")
-	void returnEmptyAdminReplyPageWhenPageExceedsTotal() {
-		when(memberMapper.existsActiveMemberById(10L)).thenReturn(true);
-		when(postReplyMapper.countAdminPostReplyTargets(PostReplyFilter.ALL)).thenReturn(10L);
-
-		AdminPostReplyPageResponse result = service.getAdminPostReplyTargets(PostReplyFilter.ALL, 2, 10, 10L, true);
-
-		assertAll(() -> assertTrue(result.posts().isEmpty()), () -> assertEquals(2, result.page()),
-			() -> assertEquals(10L, result.totalElements()), () -> assertEquals(1, result.totalPages()));
+		assertAll(() -> assertTrue(result.posts().isEmpty()), () -> assertEquals(page, result.page()),
+			() -> assertEquals(10, result.size()), () -> assertEquals(total, result.totalElements()),
+			() -> assertEquals(totalPages, result.totalPages()));
 
 		verify(postReplyMapper, never()).selectAdminPostReplyTargets(any(PostReplyFilter.class), anyInt(), anyLong());
 	}

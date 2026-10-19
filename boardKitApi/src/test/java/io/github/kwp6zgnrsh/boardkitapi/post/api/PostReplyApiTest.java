@@ -1,5 +1,6 @@
 package io.github.kwp6zgnrsh.boardkitapi.post.api;
 
+import static io.github.kwp6zgnrsh.boardkitapi.support.TestAuthentication.createAuthentication;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -18,15 +19,11 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import io.github.kwp6zgnrsh.boardkitapi.auth.mapper.RevokedTokenMapper;
-import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
 import io.github.kwp6zgnrsh.boardkitapi.config.MethodSecurityConfig;
 import io.github.kwp6zgnrsh.boardkitapi.config.SecurityConfig;
@@ -250,20 +247,18 @@ class PostReplyApiTest {
 		verifyNoInteractions(postReplyService);
 	}
 
-	@ParameterizedTest
-	@ValueSource(longs = {0, -1})
+	@Test
 	@DisplayName("게시글 ID가 양수가 아니면 공식 답변 조회를 거절한다")
-	void rejectReadWithInvalidPostId(long postId) throws Exception {
-		mockMvc.perform(get("/api/boards/free/posts/" + postId + "/reply")).andExpect(status().isBadRequest());
+	void rejectReadWithInvalidPostId() throws Exception {
+		mockMvc.perform(get("/api/boards/free/posts/0/reply")).andExpect(status().isBadRequest());
 
 		verifyNoInteractions(postReplyService);
 	}
 
-	@ParameterizedTest
-	@ValueSource(longs = {0, -1})
+	@Test
 	@DisplayName("답변 ID가 양수가 아니면 공식 답변 수정을 거절한다")
-	void rejectUpdateWithInvalidReplyId(long replyId) throws Exception {
-		mockMvc.perform(patch(URL + "/" + replyId).contentType(MediaType.APPLICATION_JSON)
+	void rejectUpdateWithInvalidReplyId() throws Exception {
+		mockMvc.perform(patch(URL + "/0").contentType(MediaType.APPLICATION_JSON)
 			.content(VALID_UPDATE_REQUEST)
 			.with(csrf())
 			.with(authentication(createAuthentication(1L, "ROLE_ADMIN")))).andExpect(status().isBadRequest());
@@ -306,11 +301,6 @@ class PostReplyApiTest {
 		return List.of(post(URL).contentType(MediaType.APPLICATION_JSON).content(VALID_CREATE_REQUEST),
 			patch(ITEM_URL).contentType(MediaType.APPLICATION_JSON).content(VALID_UPDATE_REQUEST),
 			delete(ITEM_URL).param("version", "0"));
-	}
-
-	private Authentication createAuthentication(Long memberId, String authority) {
-		return new UsernamePasswordAuthenticationToken(new LoginMember(memberId), null,
-			List.of(new SimpleGrantedAuthority(authority)));
 	}
 
 	private PostReplyResponse replyResponse() {

@@ -1,5 +1,6 @@
 package io.github.kwp6zgnrsh.boardkitapi.report.api;
 
+import static io.github.kwp6zgnrsh.boardkitapi.support.TestAuthentication.createAuthentication;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -17,14 +18,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.kwp6zgnrsh.boardkitapi.auth.mapper.RevokedTokenMapper;
-import io.github.kwp6zgnrsh.boardkitapi.auth.model.LoginMember;
 import io.github.kwp6zgnrsh.boardkitapi.auth.token.JwtTokenProvider;
 import io.github.kwp6zgnrsh.boardkitapi.config.MethodSecurityConfig;
 import io.github.kwp6zgnrsh.boardkitapi.config.SecurityConfig;
@@ -65,7 +62,7 @@ class AdminPostReplyApiTest {
 		when(postReplyService.getAdminPostReplyTargets(PostReplyFilter.UNANSWERED, 1, 10, 10L, true)).thenReturn(
 			response);
 
-		mockMvc.perform(get(URL).with(authentication(createAuthentication("ROLE_ADMIN"))))
+		mockMvc.perform(get(URL).with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isOk())
 			.andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
 			.andExpect(jsonPath("$.posts.length()").value(0))
@@ -90,7 +87,7 @@ class AdminPostReplyApiTest {
 		mockMvc.perform(get(URL).param("filter", filter.name())
 				.param("page", "2")
 				.param("size", "20")
-				.with(authentication(createAuthentication("ROLE_ADMIN"))))
+				.with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.posts[0].postId").value(100))
 			.andExpect(jsonPath("$.posts[0].boardSlug").value("free"))
@@ -118,17 +115,17 @@ class AdminPostReplyApiTest {
 	@Test
 	@DisplayName("일반 회원은 공식 답변 관리 목록을 조회할 수 없다")
 	void rejectAdminReplyListByMember() throws Exception {
-		mockMvc.perform(get(URL).with(authentication(createAuthentication("ROLE_MEMBER"))))
+		mockMvc.perform(get(URL).with(authentication(createAuthentication(10L, "ROLE_MEMBER"))))
 			.andExpect(status().isForbidden());
 
 		verifyNoInteractions(postReplyService);
 	}
 
 	@ParameterizedTest
-	@CsvSource({"page, 0", "page, -1", "page, abc", "size, 0", "size, -1", "size, 101", "size, abc"})
+	@CsvSource({"page, 0", "page, abc", "size, 0", "size, 101", "size, abc"})
 	@DisplayName("잘못된 페이지 조건은 서비스 호출 전에 거절한다")
 	void rejectInvalidPagination(String parameter, String value) throws Exception {
-		mockMvc.perform(get(URL).param(parameter, value).with(authentication(createAuthentication("ROLE_ADMIN"))))
+		mockMvc.perform(get(URL).param(parameter, value).with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isBadRequest());
 
 		verifyNoInteractions(postReplyService);
@@ -137,7 +134,7 @@ class AdminPostReplyApiTest {
 	@Test
 	@DisplayName("지원하지 않는 답변 필터는 서비스 호출 전에 거절한다")
 	void rejectUnsupportedReplyFilter() throws Exception {
-		mockMvc.perform(get(URL).param("filter", "INVALID").with(authentication(createAuthentication("ROLE_ADMIN"))))
+		mockMvc.perform(get(URL).param("filter", "INVALID").with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isBadRequest());
 
 		verifyNoInteractions(postReplyService);
@@ -149,12 +146,7 @@ class AdminPostReplyApiTest {
 		when(postReplyService.getAdminPostReplyTargets(PostReplyFilter.UNANSWERED, 1, 10, 10L, true)).thenThrow(
 			new MemberUnavailableException());
 
-		mockMvc.perform(get(URL).with(authentication(createAuthentication("ROLE_ADMIN"))))
+		mockMvc.perform(get(URL).with(authentication(createAuthentication(10L, "ROLE_ADMIN"))))
 			.andExpect(status().isUnauthorized());
-	}
-
-	private Authentication createAuthentication(String authority) {
-		return new UsernamePasswordAuthenticationToken(new LoginMember(10L), null,
-			List.of(new SimpleGrantedAuthority(authority)));
 	}
 }

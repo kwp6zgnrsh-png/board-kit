@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -75,7 +76,7 @@ class JwtAuthenticationFilterTest {
 
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-		assert authentication != null;
+		assertNotNull(authentication);
 		assertTrue(authentication.isAuthenticated());
 		assertEquals(new LoginMember(10L), authentication.getPrincipal());
 		assertEquals("ROLE_" + role, authentication.getAuthorities().iterator().next().getAuthority());
@@ -111,29 +112,21 @@ class JwtAuthenticationFilterTest {
 		verifyNoInteractions(revokedTokenMapper);
 	}
 
-	@Test
-	@DisplayName("인증 쿠키가 없으면 토큰과 DB를 조회하지 않는다")
-	void skipAuthenticationWithoutCookie() throws Exception {
+	@ParameterizedTest(name = "authorization={0}")
+	@NullSource
+	@ValueSource(strings = {"Bearer header-token"})
+	@DisplayName("인증 쿠키가 없으면 Bearer 헤더 유무와 관계없이 토큰과 DB를 조회하지 않는다")
+	void skipAuthenticationWithoutCookie(String authorization) throws Exception {
 		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/boards");
+		if (authorization != null) {
+			request.addHeader(HttpHeaders.AUTHORIZATION, authorization);
+		}
 
 		filter.doFilter(request, response, chain);
 
 		assertNull(SecurityContextHolder.getContext().getAuthentication());
 		assertSame(request, chain.getRequest());
-		verifyNoInteractions(jwtTokenProvider, revokedTokenMapper);
-	}
-
-	@Test
-	@DisplayName("Bearer 헤더만으로는 인증하지 않는다")
-	void ignoreBearerHeaderWithoutCookie() throws Exception {
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/boards");
-		request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer header-token");
-
-		filter.doFilter(request, response, chain);
-
-		assertNull(SecurityContextHolder.getContext().getAuthentication());
-		assertSame(request, chain.getRequest());
-		verifyNoInteractions(jwtTokenProvider, revokedTokenMapper);
+		verifyNoInteractions(jwtTokenProvider, revokedTokenMapper, memberMapper);
 	}
 
 	@Test
@@ -150,10 +143,10 @@ class JwtAuthenticationFilterTest {
 		assertNull(chain.getRequest());
 	}
 
-	@ParameterizedTest
-	@ValueSource(strings = {"device-a-token", "device-b-token"})
-	@DisplayName("어느 기기에서 발급한 JWT든 인증 버전이 다르면 인증하지 않는다")
-	void rejectTokenWithOutdatedAuthVersion(String token) throws Exception {
+	@Test
+	@DisplayName("JWT의 인증 버전이 현재 회원의 인증 버전과 다르면 인증하지 않는다")
+	void rejectTokenWithOutdatedAuthVersion() throws Exception {
+		String token = "outdated-token";
 		MockHttpServletRequest request = cookieRequest(token);
 		JwtPayload payload = new JwtPayload(10L, "MEMBER", token + "-id", Instant.now().plusSeconds(1800), 0L);
 

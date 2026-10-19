@@ -31,18 +31,11 @@ class PostSecretAccessTest {
 		postSecretAccess = new PostSecretAccess(passwordEncoder);
 	}
 
-	@Test
-	@DisplayName("일반 게시글은 비밀번호 검사를 하지 않는다")
-	void allowPublicPostWithoutPasswordCheck() {
-		assertDoesNotThrow(() -> postSecretAccess.validate(false, null, 10L, null, false, null));
-
-		verifyNoInteractions(passwordEncoder);
-	}
-
-	@Test
-	@DisplayName("비밀번호 없는 비밀글은 비로그인 사용자도 접근할 수 있다")
-	void allowPasswordlessSecretPost() {
-		assertDoesNotThrow(() -> postSecretAccess.validate(true, null, 10L, null, false, null));
+	@ParameterizedTest(name = "secret={0}")
+	@ValueSource(booleans = {false, true})
+	@DisplayName("일반 글과 비밀번호 없는 비밀글은 암호 비교 없이 접근할 수 있다")
+	void allowPostWithoutPasswordHash(boolean secret) {
+		assertDoesNotThrow(() -> postSecretAccess.validate(secret, null, 10L, null, false, null));
 
 		verifyNoInteractions(passwordEncoder);
 	}
