@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 
@@ -48,7 +49,7 @@ public class FileSignatureDetector {
 	}
 
 	private void validateUtf8Text(MultipartFile file) {
-		var decoder = StandardCharsets.UTF_8.newDecoder()
+		CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
 			.onMalformedInput(CodingErrorAction.REPORT)
 			.onUnmappableCharacter(CodingErrorAction.REPORT);
 

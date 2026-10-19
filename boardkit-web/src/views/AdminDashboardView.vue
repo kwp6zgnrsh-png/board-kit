@@ -11,10 +11,6 @@ const errorMessage = ref('')
 
 const plannedMenus = [
   {
-    title: '회원 제재',
-    description: '회원 제재 사유와 기간을 관리합니다.',
-  },
-  {
     title: '게시판 활동 통계',
     description: '게시판별 게시글 수와 활동 현황을 확인합니다.',
   },
@@ -166,6 +162,20 @@ onMounted(async () => {
         </h2>
         <p class="mt-3 text-sm leading-6 text-slate-600">
           블라인드된 게시글과 댓글을 확인하고 해제하거나 삭제합니다.
+        </p>
+        <span class="mt-4 inline-block text-xs font-medium text-blue-600">
+          관리하기 →
+        </span>
+      </RouterLink>
+      <RouterLink
+          :to="{ name: 'admin-member-sanctions' }"
+          class="block rounded-md border border-slate-200 bg-white p-5 no-underline transition hover:border-blue-300 hover:bg-blue-50"
+      >
+        <h2 class="text-lg font-semibold text-slate-900">
+          회원 제재
+        </h2>
+        <p class="mt-3 text-sm leading-6 text-slate-600">
+          회원을 검색하고 제재 등록·이력 조회·해제를 처리합니다.
         </p>
         <span class="mt-4 inline-block text-xs font-medium text-blue-600">
           관리하기 →

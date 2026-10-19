@@ -1,7 +1,7 @@
 # 커뮤니티 V2 — ERD·컬럼 초안
 
 작성일: 2026-09-19
-정책·스키마 갱신일: 2026-10-18
+정책·스키마 갱신일: 2026-10-19
 
 ## 파일
 
@@ -29,6 +29,16 @@
 - 파일은 `boardKit/store` 아래 `temp`, `posts`, `thumbnails`에 로컬 저장한다.
 - DB의 파일 키는 저장소 루트 기준 상대 경로만 저장한다.
 - 게시글과 파일은 하나의 multipart 요청으로 등록하며 별도 임시 업로드 API와 임시 업로드 테이블은 사용하지 않는다.
+
+### 게시판 활동 통계 — 설계 시작, 기능 코드 미구현
+
+- 전체 현황, 날짜별 게시글·댓글 작성 추이, 같은 기간의 게시판별 작성 수 비교를 제공한다. 추이는 전체 게시판 합산 또는 선택한 게시판으로 조회한다.
+- 기간은 7일·30일·90일, 기본 30일로 진행한다. 대댓글은 댓글 수에 포함한다.
+- 현재 보유 수는 삭제되지 않은 게시글·댓글을 기준으로 한다. 부모 게시글이 삭제되었더라도 댓글 자체가 삭제되지 않았다면 현재 댓글 수에 포함한다. 날짜별 작성 추이는 이후 삭제되더라도 해당 날짜의 작성 활동으로 포함한다. 현재 보유 수와 기간 내 작성 수는 서로 다른 지표다.
+- 별도 통계 테이블·캐시·집계 배치를 먼저 추가하지 않고 기존 게시글·댓글 기록에서 집계한다. 공식 답변은 댓글 수에 합산하지 않는 안이며 별도 변경 요청이 없으면 게시글·댓글 지표만 구현한다.
+- 하루는 한국 시각 `Asia/Seoul` 기준으로 구분한다. DB의 UTC 저장 규칙과 구분하고, 조회 날짜 범위는 서버에서 UTC 시각으로 변환하여 적용한다.
+- 통계 대상은 `ACTIVE`·`ARCHIVED` 게시판이며 `DRAFT`는 제외한다. 게시판이 보관되어도 기존 작성 활동을 집계에서 제외하지 않는다.
+- 구현 순서는 응답 DTO → Mapper/XML → Service → 관리자 API 및 백엔드 테스트 → 프론트 API·통계 화면·차트 → 브라우저 확인이다. 기능 코드는 사용자가 직접 작성하며, 문서 반영은 구현 완료를 의미하지 않는다.
 
 ### 인증 고도화 — 적용 완료
 
@@ -82,6 +92,63 @@
 - 내 게시글·댓글은 각각 10개씩 조회한다. 페이지 번호는 `/me?postPage=2&commentPage=3`처럼 별도 쿼리로 관리하며 서로의 조건을 유지한다. 새로고침·브라우저 뒤로가기에서 페이지를 복원하고, 삭제 등으로 요청 페이지가 마지막 페이지를 넘으면 현재 마지막 페이지로 이동한다.
 - 각 목록은 로딩·오류·빈 목록과 별도 새로고침 버튼을 제공한다. 요청 순번 및 회원 ID를 확인하고 컴포넌트 해제 시 요청 순번을 변경하여 이전 응답이 화면을 덮어쓰지 않도록 한다. 마이페이지 상단 새로고침은 프로필만 갱신한다.
 - 댓글은 본인 내용의 최대 3줄 미리보기, 대댓글 구분, 게시판과 작성일을 표시한다. 원문 삭제 시 댓글은 유지하고 원문 이동 링크를 숨긴다. 활성 원문의 링크는 게시글 상세로 이동하며 특정 댓글 위치·댓글 페이지까지 자동 이동하지 않는다. 보관 게시판은 표시로 구분하며 상세 접근 권한을 우회하지 않는다.
+
+### 회원 제재 관리 — 시간 기준 결함 수정 및 회귀 테스트 완료
+
+- 2026-10-19 에이전트의 실제 브라우저 검증에서 진행 중인 기간제 제재의 중복 등록 허용과 등록 일시의 9시간 차이를 확인했다. 이후 현재 제재 판정을 `UTC_TIMESTAMP(6)`로 통일하고 INSERT에서 `created_at`을 같은 UTC 함수로 명시하도록 수정했다. 비UTC DB 세션에서 수정 전 실패를 재현한 뒤 관련 테스트 93개 통과를 확인했다. 수정 후 브라우저 재검증은 서버 재시작 후 진행한다. 기존 데이터의 시각은 일괄 보정하지 않았다. 상세 결과는 `integration-test-guide.md`를 참고한다.
+
+- 활성 ADMIN이 일반 회원의 제재를 등록·해제한다. ADMIN 계정은 제재 대상에서 제외한다.
+- 제재는 등록 시 서버가 정한 현재 시각부터 즉시 시작한다. 종료 일시를 지정하며, `ends_at IS NULL`이면 영구 제재다. 예약 제재 입력은 제공하지 않는다.
+- 현재 유효한 제재가 있는 회원에게는 중복 등록을 거절한다. 변경이 필요하면 기존 제재를 해제한 뒤 새 기록을 등록하여 이력을 유지한다.
+- 제재 사유와 해제 사유는 각각 필수이며 공백뿐인 값은 허용하지 않는다. 최대 길이는 기존 입력 검증과 동일하게 Java 문자열 길이 기준 2,000자다. 최초 처리자는 `admin_id`, 해제 시각·처리자·사유는 `revoked_at`·`revoked_by`·`revoke_reason`에 저장한다.
+- 등록 요청 DTO는 `memberId`·`reason`·`endsAt`, 해제 요청 DTO는 `revokeReason`으로 구성한다. 대상 회원 ID는 필수 양수이며 시작 시각·등록/해제 관리자 ID·해제 시각은 클라이언트 입력으로 받지 않는다.
+- 종료 일시는 요청에서 시간대 오프셋이 포함된 `OffsetDateTime`으로 받고 저장 시 UTC `LocalDateTime`으로 변환한다. null은 영구 제재이고, 값이 있으면 현재보다 미래인지 검사한다. 실제 등록 시점의 기간 검증은 Service에서도 수행한다. Service의 저장 시각은 `DATETIME(6)`에 맞춰 마이크로초 단위로 맞춘 뒤 비교한다.
+- 기간 만료는 현재 시각과 `ends_at`을 비교해 판단한다. 자연 만료 시 해제자나 해제 사유를 자동 생성하지 않는다. 시간은 기존 규칙에 따라 UTC로 저장·해석한다.
+- 만료되었거나 이미 해제된 제재는 이력만 조회하며 해제를 거절한다. 탈퇴한 회원도 이력만 조회하며 제재 신규 등록과 기존 제재 해제를 거절한다.
+- 현재 제재 판정은 기존 `existsActiveSanctionByMemberId`를 활용하되 UTC로 저장된 시작·종료 시각을 `UTC_TIMESTAMP(6)`와 비교한다. 로그인·조회 및 본인 삭제를 허용하고, 기존 글·댓글 작성 및 수정·새 좋아요·신고 제한을 유지한다. 좋아요 취소는 기존 기능·접근 권한 정책을 적용한다.
+- 진행 중 제재의 중복 방지는 구현 시 대상 회원 행을 잠근 뒤 현재 제재 확인과 INSERT를 같은 트랜잭션으로 처리한다. `member_id` 단독 UNIQUE는 과거 이력의 재등록까지 막으므로 추가하지 않는다.
+- Mapper 설계는 기존 `MemberMapper`에 활성 회원의 `FOR UPDATE` 조회를 추가하고, 별도 `MemberSanctionMapper`에 제재 ID 조회·등록·조건부 해제를 둔다. 현재 제재 판정은 기존 `existsActiveSanctionByMemberId`를 재사용한다.
+- 등록·해제 Service는 `READ_COMMITTED` 트랜잭션에서 같은 대상 회원 행을 먼저 잠근다. 등록은 잠금 획득 후 현재 제재를 조회한다. 일반 SELECT를 재사용하므로 기본 `REPEATABLE_READ`의 이전 스냅샷으로 동시 등록을 놓치지 않도록 한다. 해제는 제재 ID 조회로 대상 회원 ID를 확인한 뒤 해당 회원을 잠근다. 해제 UPDATE는 `revoked_at IS NULL`과 현재 유효한 기간 조건으로 반복 해제·검사 이후 만료를 차단하고 영향 행 수를 검사한다. 실제 MySQL 트랜잭션 통합 테스트에서 같은 회원의 동시 등록 차단, 다른 회원의 독립 처리, 저장 실패 시 롤백을 검증했다.
+- Service 설계상 비관리자는 403, 사용할 수 없는 요청 관리자는 기존 `MemberUnavailableException`의 401로 거절한다. 없는/탈퇴한 대상 회원과 없는 제재는 404, 관리자 대상 등록·유효하지 않은 종료 일시는 400, 중복 제재·만료/기해제 기록의 해제·조건부 해제 결과 0건은 409다. INSERT 영향 행 수 또는 생성 ID가 비정상이면 저장 실패로 처리한다.
+- 등록·해제 API 소스 적용을 확인했다. `POST /api/admin/member-sanctions`는 등록 요청 DTO를 받고 201과 `{ "id": 생성ID }`를 반환한다. `PATCH /api/admin/member-sanctions/{sanctionId}/revoke`는 해제 요청 DTO를 받고 204를 반환한다. 생성 응답 DTO는 `MemberSanctionCreateResponse`이며 `Cache-Control: no-store`를 적용한다.
+- API는 클래스 수준 ADMIN 메서드 권한 검사, 기존 인증 쿠키·CSRF 설정, 요청 본문의 `@Valid`와 제재 경로 ID의 양수 검증을 적용한다. 관리자 ID는 `LoginMember`에서 얻으며 클라이언트가 보낸 관리자 ID는 사용하지 않는다. 기존 SecurityConfig는 재사용한다. 목록·상세 조회 API의 소스 적용도 확인했다.
+- 제재 대상 회원 검색은 로그인 ID(`login_id`) 또는 닉네임(`display_name`) 중 검색 항목 하나를 선택하여 부분 검색한다. 두 항목을 동시에 OR 검색하지 않는다. 탈퇴하지 않은 일반 회원을 대상으로 하며 현재 제재 중인 회원도 표시한다. 응답은 회원 식별 정보와 현재 제재 여부만 포함하고 비밀번호 해시·인증 버전은 노출하지 않는다.
+- 제재 이력 목록 필터는 전체·진행 중·만료·해제로 구분하며 기본값은 진행 중이다. 탈퇴한 회원의 기존 제재 이력도 포함한다. 상태는 기간과 해제 시각으로 판단하며 별도 상태 컬럼을 추가하지 않는다. 제재 이력 목록·상세 조회 API와 관리 화면의 연결을 확인했다.
+- 제재 이력 조회 DTO 4개의 소스 적용을 확인했다. 요청 필터 `MemberSanctionStatusFilter`는 `ALL`·`ACTIVE`·`EXPIRED`·`REVOKED`를 사용하고, 목록·상세 응답의 `status`는 실제 기록 상태만 표현한다. 목록은 대상 회원 식별 정보·탈퇴 여부·제재 사유·기간·상태·등록/해제 시각을, 상세는 등록/해제 관리자 ID·닉네임과 해제 사유를 추가로 제공한다. 페이지 응답은 기존 `page`·`size`·`totalElements`·`totalPages` 구조를 따른다.
+- 제재 이력 Mapper/XML의 소스 적용을 확인했다. `memberId`가 있으면 해당 회원의 이력으로 제한하고 null이면 전체 회원을 대상으로 하며, 대상 회원의 탈퇴 여부로 이력을 제외하지 않는다. 한 조회 요청의 공통 UTC 기준 시각 `asOf`를 건수·목록·상세 상태 판정에 전달한다. 해제 기록은 종료 시각이 지났어도 `REVOKED`로 분류하고, 미해제 기록 중 종료 시각이 기준 시각 이하면 `EXPIRED`로 분류한다. 상세의 해제자 조인은 LEFT JOIN으로 구성하여 해제자 정보가 없는 기존 기록도 유지한다. 목록은 등록 시각·ID 내림차순이다. 2026-10-19 15:25:52 KST JUnit XML에서 기존 등록·해제·회원 검색과 신규 이력 조회를 포함한 Mapper 통합 테스트 13개 사례 통과를 확인했다. 에이전트가 직접 실행한 결과는 아니다.
+- 제재 목록·상세 조회 Service의 소스 적용을 확인했다. 기존 관리자 검사를 재사용하고 읽기 전용 트랜잭션에서 공통 UTC 기준 시각을 생성하여 Mapper로 전달한다. 목록의 `memberId`는 선택적인 양수이며 해당 회원의 활성 여부를 검사하지 않아 탈퇴 회원의 이력도 조회한다. 없는 제재 상세는 404로 반환한다. 2026-10-19 15:29:48 KST JUnit XML에서 등록·해제·회원 검색·이력 조회를 포함한 Service 단위 테스트 25개 사례의 통과를 확인했다. 에이전트가 직접 실행한 결과는 아니다.
+- 제재 이력 조회 API는 기존 `AdminMemberSanctionApi`에 `GET /api/admin/member-sanctions`와 `GET /api/admin/member-sanctions/{sanctionId}`를 추가한 소스 적용을 확인했다. 목록의 기본 필터는 `ACTIVE`, 페이지·크기는 1·10이며 선택적인 `memberId`로 회원별 조회한다. 기존 클래스 수준 ADMIN 권한과 인증 회원 ID 추출을 재사용하고 조회 응답에 `Cache-Control: no-store`를 적용한다. 2026-10-19 15:33:50 KST JUnit XML에서 등록·해제·회원 검색·이력 조회를 포함한 API 테스트 50개 사례의 통과를 확인했다. 에이전트가 직접 실행한 결과는 아니다.
+- 제재 관리 프론트의 타입·API 소스 적용을 확인했다. `features/member/types/adminMemberSanction.ts`에 검색·목록·상세·등록·해제 타입과 누락됐던 `AdminMemberSanctionPageResponse`가 있고, `api/adminMemberSanctionApi.ts`에 5개 API 호출 함수가 있다. 기존 공통 HTTP 클라이언트의 인증 쿠키·CSRF 처리를 재사용한다. 종료 일시는 요청에서 오프셋이 포함된 문자열 또는 null로 전달하고, 조회 시각은 기존 UTC 문자열 규칙을 따른다.
+- 회원 검색·선택 UI `AdminMemberSearchPanel.vue`의 소스 추가를 확인했다. 로그인 ID/닉네임을 선택하고 검색을 제출한 뒤 10개씩 표시하며, 페이지 이동에는 마지막으로 제출한 검색 조건을 사용한다. 현재 제재 중인 회원도 선택할 수 있고 제재 여부는 안내용이며 실제 등록 허용 여부는 서버가 재검사한다. 선택 회원은 이벤트로 상위 관리 화면에 전달한다. 기존 공통 입력·버튼·페이지네이션과 Tailwind 클래스를 사용하며, 요청 순번·현재 관리자 ID·컴포넌트 해제 시 무효화로 늦은 응답의 화면 반영을 막는다.
+- 제재 등록 폼 `AdminMemberSanctionCreateForm.vue`의 소스 추가를 확인했다. 선택 회원·요청 중 여부·서버 오류를 props로 받고, 검증한 등록 요청과 선택 해제 이벤트를 상위 화면에 전달한다. 공백이 아닌 사유 최대 2,000자, 종료 일시 지정 또는 영구 제재를 입력하며, 지정한 종료 일시는 브라우저 현지 시각에서 UTC ISO 문자열로 변환한다. 실제 POST와 성공 후 목록 갱신은 상위 관리 화면에서 처리한다.
+- 제재 이력 목록 UI `AdminMemberSanctionListPanel.vue`와 표시 함수 `memberSanctionDisplay.ts`의 소스 추가를 확인했다. 기존 관리 화면처럼 상태 필터와 페이지를 URL의 `filter`·`page`로 유지하고, 선택적인 `memberId` prop으로 회원별 이력을 조회한다. `refreshKey` 변경으로 등록·해제 후 목록 재조회를 요청할 수 있으며 상세 선택은 제재 ID 이벤트로 상위 화면에 전달한다. 요청 순번·현재 관리자 ID 확인으로 이전 응답을 무효화하고 범위 초과 페이지는 마지막 페이지로 보정한다. 표시 함수는 상태 표시명과 UTC 조회 시각을 기기 현지 시각으로 변환하는 기능을 제공한다.
+- 제재 상세·해제 UI `AdminMemberSanctionDetailPanel.vue`의 소스 추가를 확인했다. 제재 ID와 갱신 요청을 받아 상세를 조회하고 등록·해제 감사 정보를 표시한다. 조회된 상태가 진행 중이고 회원이 탈퇴하지 않은 경우에만 해제 사유 입력을 제공하며, 공백이 아닌 최대 2,000자 사유와 조회한 제재 정보를 이벤트로 상위 화면에 전달한다. 실제 PATCH와 성공/충돌 후 재조회는 상위 관리 화면에서 처리한다. 조회 이후 기간이 만료되거나 다른 관리자가 해제한 경우의 최종 거절은 기존 서버 조건부 UPDATE가 담당한다.
+- 관리 화면 `AdminMemberSanctionView.vue`, 화면 경로 `/admin/member-sanctions`, 라우트 이름 `admin-member-sanctions`의 소스 적용을 확인했다. 기존 관리자 인증 메타를 적용하고 대시보드의 준비 중 메뉴를 실제 링크로 교체했다. URL의 `memberId`는 이력 조회 범위, `sanctionId`는 열린 상세를 나타낸다. 등록 대상 회원의 검색 정보는 화면 메모리에 두므로 URL을 직접 열거나 새로고침한 경우 이력은 복원하되 신규 등록은 회원을 다시 검색·선택한다.
+- 상위 화면은 등록·해제 요청과 오류·성공 안내를 담당한다. 성공 후 검색·목록·상세를 공통 `refreshKey`로 갱신하며, 등록 성공 시 입력 폼을 닫고 진행 중 첫 페이지와 신규 이력 상세로 연결한다. 오류 시에도 최신 상태를 재조회하고 네트워크 오류·서버 오류에서는 결과를 단정하지 않고 이력 확인을 안내한다. 검색 컴포넌트의 선택적인 `refreshKey`와 최근 검색 재조회 watcher 적용도 확인했다. 관리자·URL 변경 또는 컴포넌트 해제 시 이전 변경 요청의 화면 반영을 무효화한다.
+- 초기 관리 화면·검색 갱신 제안 코드는 별도 임시 파일에서 `vue-tsc --noEmit` 검사를 통과했다. 이후 실제 프로젝트의 관리 화면·검색 갱신·라우터·메뉴 소스 적용을 확인했고, 사용자가 브라우저 테스트 완료를 보고했다. 브라우저 검증은 사용자 보고 기준이며 이번 문서 갱신에서 에이전트가 브라우저 테스트나 전체 Vite 빌드를 재실행한 것은 아니다.
+- 회원 검색용 `MemberSearchField`와 관리자 회원 목록 응답 DTO 2개, `MemberMapper`의 검색 메서드와 XML 소스 적용을 확인했다. 검색 항목은 MyBatis `<choose>`로 선택하고 허용되지 않은 항목은 조회하지 않으며, 건수·목록에 같은 검색 조건을 사용한다. 검색어의 LIKE 특수문자는 Service에서 `=`로 이스케이프하여 전달하는 계약으로 한다. 현재 제재 여부는 `EXISTS`로 조회하여 제재 이력이 여러 건이어도 회원 행이 중복되지 않도록 한다. 검색 검증은 앞서 확인한 Mapper 통합 테스트 13개 사례에 포함된다.
+- 회원 검색 Service는 기존 `AdminMemberSanctionService`에 읽기 전용 `getMembers` 메서드를 추가한 소스 적용을 확인했다. 기존 관리자 검사를 재사용하고, 페이지 오프셋을 long으로 계산하며 범위를 벗어난 페이지는 목록 조회 없이 빈 목록을 반환하는 기존 관리자 조회 패턴을 따른다. 검색 항목과 공백이 아닌 검색어는 필수이고, 페이지는 1 이상·크기는 1~100으로 검증한다. 회원 검색 검증은 앞서 확인한 Service 단위 테스트 25개 사례에 포함된다.
+- 관리자 회원 검색 API는 `AdminMemberApi`의 `GET /api/admin/members?field=LOGIN_ID&keyword=검색어`로 구현했다. `field`는 `LOGIN_ID` 또는 `DISPLAY_NAME`이고 기본 페이지·크기는 1·10이다. 클래스 수준 ADMIN 권한 검사와 로그인한 회원 ID 전달, `Cache-Control: no-store`를 적용한다. GET 요청은 CSRF 토큰 없이 조회하며 기존 보안 설정을 재사용한다. 소스 적용과 2026-10-19 15:06:31 KST JUnit XML에서 등록·해제와 검색을 포함한 API 테스트 38개 사례의 통과를 확인했다. 에이전트가 직접 재실행한 결과는 아니다.
+- 소스에서 모델·등록/해제 요청 DTO·Mapper/XML·등록/해제 Service·API 추가를 확인했다. Service 16개와 Mapper 통합 테스트 4개 실행 사례의 성공을 확인했고, 이후 별도 API 실행 보고서에서 26개 사례 통과도 확인했다. 2026-10-19 14:50 KST 보고서에서 트랜잭션 통합 테스트 3개와 Mapper 4개의 통과도 확인했다. 회원 검색·이력 조회 추가 이후 별도 실행 보고서에서 Mapper 13개·Service 25개·API 50개 사례의 통과를 확인했다. 관리 화면 소스 연결과 사용자 보고 기준 브라우저 테스트까지 완료했다. 문서의 초기 DDL·ERD 갱신은 실제 DB에 ALTER를 실행했다는 뜻이 아니다.
+
+기존 DB는 초기 `schema.sql` 전체를 재실행하지 않는다. 개발 DB와 `boardkit_test` 각각에서 아래 두 컬럼이 없는지 확인한 뒤, DDL 변경 권한이 있는 계정으로 ALTER를 한 번씩 적용한다.
+
+```sql
+SELECT DATABASE();
+SHOW COLUMNS FROM member_sanction;
+
+ALTER TABLE member_sanction
+    ADD COLUMN revoked_by BIGINT UNSIGNED NULL AFTER revoked_at,
+    ADD COLUMN revoke_reason TEXT NULL AFTER revoked_by,
+    ADD KEY ix_sanction_revoker (revoked_by),
+    ADD CONSTRAINT fk_sanction_revoker
+        FOREIGN KEY (revoked_by) REFERENCES member (id)
+        ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+SHOW CREATE TABLE member_sanction;
+```
+
+새 컬럼은 제재 등록 직후에는 값이 없으므로 NULL을 허용한다. 기존에 해제된 기록도 해제자·사유를 알 수 없으면 NULL을 유지하며, 새로 수행하는 해제부터 세 값을 함께 저장하도록 구현한다.
 
 ### 관리자 공식 답변
 
@@ -452,6 +519,8 @@
 - starts_at
 - ends_at (NULL 허용)
 - revoked_at (NULL 허용)
+- revoked_by (FK → member.id, NULL 허용)
+- revoke_reason (NULL 허용)
 - created_at
 
 ### file_cleanup_task
@@ -633,6 +702,8 @@ erDiagram
         datetime(6) starts_at
         datetime(6) ends_at "nullable"
         datetime(6) revoked_at "nullable"
+        bigint revoked_by FK "nullable"
+        text revoke_reason "nullable"
         datetime(6) created_at
     }
 
@@ -673,4 +744,5 @@ erDiagram
     COMMENT o|--o{ REPORT : reported_comment
     MEMBER ||--o{ MEMBER_SANCTION : receives
     MEMBER ||--o{ MEMBER_SANCTION : imposes
+    MEMBER o|--o{ MEMBER_SANCTION : revokes
 ```

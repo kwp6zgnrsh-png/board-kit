@@ -1,7 +1,7 @@
 # MySQL Mapper·파일·인증 테스트
 
 작성일: 2026-10-09
-최종 갱신일: 2026-10-18
+최종 갱신일: 2026-10-19
 
 ## 채택한 방식
 
@@ -596,6 +596,136 @@ ALTER TABLE boardkit_test.member
 - 새 통합 검증은 게시글·댓글 각각 보관된 게시판에서 기준 미달 수동 블라인드, 버전 충돌, 해제 기준 저장과 추가 인정 3건 재블라인드, 삭제와 삭제 후 조치 차단을 포함한다. 수동 조치 자체가 신고 판정을 변경하지 않는지도 검사한다.
 - 게시글 삭제의 파일 삭제 표시·cleanup task 저장 성공과 작업 등록 실패 시 실제 DB 롤백을 검사한다. 파일시스템 삭제나 API·브라우저 조치 버튼까지 완료됐다는 의미는 아니다.
 - 후속 2026-10-19 00:40 UTC 보고서에서 `AdminReportApiTest` 41개·`AdminReportServiceTest` 29개·`AdminReportServiceIntegrationTest` 10개, 총 80개의 실패 0건을 확인했다. 수동 조치 API의 세 action·버전 전달·204, 잘못된 입력 400, 상태 충돌 409와 기존 인증·관리자 권한·CSRF 검사를 포함한다. 관리자 프론트 연결과 일반 사용자 화면의 블라인드 안내·버튼 제한은 아직 검증 완료 범위가 아니다.
+
+## 회원 제재 Mapper 통합 테스트 — 2026-10-19
+
+- 소스에서 `MemberSanction` 모델·등록/해제 요청 DTO, `MemberSanctionMapper`와 XML, `MemberMapper.selectActiveMemberByIdForUpdate` 추가를 확인했다.
+- 테스트는 `member/mapper/MemberSanctionMapperIntegrationTest.java` 한 클래스다. 기존 방식대로 `@MybatisTest`, `test` 프로필, `Replace.NONE`, `mapper/member/*.xml`과 member Mapper 패키지 스캔을 사용한다.
+- 실행 전 `boardkit_test.member_sanction`에도 `revoked_by`, `revoke_reason`, 해제자 FK를 반영해야 한다. 기존 DB에 초기 DDL 전체를 다시 실행하지 않는다. 변경 SQL은 `schema.md`의 회원 제재 관리 절에 있다.
+- `insertAndReadSanction`: 기간/영구 두 입력으로 INSERT 생성 ID, 컬럼 매핑, 초기 해제 정보 NULL, 현재 제재 판정을 확인한다. 같은 트랜잭션에서 회원의 잠금 조회 SQL도 실행한다.
+- `ignoreExpiredSanctionWithoutChangingHistory`: 만료 기록은 현재 제재에서 제외하되 저장 이력과 미해제 상태를 유지하는지 확인한다.
+- `preserveRevocationAuditOnRepeatedRequest`: 다른 ADMIN이 해제할 수 있고, 등록 관리자·원래 기간은 유지하면서 해제자·사유·시각이 저장되는지 확인한다. 반복 해제는 영향 행 0건이며 최초 해제 이력을 덮어쓰지 않아야 한다.
+- 세 메서드·실행 사례 네 개다. 테스트 시작 시 DB 이름을 먼저 확인하고, DB의 UTC 시각으로 날짜 fixture를 만든다. 테스트별 회원·제재 데이터는 기본 테스트 트랜잭션 롤백으로 정리한다.
+- 이 테스트는 실제 동시 등록 차단이나 Service의 관리자·대상 권한 검증을 보장하지 않는다. 해당 검증은 후속 Service 및 트랜잭션 테스트에서 수행한다.
+- 사용자가 추가한 테스트 소스와 JUnit XML을 확인했다. 2026-10-19 05:19:16 UTC 보고서 기준 4개 실행 사례의 실패·오류·건너뜀은 0개다. 에이전트가 직접 재실행하거나 실제 DB 스키마를 확인한 결과는 아니다.
+- 이후 만료된 제재의 해제 거절 정책이 확정되었고 해제 SQL에 현재 유효한 기간 조건이 반영된 것을 확인했다. 2026-10-19 14:30 KST 에이전트 선택 실행에서도 기존 4개 사례가 통과했다. 이후 소스에서 만료된 제재의 해제 결과 0건 검증 추가도 확인했으며, 추가 이후 14:50:16 KST JUnit XML에서 4개 사례의 실패·오류·건너뜀 0건을 확인했다. 최신 결과는 에이전트가 직접 재실행한 결과가 아니다.
+
+실행 명령 (`boardKitApi` 디렉토리):
+
+```bash
+./gradlew test --tests '*MemberSanctionMapperIntegrationTest'
+```
+
+## 회원 제재 Service 검증 — 2026-10-19
+
+- 등록·해제는 별도 `AdminMemberSanctionService`에서 처리한다. 기존 `MemberService`와 인터페이스 구현체 구조를 추가하지 않는다.
+- 단위 테스트는 실제 Service 객체와 Mock Mapper로 정책·UTC 변환·잠금 이후 검사/쓰기 호출 순서·영향 행 수와 생성 ID 검사·중복 해제 충돌을 확인한다.
+- 관리자 권한 및 활성 여부, 없는/탈퇴한 대상, 관리자 대상 등록, 현재 제재 중복, 지난 종료 일시, 만료·기해제 제재의 해제 거절을 구분한다. DTO의 2,000자 제한 등 Bean Validation은 실제 프록시 또는 후속 API 테스트에서 검증한다.
+- Mock 테스트는 실제 행 잠금·트랜잭션 격리·롤백을 보장하지 않는다. 같은 회원의 동시 등록 거절 및 다른 회원의 독립 처리는 후속 트랜잭션 통합 테스트에서 확인한다.
+- Service·단위 테스트·DTO 길이 제한·추가 SQL 조건의 소스 적용을 확인했다.
+- 최초 Service 실행의 실패 3개는 테스트 코드 두 곳에서 발생한 같은 `ClassCastException`이었다. `ReflectionTestUtils.setField(invocation.getArgument(0), ...)`의 제네릭 타입 추론이 `Class` 인자를 받는 오버로드를 선택했다. 인자를 `MemberSanction` 지역 변수에 먼저 대입하여 객체 인자를 받는 오버로드를 사용하도록 두 곳만 보정했다. 기능 소스는 이 실패 보정에서 수정하지 않았다.
+- 2026-10-19 14:30 KST 에이전트가 아래 명령으로 재실행했다. Service 16개·Mapper 통합 4개, 총 20개 실행 사례의 실패·오류·건너뜀은 0개다. 전체 테스트를 재실행한 결과는 아니다.
+
+```bash
+./gradlew test --tests '*AdminMemberSanctionServiceTest' \
+  --tests '*MemberSanctionMapperIntegrationTest'
+```
+
+## 회원 제재 등록·해제 API 검증 — 2026-10-19
+
+- `AdminMemberSanctionApiTest`는 기존 방식의 `@WebMvcTest`, 실제 `SecurityConfig`·`MethodSecurityConfig`, Mock Service를 사용한다. 보안 설정 생성에 필요한 JwtTokenProvider·RevokedTokenMapper·MemberMapper도 Mock Bean으로 등록한다.
+- 기간/영구 제재의 201·생성 ID·no-store 및 로그인한 관리자 ID 전달, 해제의 204·빈 본문·제재 ID/사유 전달을 확인한다. 시간대가 있는 종료 일시는 동일한 순간으로 전달되는지 비교한다.
+- 각 경로에서 비로그인·일반 회원·CSRF 누락·잘못된 CSRF의 거절과 Service 미호출을 확인한다. JWT 자체 검증의 상세 조합은 기존 인증 테스트를 재사용한다.
+- 등록 본문의 대상 회원 필수/양수, 사유 필수/2,000자 상한, 종료 일시의 미래 여부/잘못된 형식과 해제 사유 필수/상한을 확인한다. 해제 경로 ID는 0 경계와 숫자 변환 실패를 확인한다. 같은 양수 검증의 음수 입력은 중복 추가하지 않는다.
+- Service의 업무상 400, 비활성 관리자 401, 대상 없음 404, 상태 충돌 409가 HTTP 응답으로 전달되는지 확인한다. 실제 DB 트랜잭션이나 파일·프론트 동작을 확인하는 테스트는 아니다.
+- API·응답 DTO·테스트의 소스 적용을 확인했다. JUnit XML의 2026-10-19 14:42:49 KST 보고서 기준 26개 사례의 실패·오류·건너뜀은 0개다. 이번 문서 갱신에서 에이전트가 API 테스트를 직접 재실행한 것은 아니다.
+
+실행 명령 (`boardKitApi` 디렉토리):
+
+```bash
+./gradlew test --tests '*AdminMemberSanctionApiTest'
+```
+
+## 회원 제재 Service 트랜잭션 통합 테스트 검증 — 2026-10-19
+
+- `AdminMemberSanctionServiceIntegrationTest`에서 실제 Spring Service 프록시·MyBatis·MySQL을 연결한다. `@MybatisTest`에 Service와 트랜잭션 설정을 Import하고 `mapper/member/*.xml`만 로드한다.
+- 같은 회원에 대한 두 등록 요청은 실제 관리자 조회 SQL 직후 barrier에서 만나도록 한다. 이렇게 두 트랜잭션이 모두 잠금 이전 조회를 마친 상태에서 진행하여 `READ_COMMITTED`의 후속 조회가 앞선 커밋을 반영하는지 확인한다. 한 요청만 성공하고 다른 요청은 업무상 409여야 하며 실제 제재 행은 하나여야 한다.
+- 서로 다른 회원은 첫 요청이 INSERT 후 커밋 전 대기 중이어도 다른 요청이 완료·커밋할 수 있어야 한다. latch로 순서를 제어하고 Thread.sleep은 사용하지 않는다.
+- 실제 INSERT 후 영향 행 수를 테스트용으로 0으로 반환하여 Service의 실패를 발생시킨다. 실제 트랜잭션 활성 여부와 READ_COMMITTED 설정, 예외 이후 저장 행이 롤백되는지 확인한다.
+- Mapper Spy는 SQL을 Mock 결과로 대체하지 않고 SqlSessionTemplate으로 실제 mapped statement를 실행한다. 도구는 실행 순서 제어와 INSERT 이후 실패 주입에만 사용한다. DB 오류나 잠금 시간 초과를 업무상 중복 409로 간주하지 않는다.
+- 작업 스레드의 커밋을 확인하므로 테스트 기본 트랜잭션은 NOT_SUPPORTED로 둔다. UUID로 생성한 테스트 회원 ID만 추적하고, 모든 작업 스레드 종료 후 해당 회원의 제재 → 회원 순서로 명시적으로 정리한다. 테스트 DB 확인 실패 시 쓰기와 정리를 수행하지 않는다.
+- 트랜잭션 밖의 fixture INSERT는 같은 PreparedStatement의 GeneratedKeyHolder로 ID를 얻는다. 커넥션 풀이 다른 연결을 반환할 수 있으므로 별도 LAST_INSERT_ID 조회는 사용하지 않는다.
+- 신규 실행 사례는 3개이며, 기존 권한·입력 검증 조합은 반복하지 않는다. 사용자에게 제공한 코드의 소스 적용을 확인했고, 2026-10-19 14:50:17 KST JUnit XML에서 3개 사례의 실패·오류·건너뜀 0건을 확인했다. 함께 실행된 Mapper 4개 사례도 통과했다. 이번 문서 갱신에서 에이전트가 테스트를 직접 재실행하거나 전체 테스트를 검증한 것은 아니다.
+
+실행 명령 (`boardKitApi` 디렉토리):
+
+```bash
+./gradlew test --tests '*AdminMemberSanctionServiceIntegrationTest' \
+  --tests '*MemberSanctionMapperIntegrationTest'
+```
+
+## 관리자 회원 검색 API 검증 — 2026-10-19
+
+- 기존 `AdminMemberSanctionApiTest`의 WebMvcTest 대상에 `AdminMemberApi`를 추가하고 Mock Service와 보안 설정을 재사용한다.
+- 로그인 ID·닉네임 검색 항목 전달, 기본/지정 페이지, 제재 여부를 포함한 응답과 비밀번호 해시·인증 버전 미노출, no-store, 요청 관리자 ID 무시를 확인한다.
+- 비로그인·일반 회원 거절과 필수 파라미터 누락, 공백 검색어, 잘못된 enum·페이지·크기의 400 및 Service 미호출을 확인한다. 조회 성공은 CSRF 없이 검증한다.
+- 테스트 요청 빌더의 `params()` 무인자 호출은 지원되지 않는다. 소스에서 각 파라미터를 `.param(...)`으로 처음부터 구성하는 방식으로 수정된 것을 확인했다.
+- 2026-10-19 15:06:31 KST JUnit XML에서 기존 등록·해제와 신규 검색을 포함한 38개 사례의 실패·오류·건너뜀 0건을 확인했다. 이번 갱신에서 에이전트가 테스트를 직접 실행한 것은 아니며, 실제 검색 SQL이나 전체 테스트의 실행 결과를 의미하지 않는다.
+
+## 관리자 제재 이력 Mapper 조회 검증 — 2026-10-19
+
+- 기존 `MemberSanctionMapperIntegrationTest`에 상태 필터 4개와 해제 감사 정보 유무 2개의 조회 사례를 추가한다. 공통 DB 기준 시각을 사용하며 테스트별 트랜잭션 롤백을 재사용한다.
+- 기간/영구 제재의 진행 상태, 종료 시각과 기준 시각이 같은 만료 경계, 종료 시각이 지난 해제 기록의 분류 우선순위, 회원별/전체 건수, 등록 시각이 같을 때 ID 정렬과 LIMIT/OFFSET을 확인한다.
+- 탈퇴한 대상 회원과 등록 관리자 정보가 이력 조회에서 유지되는지, 해제자·사유가 없는 과거 기록도 조회되는지, 없는 상세가 Optional.empty인지 확인한다.
+- Mapper/XML 소스와 2026-10-19 15:25:52 KST JUnit XML에서 기존 등록·해제·회원 검색과 신규 이력 조회를 포함한 13개 사례의 실패·오류·건너뜀 0건을 확인했다. 이번 문서 갱신에서 에이전트가 직접 재실행한 것은 아니다. 이력 조회 Service/API는 후속 구현이므로 해당 계층 검증 완료를 의미하지 않는다.
+
+## 관리자 제재 이력 Service 조회 검증 — 2026-10-19
+
+- 기존 `AdminMemberSanctionServiceTest`에서 전체/회원별 목록의 공통 UTC 기준 시각 전달, 페이지 계산, 빈 결과·범위 초과 시 목록 쿼리 생략, 탈퇴 회원 상세 조회 및 없는 상세의 404를 확인한다. 기존 권한 거절 테스트에 목록·상세 조회도 포함한다.
+- Service 소스 적용과 2026-10-19 15:29:48 KST JUnit XML에서 기존 등록·해제·회원 검색을 포함한 25개 사례의 실패·오류·건너뜀 0건을 확인했다. 에이전트가 직접 재실행한 결과는 아니다.
+- Mock 단위 테스트는 실제 SQL의 상태 분류나 Spring의 메서드 입력 검증을 대신하지 않는다. 상태 분류는 기존 Mapper 통합 테스트에서 확인하며, GET API의 입력 변환·검증·관리자 권한·no-store·오류 응답 검증은 코드 제공 후 진행한다.
+
+## 관리자 제재 이력 API 조회 검증 — 2026-10-19
+
+- 기존 `AdminMemberSanctionApiTest`에서 기본 진행 중 필터·전체 회원 조회, 지정 회원/필터/페이지 전달, 탈퇴 회원 상세와 등록·해제 관리자 정보, no-store, 인증 회원 ID 전달을 확인한다. 성공 GET에는 CSRF 토큰을 넣지 않는다.
+- 목록·상세의 비로그인 401·일반 회원 403, 잘못된 필터·회원 ID·페이지·크기의 400, 상세 경로 ID 검증과 없는 상세의 404를 확인한다. Mock Service 미호출 또는 실제 위임 여부를 구분한다.
+- API 소스와 2026-10-19 15:33:50 KST JUnit XML에서 기존 등록·해제·회원 검색을 포함한 50개 사례의 실패·오류·건너뜀 0건을 확인했다. 에이전트가 직접 실행하거나 전체 테스트를 재실행한 결과는 아니다. 관리자 프론트와 브라우저 동작은 후속 검증이다.
+
+## 관리자 회원 제재 화면 — 사용자 브라우저 검증 완료
+
+- `AdminMemberSanctionView.vue`와 `/admin/member-sanctions` 관리자 라우트·대시보드 메뉴, 검색 컴포넌트의 `refreshKey` 연결을 소스에서 확인했다.
+- 회원 검색·선택, 기간/영구 제재 등록, 중복 등록 거절, 이력/상세 조회와 해제, 처리 후 화면 갱신, 만료·해제·탈퇴 이력의 해제 폼 제한, 필터·페이지·상세의 새로고침/뒤로가기 확인 절차를 안내했다. 사용자가 해당 단계의 브라우저 테스트 완료를 보고했다.
+- 브라우저 검증 완료는 사용자 보고 기준이다. 에이전트가 브라우저를 직접 조작하거나 전체 Vite 빌드·백엔드 전체 테스트를 이번 갱신에서 재실행한 것은 아니다. 별도 프론트 테스트 코드는 추가하지 않는다.
+
+## 관리자 회원 제재 화면 — 에이전트 브라우저 검증, 2026-10-19
+
+- 로그인된 앱 내 브라우저의 `/admin/member-sanctions`에서 직접 UI를 조작했다. 기존 `test` 회원의 제재는 변경하지 않고, 제재 이력이 없던 `test2`(회원 ID 7)를 사용했다.
+- 정상 확인: 로그인 ID 검색, 닉네임 검색, 회원 선택, 과거 종료 일시 거절, 기간제/영구 제재 등록, 등록 후 검색·목록·상세 갱신, 해제 및 처리자·사유 표시, 해제 후 검색 결과의 `제재 없음`, 해제 필터, 새로고침 후 회원 범위·필터·상세 복원.
+- **실패: 진행 중인 기간제 제재가 있는데 중복 등록이 성공했다.** 16:28 KST에 종료 시각 17:30 KST인 기간제 제재 ID 3을 등록한 직후, 같은 회원에게 영구 제재 ID 4가 추가되었다. 진행 중 목록에도 두 건이 함께 표시됐다. 기존의 사용자 검증 완료 보고 및 테스트 통과가 이 경로의 정상 동작을 보장하지 않는다.
+- **실패: 등록 일시가 9시간 뒤로 표시됐다.** 시작 일시는 `2026. 10. 19. 16:28`, 등록 일시는 `2026. 10. 20. 01:28`이었다. 해제 일시는 실제 조작 시각인 `2026. 10. 19. 16:29`로 표시됐다.
+- 소스상 시간 기준 불일치를 확인했다. `MemberMapper.existsActiveSanctionByMemberId`는 `CURRENT_TIMESTAMP(6)`, 검색·해제 SQL은 `UTC_TIMESTAMP(6)`, Service의 시작/종료/조회 시각은 UTC를 사용한다. `created_at`은 INSERT에서 생략되어 DDL의 `DEFAULT CURRENT_TIMESTAMP(6)`에 의존하고, 프론트는 UTC로 해석한다. 실제 운영 연결의 DB 세션 시간대는 이번 검증에서 직접 조회하지 않았으므로, 시간대 불일치를 유력 원인으로 기록한다.
+- 기존 트랜잭션 통합 테스트는 연결 세션을 `time_zone = '+00:00'`으로 고정하고 중복 등록에 영구 제재를 사용한다. 비UTC 세션의 기간제 제재 중복과 등록 시각 일관성은 별도 회귀 검증이 필요하다.
+- 정리: 에이전트가 만든 ID 4와 ID 3을 순서대로 해제했다. 두 건의 감사 이력은 유지되며 테스트 회원에게 남은 진행 중 제재는 0건이다. 기능 소스·DB 설정은 수정하지 않았다.
+- 미검증: 회원 계정으로 로그인하여 실제 작성·좋아요·신고 제한 확인, 자연 만료 대기, 탈퇴 회원 처리, 다중 페이지 이동, 동시 관리자 조작. 이번 브라우저 결과는 이 범위까지 통과했다는 의미가 아니다.
+
+## 회원 제재 시간 기준 수정 및 회귀 검증 — 2026-10-19
+
+- `MemberMapper.existsActiveSanctionByMemberId`의 현재 시각 비교 두 곳을 `CURRENT_TIMESTAMP(6)`에서 `UTC_TIMESTAMP(6)`로 변경했다. DB 세션이 한국 시각이어도 UTC로 저장된 1시간짜리 제재를 이미 만료된 것으로 판단하지 않는다. 기존 작성·좋아요·신고 등의 제재 검사도 이 Mapper를 공유한다.
+- `MemberSanctionMapper.insertSanction`에 `created_at = UTC_TIMESTAMP(6)` 값을 명시했다. DDL의 세션 의존 기본값에 맡기지 않으므로 DB 구조 변경은 필요 없다. 프론트의 UTC 해석은 유지한다. 과거에 잘못 저장된 등록 시각은 자동 보정하지 않는다.
+- Mapper 통합 테스트에 `+09:00`·`-09:00` 세션에서 1시간짜리 제재의 유효 여부와 등록 시각의 UTC 범위를 확인하는 파라미터 사례 2개를 추가했다. 테스트 후 세션 시간대를 UTC로 복구하며 기존 테스트 트랜잭션으로 데이터는 롤백한다.
+- 기존 Service 트랜잭션 통합 테스트의 풀 연결을 `+09:00`으로 설정하고 등록 fixture를 1시간짜리 기간제로 변경했다. 테스트 수를 늘리지 않고 동시 중복 차단·다른 회원의 독립 처리·롤백을 실제 비UTC 환경에서 검증한다.
+- 기능 수정 전 신규 Mapper 2개 사례에서 현재 제재 여부와 등록 시각 검사가 실패했고, 기존 동시 등록 사례도 성공 요청이 기대한 1건이 아닌 2건으로 재현됐다.
+- 기능 수정 후 에이전트가 아래 명령을 실행했다. Mapper 통합 15개·Service 트랜잭션 통합 3개·Service 단위 25개·API 50개, **총 93개가 통과**했다. 실패·오류·건너뜀은 모두 0건이다. 전체 프로젝트 테스트 실행 결과는 아니다.
+- 수정 후 실제 앱 브라우저 검증은 아직 수행하지 않았다. 서버를 재시작한 뒤 종료가 약 1시간 남은 기간제 제재의 중복 등록 거절과 신규 제재의 등록/시작 시각 일치를 확인한다. 기존 잘못된 등록 시각은 수정 전 기록으로 구분한다.
+
+실행 명령 (`boardKitApi` 디렉토리):
+
+```bash
+./gradlew test --tests '*MemberSanctionMapperIntegrationTest' \
+  --tests '*AdminMemberSanctionServiceIntegrationTest' \
+  --tests '*AdminMemberSanctionServiceTest' \
+  --tests '*AdminMemberSanctionApiTest'
+```
 
 ## 참고
 

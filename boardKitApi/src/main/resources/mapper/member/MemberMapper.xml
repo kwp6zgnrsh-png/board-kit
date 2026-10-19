@@ -39,6 +39,24 @@
             AND deleted_at IS NULL
     </select>
 
+    <select id="selectActiveMemberByIdForUpdate"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.member.model.Member">
+        SELECT
+            id,
+            login_id,
+            password_hash,
+            auth_version,
+            display_name,
+            role,
+            created_at,
+            updated_at,
+            deleted_at
+        FROM member
+        WHERE id = #{memberId}
+            AND deleted_at IS NULL
+        FOR UPDATE
+    </select>
+
     <select id="existsActiveMemberById" resultType="boolean">
         SELECT EXISTS (
             SELECT 1
@@ -54,10 +72,10 @@
             FROM member_sanction
             WHERE member_id = #{memberId}
                 AND revoked_at IS NULL
-                AND starts_at &lt;= CURRENT_TIMESTAMP(6)
+                AND starts_at &lt;= UTC_TIMESTAMP(6)
                 AND (
                     ends_at IS NULL
-                    OR ends_at &gt; CURRENT_TIMESTAMP(6)
+                    OR ends_at &gt; UTC_TIMESTAMP(6)
                 )
         )
     </select>
@@ -184,6 +202,53 @@
         WHERE c.author_id = #{memberId}
             AND c.deleted_at IS NULL
         ORDER BY c.created_at DESC, c.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <sql id="adminMemberSearchCondition">
+        m.deleted_at IS NULL
+        AND m.role = 'MEMBER'
+        <choose>
+            <when test="field != null and field.name() == 'LOGIN_ID'">
+                AND m.login_id LIKE CONCAT('%', #{keyword}, '%') ESCAPE '='
+            </when>
+            <when test="field != null and field.name() == 'DISPLAY_NAME'">
+                AND m.display_name LIKE CONCAT('%', #{keyword}, '%') ESCAPE '='
+            </when>
+            <otherwise>
+                AND 1 = 0
+            </otherwise>
+        </choose>
+    </sql>
+
+    <select id="countAdminMembers" resultType="long">
+        SELECT COUNT(*)
+        FROM member m
+        WHERE
+        <include refid="adminMemberSearchCondition"/>
+    </select>
+
+    <select id="selectAdminMembers"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.member.dto.response.AdminMemberSummaryResponse">
+        SELECT
+            m.id AS memberId,
+            m.login_id AS loginId,
+            m.display_name AS displayName,
+            EXISTS (
+                SELECT 1
+                FROM member_sanction s
+                WHERE s.member_id = m.id
+                    AND s.revoked_at IS NULL
+                    AND s.starts_at &lt;= UTC_TIMESTAMP(6)
+                    AND (
+                        s.ends_at IS NULL
+                        OR s.ends_at &gt; UTC_TIMESTAMP(6)
+                    )
+            ) AS sanctioned
+        FROM member m
+        WHERE
+        <include refid="adminMemberSearchCondition"/>
+        ORDER BY m.id DESC
         LIMIT #{limit} OFFSET #{offset}
     </select>
 </mapper>

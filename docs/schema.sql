@@ -1,5 +1,5 @@
 -- Community V2 schema draft, 2026-09-19
--- Last synchronized with the agreed policies: 2026-10-11.
+-- Last synchronized with the agreed policies: 2026-10-19.
 -- Target: MySQL 8.0.16+ / InnoDB (CHECK constraints must be enforced).
 -- Apply once to an EMPTY database explicitly selected by the caller.
 -- This file does not create/drop a database or disable FK checks.
@@ -259,12 +259,16 @@ CREATE TABLE member_sanction (
     starts_at DATETIME(6) NOT NULL,
     ends_at DATETIME(6) NULL,
     revoked_at DATETIME(6) NULL,
+    revoked_by BIGINT UNSIGNED NULL,
+    revoke_reason TEXT NULL,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
     KEY ix_sanction_member (member_id, revoked_at, ends_at, starts_at),
     KEY ix_sanction_admin (admin_id),
+    KEY ix_sanction_revoker (revoked_by),
     CONSTRAINT fk_sanction_member FOREIGN KEY (member_id) REFERENCES member (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
     CONSTRAINT fk_sanction_admin FOREIGN KEY (admin_id) REFERENCES member (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    CONSTRAINT fk_sanction_revoker FOREIGN KEY (revoked_by) REFERENCES member (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
     CONSTRAINT ck_sanction_period CHECK (ends_at IS NULL OR ends_at > starts_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

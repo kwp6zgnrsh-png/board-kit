@@ -42,7 +42,9 @@ public class AdminBlindApi {
 		@RequestParam(defaultValue = "1") @Min(1) int page,
 		@RequestParam(defaultValue = "10") @Min(1) @Max(100) int size,
 		@AuthenticationPrincipal LoginMember loginMember) {
-		var response = adminBlindService.getBlindedPosts(page, size, requireMemberId(loginMember), true);
+
+		AdminBlindedPostPageResponse response = adminBlindService.getBlindedPosts(page, size,
+			requireMemberId(loginMember), true);
 
 		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(response);
 	}
@@ -52,7 +54,9 @@ public class AdminBlindApi {
 		@RequestParam(defaultValue = "1") @Min(1) int page,
 		@RequestParam(defaultValue = "10") @Min(1) @Max(100) int size,
 		@AuthenticationPrincipal LoginMember loginMember) {
-		var response = adminBlindService.getBlindedComments(page, size, requireMemberId(loginMember), true);
+
+		AdminBlindedCommentPageResponse response = adminBlindService.getBlindedComments(page, size,
+			requireMemberId(loginMember), true);
 
 		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(response);
 	}
@@ -60,7 +64,9 @@ public class AdminBlindApi {
 	@GetMapping("/posts/{postId}")
 	public ResponseEntity<AdminBlindedContentDetailResponse> getBlindedPost(@PathVariable @Positive Long postId,
 		@AuthenticationPrincipal LoginMember loginMember) {
-		var response = adminBlindService.getBlindedPost(postId, requireMemberId(loginMember), true);
+
+		AdminBlindedContentDetailResponse response = adminBlindService.getBlindedPost(postId,
+			requireMemberId(loginMember), true);
 
 		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(response);
 	}
@@ -68,7 +74,9 @@ public class AdminBlindApi {
 	@GetMapping("/comments/{commentId}")
 	public ResponseEntity<AdminBlindedContentDetailResponse> getBlindedComment(@PathVariable @Positive Long commentId,
 		@AuthenticationPrincipal LoginMember loginMember) {
-		var response = adminBlindService.getBlindedComment(commentId, requireMemberId(loginMember), true);
+
+		AdminBlindedContentDetailResponse response = adminBlindService.getBlindedComment(commentId,
+			requireMemberId(loginMember), true);
 
 		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(response);
 	}
@@ -76,6 +84,7 @@ public class AdminBlindApi {
 	@PatchMapping(value = "/posts/{postId}", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<Void> moderatePost(@PathVariable @Positive Long postId,
 		@Valid @RequestBody ReportTargetActionRequest request, @AuthenticationPrincipal LoginMember loginMember) {
+
 		adminContentModerationService.moderateTarget(postId, null, request, requireMemberId(loginMember), true);
 
 		return ResponseEntity.noContent().build();
@@ -85,6 +94,7 @@ public class AdminBlindApi {
 	public ResponseEntity<Void> moderateComment(@PathVariable @Positive Long postId,
 		@PathVariable @Positive Long commentId, @Valid @RequestBody ReportTargetActionRequest request,
 		@AuthenticationPrincipal LoginMember loginMember) {
+
 		adminContentModerationService.moderateTarget(postId, commentId, request, requireMemberId(loginMember), true);
 
 		return ResponseEntity.noContent().build();

@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.github.kwp6zgnrsh.boardkitapi.member.mapper.MemberSanctionMapper">
+
+    <select id="selectSanctionById"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.member.model.MemberSanction">
+        SELECT
+            id,
+            member_id,
+            admin_id,
+            reason,
+            starts_at,
+            ends_at,
+            revoked_at,
+            revoked_by,
+            revoke_reason,
+            created_at
+        FROM member_sanction
+        WHERE id = #{sanctionId}
+    </select>
+
+    <insert id="insertSanction" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO member_sanction (
+            member_id,
+            admin_id,
+            reason,
+            starts_at,
+            ends_at,
+            created_at
+        )
+        VALUES (
+            #{memberId},
+            #{adminId},
+            #{reason},
+            #{startsAt},
+            #{endsAt,jdbcType=TIMESTAMP},
+            UTC_TIMESTAMP(6)
+        )
+    </insert>
+
+    <update id="revokeSanction">
+        UPDATE member_sanction
+        SET revoked_at = UTC_TIMESTAMP(6),
+            revoked_by = #{revokedBy},
+            revoke_reason = #{revokeReason}
+        WHERE id = #{sanctionId}
+            AND revoked_at IS NULL
+            AND starts_at &lt;= UTC_TIMESTAMP(6)
+            AND (
+                ends_at IS NULL
+                OR ends_at &gt; UTC_TIMESTAMP(6)
+            )
+    </update>
+
+    <sql id="adminSanctionStatus">
+        CASE
+            WHEN s.revoked_at IS NOT NULL THEN 'REVOKED'
+            WHEN s.ends_at IS NOT NULL AND s.ends_at &lt;= #{asOf}
+                THEN 'EXPIRED'
+            ELSE 'ACTIVE'
+        END
+    </sql>
+
+    <sql id="adminSanctionCondition">
+        1 = 1
+        <if test="memberId != null">
+            AND s.member_id = #{memberId}
+        </if>
+        <choose>
+            <when test="filter != null and filter.name() == 'ALL'">
+                AND 1 = 1
+            </when>
+            <when test="filter != null and filter.name() == 'ACTIVE'">
+                AND s.revoked_at IS NULL
+                AND s.starts_at &lt;= #{asOf}
+                AND (s.ends_at IS NULL OR s.ends_at &gt; #{asOf})
+            </when>
+            <when test="filter != null and filter.name() == 'EXPIRED'">
+                AND s.revoked_at IS NULL
+                AND s.ends_at &lt;= #{asOf}
+            </when>
+            <when test="filter != null and filter.name() == 'REVOKED'">
+                AND s.revoked_at IS NOT NULL
+            </when>
+            <otherwise>
+                AND 1 = 0
+            </otherwise>
+        </choose>
+    </sql>
+
+    <select id="countAdminSanctions" resultType="long">
+        SELECT COUNT(*)
+        FROM member_sanction s
+        WHERE
+        <include refid="adminSanctionCondition"/>
+    </select>
+
+    <select id="selectAdminSanctions"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.member.dto.response.AdminMemberSanctionSummaryResponse">
+        SELECT
+            s.id AS sanctionId,
+            s.member_id AS memberId,
+            m.login_id AS loginId,
+            m.display_name AS displayName,
+            (m.deleted_at IS NOT NULL) AS memberDeleted,
+            s.reason,
+            <include refid="adminSanctionStatus"/> AS status,
+            s.starts_at AS startsAt,
+            s.ends_at AS endsAt,
+            s.revoked_at AS revokedAt,
+            s.created_at AS createdAt
+        FROM member_sanction s
+            INNER JOIN member m ON m.id = s.member_id
+        WHERE
+        <include refid="adminSanctionCondition"/>
+        ORDER BY s.created_at DESC, s.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="selectAdminSanction"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.member.dto.response.AdminMemberSanctionDetailResponse">
+        SELECT
+            s.id AS sanctionId,
+            s.member_id AS memberId,
+            m.login_id AS loginId,
+            m.display_name AS displayName,
+            (m.deleted_at IS NOT NULL) AS memberDeleted,
+            s.admin_id AS adminId,
+            a.display_name AS adminDisplayName,
+            s.reason,
+            <include refid="adminSanctionStatus"/> AS status,
+            s.starts_at AS startsAt,
+            s.ends_at AS endsAt,
+            s.revoked_at AS revokedAt,
+            s.revoked_by AS revokedBy,
+            r.display_name AS revokerDisplayName,
+            s.revoke_reason AS revokeReason,
+            s.created_at AS createdAt
+        FROM member_sanction s
+            INNER JOIN member m ON m.id = s.member_id
+            INNER JOIN member a ON a.id = s.admin_id
+            LEFT JOIN member r ON r.id = s.revoked_by
+        WHERE s.id = #{sanctionId}
+    </select>
+</mapper>

@@ -125,6 +125,15 @@ const router = createRouter({
                 requiredRole: 'ADMIN',
             },
         },
+        {
+            path: '/admin/member-sanctions',
+            name: 'admin-member-sanctions',
+            component: () => import('@/views/AdminMemberSanctionView.vue'),
+            meta: {
+                requiresAuth: true,
+                requiredRole: 'ADMIN',
+            },
+        },
     ],
 })
 

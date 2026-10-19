@@ -150,6 +150,8 @@ erDiagram
         datetime(6) starts_at
         datetime(6) ends_at "nullable"
         datetime(6) revoked_at "nullable"
+        bigint revoked_by FK "nullable"
+        text revoke_reason "nullable"
         datetime(6) created_at
     }
 
@@ -190,3 +192,4 @@ erDiagram
     COMMENT o|--o{ REPORT : reported_comment
     MEMBER ||--o{ MEMBER_SANCTION : receives
     MEMBER ||--o{ MEMBER_SANCTION : imposes
+    MEMBER o|--o{ MEMBER_SANCTION : revokes

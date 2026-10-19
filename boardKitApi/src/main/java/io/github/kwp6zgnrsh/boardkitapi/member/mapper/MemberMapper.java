@@ -6,6 +6,8 @@ import java.util.Optional;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import io.github.kwp6zgnrsh.boardkitapi.member.dto.request.MemberSearchField;
+import io.github.kwp6zgnrsh.boardkitapi.member.dto.response.AdminMemberSummaryResponse;
 import io.github.kwp6zgnrsh.boardkitapi.member.dto.response.MyCommentSummaryResponse;
 import io.github.kwp6zgnrsh.boardkitapi.member.dto.response.MyPostSummaryResponse;
 import io.github.kwp6zgnrsh.boardkitapi.member.model.Member;
@@ -47,4 +49,18 @@ public interface MemberMapper {
 
 	List<MyCommentSummaryResponse> selectMyComments(@Param("memberId") Long memberId, @Param("limit") int limit,
 		@Param("offset") long offset);
+
+	Optional<Member> selectActiveMemberByIdForUpdate(@Param("memberId") Long memberId);
+
+	long countAdminMembers(
+		@Param("field") MemberSearchField field,
+		@Param("keyword") String keyword
+	);
+
+	List<AdminMemberSummaryResponse> selectAdminMembers(
+		@Param("field") MemberSearchField field,
+		@Param("keyword") String keyword,
+		@Param("limit") int limit,
+		@Param("offset") long offset
+	);
 }
