@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="io.github.kwp6zgnrsh.boardkitapi.board.mapper.BoardStatisticsMapper">
+
+    <sql id="boardScope">
+        b.status IN ('ACTIVE', 'ARCHIVED')
+        <if test="boardId != null">
+            AND b.id = #{boardId}
+        </if>
+    </sql>
+
+    <select id="selectSummary"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardStatisticsSummaryResponse">
+        SELECT
+        (
+            SELECT COUNT(*)
+            FROM post p
+                INNER JOIN board b ON b.id = p.board_id
+            WHERE
+                <include refid="boardScope"/>
+                AND p.deleted_at IS NULL
+        ) AS currentPostCount,
+        (
+            SELECT COUNT(*)
+            FROM comment c
+                INNER JOIN post p ON p.id = c.post_id
+                INNER JOIN board b ON b.id = p.board_id
+            WHERE
+                <include refid="boardScope"/>
+                AND c.deleted_at IS NULL
+            ) AS currentCommentCount,
+        (
+            SELECT COUNT(*)
+            FROM post p
+                INNER JOIN board b ON b.id = p.board_id
+            WHERE
+                <include refid="boardScope"/>
+                AND p.created_at &gt;= #{todayStartUtc}
+                AND p.created_at &lt; #{tomorrowStartUtc}
+            ) AS todayPostCount,
+        (
+            SELECT COUNT(*)
+            FROM comment c
+                INNER JOIN post p ON p.id = c.post_id
+                INNER JOIN board b ON b.id = p.board_id
+            WHERE
+            <include refid="boardScope"/>
+                AND c.created_at &gt;= #{todayStartUtc}
+                AND c.created_at &lt; #{tomorrowStartUtc}
+            ) AS todayCommentCount
+    </select>
+
+    <select id="selectDailyActivities"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardDailyActivityResponse">
+        SELECT
+            activity.activity_date AS `date`,
+            SUM(activity.post_count) AS postCount,
+            SUM(activity.comment_count) AS commentCount
+        FROM (
+            SELECT
+                DATE(CONVERT_TZ(p.created_at, '+00:00', '+09:00')) AS activity_date,
+                COUNT(*) AS post_count,
+                0 AS comment_count
+            FROM post p
+                INNER JOIN board b ON b.id = p.board_id
+            WHERE
+                <include refid="boardScope"/>
+                AND p.created_at &gt;= #{startUtc}
+                AND p.created_at &lt; #{endUtc}
+            GROUP BY activity_date
+
+            UNION ALL
+
+            SELECT
+                DATE(CONVERT_TZ(c.created_at, '+00:00', '+09:00')) AS activity_date,
+                0 AS post_count,
+                COUNT(*) AS comment_count
+            FROM comment c
+                INNER JOIN post p ON p.id = c.post_id
+                INNER JOIN board b ON b.id = p.board_id
+            WHERE
+                <include refid="boardScope"/>
+                AND c.created_at &gt;= #{startUtc}
+                AND c.created_at &lt; #{endUtc}
+            GROUP BY activity_date
+        ) activity
+        GROUP BY activity.activity_date
+        ORDER BY activity.activity_date
+    </select>
+
+    <select id="selectBoardActivities"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardActivityResponse">
+        SELECT
+            b.id AS boardId,
+            b.name AS boardName,
+            b.slug AS boardSlug,
+            COALESCE(posts.post_count, 0) AS postCount,
+            COALESCE(comments.comment_count, 0) AS commentCount
+        FROM board b
+            LEFT JOIN (
+                SELECT
+                    p.board_id,
+                    COUNT(*) AS post_count
+                FROM post p
+                WHERE p.created_at &gt;= #{startUtc}
+                    AND p.created_at &lt; #{endUtc}
+                GROUP BY p.board_id
+            ) posts ON posts.board_id = b.id
+            LEFT JOIN (
+                SELECT
+                    p.board_id,
+                    COUNT(*) AS comment_count
+                FROM comment c
+                    INNER JOIN post p ON p.id = c.post_id
+                WHERE c.created_at &gt;= #{startUtc}
+                    AND c.created_at &lt; #{endUtc}
+                GROUP BY p.board_id
+            ) comments ON comments.board_id = b.id
+        WHERE b.status IN ('ACTIVE', 'ARCHIVED')
+        ORDER BY b.sort_order, b.id
+    </select>
+</mapper>

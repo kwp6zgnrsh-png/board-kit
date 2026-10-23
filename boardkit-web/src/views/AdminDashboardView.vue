@@ -9,13 +9,6 @@ const boards = ref<BoardSummaryResponse[]>([])
 const loading = ref(true)
 const errorMessage = ref('')
 
-const plannedMenus = [
-  {
-    title: '게시판 활동 통계',
-    description: '게시판별 게시글 수와 활동 현황을 확인합니다.',
-  },
-]
-
 onMounted(async () => {
   try {
     boards.value = await getBoards()
@@ -181,26 +174,20 @@ onMounted(async () => {
           관리하기 →
         </span>
       </RouterLink>
-      <article
-          v-for="menu in plannedMenus"
-          :key="menu.title"
-          class="rounded-md border border-slate-200 bg-slate-50 p-5"
+      <RouterLink
+          :to="{ name: 'admin-board-statistics' }"
+          class="block rounded-md border border-slate-200 bg-white p-5 no-underline transition hover:border-blue-300 hover:bg-blue-50"
       >
-        <div class="flex items-center justify-between gap-3">
-          <h2 class="m-0 text-lg font-semibold text-slate-900">
-            {{ menu.title }}
-          </h2>
-          <span
-              class="shrink-0 rounded-full bg-slate-200 px-2 py-1 text-[10px] font-medium text-slate-500"
-          >
-            2차 초안
-          </span>
-        </div>
-
-        <p class="m-0 mt-3 text-sm font-medium leading-6 text-slate-600">
-          {{ menu.description }}
+        <h2 class="text-lg font-semibold text-slate-900">
+          게시판 활동 통계
+        </h2>
+        <p class="mt-3 text-sm leading-6 text-slate-600">
+          게시판별 현황과 게시글·댓글 작성 추이를 확인합니다.
         </p>
-      </article>
+        <span class="mt-4 inline-block text-xs font-medium text-blue-600">
+          통계 보기 →
+        </span>
+      </RouterLink>
     </section>
   </div>
 </template>

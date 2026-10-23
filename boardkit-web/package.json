@@ -20,7 +20,9 @@
     "@tiptap/pm": "^3.31.4",
     "@tiptap/starter-kit": "3.31.4",
     "@tiptap/vue-3": "^3.31.4",
+    "chart.js": "^4.6.1",
     "vue": "^3.5.42",
+    "vue-chartjs": "^5.3.4",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {

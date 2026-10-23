@@ -134,6 +134,15 @@ const router = createRouter({
                 requiredRole: 'ADMIN',
             },
         },
+        {
+            path: '/admin/board-statistics',
+            name: 'admin-board-statistics',
+            component: () => import('@/views/AdminBoardStatisticsView.vue'),
+            meta: {
+                requiresAuth: true,
+                requiredRole: 'ADMIN',
+            },
+        },
     ],
 })
 

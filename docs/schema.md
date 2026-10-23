@@ -30,7 +30,7 @@
 - DB의 파일 키는 저장소 루트 기준 상대 경로만 저장한다.
 - 게시글과 파일은 하나의 multipart 요청으로 등록하며 별도 임시 업로드 API와 임시 업로드 테이블은 사용하지 않는다.
 
-### 게시판 활동 통계 — 설계 시작, 기능 코드 미구현
+### 게시판 활동 통계 — 응답 DTO 적용 확인, 조회 구현 진행
 
 - 전체 현황, 날짜별 게시글·댓글 작성 추이, 같은 기간의 게시판별 작성 수 비교를 제공한다. 추이는 전체 게시판 합산 또는 선택한 게시판으로 조회한다.
 - 기간은 7일·30일·90일, 기본 30일로 진행한다. 대댓글은 댓글 수에 포함한다.
@@ -39,6 +39,14 @@
 - 하루는 한국 시각 `Asia/Seoul` 기준으로 구분한다. DB의 UTC 저장 규칙과 구분하고, 조회 날짜 범위는 서버에서 UTC 시각으로 변환하여 적용한다.
 - 통계 대상은 `ACTIVE`·`ARCHIVED` 게시판이며 `DRAFT`는 제외한다. 게시판이 보관되어도 기존 작성 활동을 집계에서 제외하지 않는다.
 - 구현 순서는 응답 DTO → Mapper/XML → Service → 관리자 API 및 백엔드 테스트 → 프론트 API·통계 화면·차트 → 브라우저 확인이다. 기능 코드는 사용자가 직접 작성하며, 문서 반영은 구현 완료를 의미하지 않는다.
+- 응답 DTO `BoardStatisticsSummaryResponse`, `BoardDailyActivityResponse`, `BoardActivityResponse`와 상단 현황용 `BoardStatisticsMapper.selectSummary`·XML·통합 테스트의 소스 적용을 확인했다. 전체 합산 테스트의 최초 실패는 MyBatis 기준값 조회 후 JdbcTemplate으로 fixture를 INSERT하여 1차 캐시가 남은 문제였다. 준비 마지막의 `SqlSessionTemplate.clearCache()` 적용과 최신 JUnit XML의 2개 통과를 확인했다. 에이전트가 직접 재실행한 결과는 아니다.
+- 현황 조회는 게시글·댓글을 독립적으로 COUNT하여 조인 증폭을 피한다. 현재 댓글 수의 게시글 조인은 소속 게시판을 확인하기 위한 것이며 부모 게시글의 삭제 여부로 댓글을 제외하지 않는다. 오늘 작성 수는 삭제 조건 없이 UTC로 변환한 날짜 범위 `[시작, 다음 날 시작)`를 적용한다.
+- 날짜별 추이 `selectDailyActivities(boardId, startUtc, endUtc)`와 전체 대상 게시판별 기간 비교 `selectBoardActivities(startUtc, endUtc)`의 소스 적용을 확인했다. 추이는 선택한 게시판 또는 전체를 합산하고, 비교 조회는 활성·보관 게시판을 작성 0건인 경우도 포함한다. 한국 날짜 묶음은 UTC 저장 시각을 `+09:00`으로 변환하여 구하며 숫자 오프셋을 사용하여 MySQL 시간대 테이블 설치에 의존하지 않는다. WHERE의 기간 조건은 원본 created_at에 적용한다. 2026-10-19T12:40:58.155Z JUnit XML에서 기존 현황 조회를 포함한 Mapper 통합 테스트 5개 통과를 확인했다. 이번 확인에서 에이전트가 직접 실행한 결과는 아니다.
+- `BoardStatisticsService.getStatistics`·통합 응답 DTO·TimeConfig의 소스 적용을 확인했다. Service는 활성 관리자 확인, 허용 기간 및 선택 게시판 검증, 오늘을 포함한 7·30·90일 범위 계산과 날짜별 0건 보정, 통합 응답 DTO 조립을 담당한다. 선택 게시판은 기간 비교 결과의 대상 게시판 목록으로 검증하여 별도 존재 조회를 추가하지 않는다. 여러 조회의 일관성은 읽기 전용 REPEATABLE_READ 트랜잭션으로 유지한다. Java 표준 Clock Bean을 주입하고 테스트에서는 한국 자정에 해당하는 고정 시각을 사용한다. 기존 보고서에서 Service 9개·Mapper 5개 통과를 확인했으며 에이전트가 이번에 직접 실행한 결과는 아니다.
+- `GET /api/admin/board-statistics`의 소스 적용을 확인했다. `days` 기본값은 30이며 7·30·90만 Service에서 허용한다. `boardId` 생략 시 전체, 지정 시 양수여야 하며 통계 대상 게시판이어야 한다. ADMIN 메서드 권한 검사와 인증 객체의 회원 ID를 사용하고, 성공 응답에 `Cache-Control: no-store`를 적용한다. 기존 보안 설정을 재사용하며 GET에 CSRF 토큰을 요구하지 않는다. 기존 JUnit 보고서에서 API 9개·Service 9개·Mapper 5개, 총 23개 통과를 확인했으며 이번 확인에서 에이전트가 직접 실행한 결과는 아니다.
+- 프론트 타입 `features/board/types/boardStatistics.ts`와 조회 함수의 소스 적용을 확인했다. API 파일명의 오타 수정 후 `api/adminBoardStatisticsApi.ts`가 존재하고 화면의 import와 일치하는 것을 확인했다. 기간은 `7 | 30 | 90`, 응답의 전체 게시판 ID는 null, 조회 옵션에서는 boardId 생략으로 전체를 표현한다. 날짜는 서버의 한국 날짜 문자열을 유지하고 기존 apiRequest의 쿠키·오류 처리를 재사용한다. 프론트 빌드 결과는 아직 확인하지 않았다.
+- 데이터 표시용 `BoardStatisticsSummary.vue`, 조회·URL 필터·로딩·오류 처리를 담당하는 `AdminBoardStatisticsView.vue`, 관리자 라우트 및 대시보드 통계 링크의 소스 적용을 확인했다. 기존 BaseSelect·BaseButton을 재사용하고 Tailwind로 작성했다. 게시판·기간 변경 시 이전 결과를 숨기고 요청 순서·현재 관리자 확인으로 오래된 응답 반영을 막는다. 빌드·브라우저 검증은 아직 확인 전이다.
+- 차트·비교 표 단계는 Chart.js 4와 vue-chartjs 5를 사용하는 `BoardActivityChart.vue`, 전체 게시판의 기간별 작성 수를 표시하는 `BoardActivityTable.vue` 코드 제공이다. 그래프는 서버의 한국 날짜 문자열·0건 보정 데이터를 그대로 사용하며 두 선·정수 세로축·애니메이션 비활성화·날짜별 수치 표를 제공한다. 비교 표는 작성 0건 게시판과 합계를 포함하며 선택 게시판 행을 표시한다. 현 package.json에는 차트 의존성이 없으므로 설치 명령을 안내하며 에이전트가 설치하거나 기능 코드를 수정하지 않는다. 사용자 적용·빌드·브라우저 검증은 아직 확인 전이다.
 
 ### 인증 고도화 — 적용 완료
 
