@@ -260,12 +260,12 @@ onBeforeUnmount(() => {
 <template>
   <section
       v-if="visible"
-      class="overflow-hidden rounded-lg border border-slate-200 bg-white"
+      class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
       aria-label="관리자 공식 답변"
       :aria-busy="busy"
   >
-    <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-blue-50 px-5 py-3">
-      <h2 class="text-sm font-semibold text-blue-900">관리자 공식 답변</h2>
+    <header class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-accent px-5 py-3">
+      <h2 class="text-sm font-semibold text-zinc-900">관리자 공식 답변</h2>
 
       <div class="flex items-center gap-2">
         <BaseButton
@@ -312,13 +312,13 @@ onBeforeUnmount(() => {
         {{ loadError }}
       </p>
 
-      <p v-else-if="loading" class="py-4 text-center text-sm text-slate-500">
+      <p v-else-if="loading" class="py-4 text-center text-sm text-zinc-500">
         공식 답변을 불러오는 중입니다.
       </p>
 
       <article v-if="reply">
-        <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-          <span class="font-medium text-slate-700">
+        <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
+          <span class="font-medium text-zinc-700">
             {{ reply.authorDisplayName }}
           </span>
           <span>작성 {{ formatDate(reply.createdAt) }}</span>
@@ -341,7 +341,7 @@ onBeforeUnmount(() => {
 
       <p
           v-else-if="loaded && !formOpen"
-          class="py-4 text-center text-sm text-slate-500"
+          class="py-4 text-center text-sm text-zinc-500"
       >
         등록된 공식 답변이 없습니다.
       </p>

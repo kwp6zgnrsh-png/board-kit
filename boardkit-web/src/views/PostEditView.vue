@@ -108,7 +108,7 @@ watch(
 
 <template>
   <div class="grid min-w-0 gap-5">
-    <p v-if="loading" class="m-0 rounded-lg border border-slate-200 bg-slate-100 p-5 font-medium text-slate-700">게시글을
+    <p v-if="loading" class="m-0 rounded-lg border border-zinc-200 bg-zinc-100 p-5 font-medium text-zinc-700">게시글을
       불러오는 중입니다.</p>
     <p v-else-if="errorMessage" class="m-0 rounded-lg border border-red-200 bg-rose-50 p-5 font-medium text-red-900"
        role="alert">{{ errorMessage }}</p>

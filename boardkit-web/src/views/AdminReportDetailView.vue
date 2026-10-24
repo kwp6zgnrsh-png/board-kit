@@ -313,8 +313,8 @@ onBeforeUnmount(() => {
   <div class="grid gap-5" :aria-busy="busy">
     <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p class="text-xs font-medium text-blue-600">관리자</p>
-        <h1 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
+        <p class="text-xs font-medium text-primary">관리자</p>
+        <h1 class="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
           신고 상세
         </h1>
       </div>
@@ -331,7 +331,7 @@ onBeforeUnmount(() => {
 
         <RouterLink
             :to="listLocation"
-            class="inline-flex h-8 items-center rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            class="inline-flex h-8 items-center rounded-md border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
         >
           목록으로
         </RouterLink>
@@ -362,17 +362,17 @@ onBeforeUnmount(() => {
       {{ loadError }}
     </p>
 
-    <p v-else-if="loading" class="py-12 text-center text-sm text-slate-500">
+    <p v-else-if="loading" class="py-12 text-center text-sm text-zinc-500">
       신고 정보를 불러오는 중입니다.
     </p>
 
     <template v-else-if="report">
-      <section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-          <h2 class="font-semibold text-slate-900">
+      <section class="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4">
+          <h2 class="font-semibold text-zinc-900">
             신고 #{{ report.id }}
           </h2>
-          <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+          <span class="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700">
             {{ statusLabels[report.status] }}
           </span>
         </header>
@@ -380,41 +380,41 @@ onBeforeUnmount(() => {
         <div class="grid gap-5 p-5">
           <dl class="grid gap-4 text-sm sm:grid-cols-2">
             <div>
-              <dt class="text-slate-500">신고 대상</dt>
-              <dd class="mt-1 font-medium text-slate-800">
+              <dt class="text-zinc-500">신고 대상</dt>
+              <dd class="mt-1 font-medium text-zinc-800">
                 {{ report.commentId === null ? '게시글' : '댓글' }}
               </dd>
             </div>
             <div>
-              <dt class="text-slate-500">게시판</dt>
-              <dd class="mt-1 text-slate-800">{{ report.boardName }}</dd>
+              <dt class="text-zinc-500">게시판</dt>
+              <dd class="mt-1 text-zinc-800">{{ report.boardName }}</dd>
             </div>
             <div>
-              <dt class="text-slate-500">신고자</dt>
-              <dd class="mt-1 text-slate-800">{{ report.reporterDisplayName }}</dd>
+              <dt class="text-zinc-500">신고자</dt>
+              <dd class="mt-1 text-zinc-800">{{ report.reporterDisplayName }}</dd>
             </div>
             <div>
-              <dt class="text-slate-500">신고일</dt>
-              <dd class="mt-1 text-slate-800">{{ formatDate(report.createdAt) }}</dd>
+              <dt class="text-zinc-500">신고일</dt>
+              <dd class="mt-1 text-zinc-800">{{ formatDate(report.createdAt) }}</dd>
             </div>
             <div>
-              <dt class="text-slate-500">신고 사유</dt>
-              <dd class="mt-1 text-slate-800">{{ reasonLabels[report.reason] }}</dd>
+              <dt class="text-zinc-500">신고 사유</dt>
+              <dd class="mt-1 text-zinc-800">{{ reasonLabels[report.reason] }}</dd>
             </div>
           </dl>
 
           <div>
-            <h3 class="text-sm font-medium text-slate-700">상세 사유</h3>
-            <p class="mt-2 whitespace-pre-wrap break-all rounded-md bg-slate-50 p-4 text-sm text-slate-700">
+            <h3 class="text-sm font-medium text-zinc-700">상세 사유</h3>
+            <p class="mt-2 whitespace-pre-wrap break-all rounded-md bg-zinc-50 p-4 text-sm text-zinc-700">
               {{ report.detail || '입력된 상세 사유가 없습니다.' }}
             </p>
           </div>
         </div>
       </section>
 
-      <section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-          <h2 class="font-semibold text-slate-900">현재 원문</h2>
+      <section class="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4">
+          <h2 class="font-semibold text-zinc-900">현재 원문</h2>
 
           <RouterLink
               v-if="report.boardStatus === 'ACTIVE' && !report.postDeleted"
@@ -425,18 +425,18 @@ onBeforeUnmount(() => {
                 postId: report.postId,
               },
             }"
-              class="text-xs font-medium text-blue-600 hover:underline"
+              class="text-xs font-medium text-primary hover:underline"
           >
             게시글 열기
           </RouterLink>
         </header>
 
         <div class="grid gap-4 p-5">
-          <h3 class="break-all text-lg font-semibold text-slate-900">
+          <h3 class="break-all text-lg font-semibold text-zinc-900">
             {{ report.postTitle }}
           </h3>
 
-          <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+          <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
             <span>대상 작성자 {{ report.authorDisplayName }}</span>
             <span>작성 {{ formatDate(report.contentCreatedAt) }}</span>
             <span
@@ -463,7 +463,7 @@ onBeforeUnmount(() => {
             </span>
             <span
                 v-if="report.boardStatus === 'ARCHIVED'"
-                class="rounded bg-slate-100 px-2 py-1 text-slate-600"
+                class="rounded bg-zinc-100 px-2 py-1 text-zinc-600"
             >
               보관된 게시판
             </span>
@@ -481,28 +481,28 @@ onBeforeUnmount(() => {
             </span>
           </div>
 
-          <p class="text-xs leading-5 text-slate-500">
+          <p class="text-xs leading-5 text-zinc-500">
             현재 저장된 텍스트이며 신고 당시 내용과 다를 수 있습니다.
             이 화면에서는 본문 이미지와 첨부파일을 표시하지 않습니다.
           </p>
 
           <div
-              class="min-h-32 whitespace-pre-wrap break-all rounded-md border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-800">
+              class="min-h-32 whitespace-pre-wrap break-all rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm leading-7 text-zinc-800">
             {{ report.content || '텍스트 본문이 없습니다.' }}
           </div>
         </div>
       </section>
 
-      <section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <section class="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
         <header
-            class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4"
+            class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4"
         >
-          <h2 class="font-semibold text-slate-900">대상 관리</h2>
+          <h2 class="font-semibold text-zinc-900">대상 관리</h2>
 
           <span
               class="rounded-full px-3 py-1 text-xs font-medium"
               :class="targetDeleted
-        ? 'bg-slate-100 text-slate-600'
+        ? 'bg-zinc-100 text-zinc-600'
         : targetBlinded
           ? 'bg-amber-50 text-amber-700'
           : 'bg-green-50 text-green-700'"
@@ -512,14 +512,14 @@ onBeforeUnmount(() => {
         </header>
 
         <div class="grid gap-4 p-5">
-          <p class="text-sm leading-6 text-slate-600">
+          <p class="text-sm leading-6 text-zinc-600">
             신고 대상 {{ report.commentId === null ? '게시글' : '댓글' }}에 적용합니다.
             이 조치는 신고의 인정·반려 결과를 변경하지 않습니다.
           </p>
 
           <p
               v-if="targetDeleted"
-              class="rounded-md bg-slate-50 px-4 py-3 text-sm text-slate-500"
+              class="rounded-md bg-zinc-50 px-4 py-3 text-sm text-zinc-500"
           >
             삭제된 대상은 이력만 조회할 수 있습니다.
           </p>
@@ -566,13 +566,13 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <header class="border-b border-slate-200 px-5 py-4">
-          <h2 class="font-semibold text-slate-900">처리 결과</h2>
+      <section class="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <header class="border-b border-zinc-200 px-5 py-4">
+          <h2 class="font-semibold text-zinc-900">처리 결과</h2>
         </header>
         <div class="grid gap-4 p-5">
           <template v-if="report.status === 'PENDING'">
-            <p class="text-sm text-slate-500">
+            <p class="text-sm text-zinc-500">
               인정·반려 모두 처리 메모가 필요합니다.
               인정 건수가 기준에 도달하면 대상이 자동 블라인드됩니다.
               인정 처리는 게시글 삭제나 회원 제재를 자동으로 수행하지 않습니다.
@@ -607,17 +607,17 @@ onBeforeUnmount(() => {
               </div>
             </fieldset>
 
-            <p v-if="submitting" role="status" class="text-sm text-slate-500">
+            <p v-if="submitting" role="status" class="text-sm text-zinc-500">
               처리 중입니다.
             </p>
           </template>
 
           <template v-else>
-            <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+            <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-600">
               <span>처리자 {{ report.reviewerDisplayName ?? '-' }}</span>
               <span>처리일 {{ formatDate(report.reviewedAt) }}</span>
             </div>
-            <p class="whitespace-pre-wrap break-all rounded-md bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+            <p class="whitespace-pre-wrap break-all rounded-md bg-zinc-50 p-4 text-sm leading-6 text-zinc-700">
               {{ report.reviewNote ?? '-' }}
             </p>
           </template>

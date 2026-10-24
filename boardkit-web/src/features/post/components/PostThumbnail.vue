@@ -56,7 +56,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="grid shrink-0 place-items-center overflow-hidden bg-slate-50">
+  <div class="grid shrink-0 place-items-center overflow-hidden bg-zinc-50">
     <img
         v-if="imageUrl"
         :src="imageUrl"
@@ -66,14 +66,14 @@ onBeforeUnmount(() => {
     />
     <span
         v-else-if="loading"
-        class="size-full animate-pulse bg-slate-100"
+        class="size-full animate-pulse bg-zinc-100"
         role="status"
         aria-label="썸네일을 불러오는 중"
     />
     <CommunityIcon
         v-else
         name="image"
-        class="size-5 text-slate-300"
+        class="size-5 text-zinc-300"
         role="img"
         :aria-hidden="false"
         :aria-label="failed ? '썸네일을 불러오지 못했습니다' : '이미지 없음'"

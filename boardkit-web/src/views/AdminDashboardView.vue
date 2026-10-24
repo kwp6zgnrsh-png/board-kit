@@ -33,44 +33,44 @@ onMounted(async () => {
         class="flex flex-wrap items-center justify-between gap-4 pb-1"
     >
       <div>
-        <p class="m-0 text-xs font-medium text-blue-600">
+        <p class="m-0 text-xs font-medium text-primary">
           관리자
         </p>
 
-        <h1 class="m-0 mt-1 text-3xl font-semibold tracking-tight text-slate-900">
+        <h1 class="m-0 mt-1 text-3xl font-semibold tracking-tight text-zinc-900">
           게시판 관리
         </h1>
 
-        <p class="m-0 mt-2 text-sm font-medium text-slate-700">
+        <p class="m-0 mt-2 text-sm font-medium text-zinc-700">
           게시판과 커뮤니티 운영 기능을 관리합니다.
         </p>
       </div>
 
       <RouterLink
           :to="{ name: 'admin-board-create' }"
-          class="inline-flex items-center rounded border border-slate-200 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white no-underline transition hover:bg-blue-600"
+          class="inline-flex items-center rounded border border-zinc-200 bg-primary px-4 py-2.5 text-sm font-semibold text-white no-underline transition hover:bg-primary"
       >
         + 게시판 생성
       </RouterLink>
     </header>
 
     <section
-        class="overflow-hidden rounded-lg border border-slate-200 bg-white"
+        class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
     >
       <header
-          class="border-b border-slate-200 px-5 py-4"
+          class="border-b border-zinc-200 px-5 py-4"
       >
-        <h2 class="m-0 text-base font-semibold text-slate-900">
+        <h2 class="m-0 text-base font-semibold text-zinc-900">
           게시판 설정
         </h2>
-        <p class="m-0 mt-1 text-sm font-medium text-slate-700">
+        <p class="m-0 mt-1 text-sm font-medium text-zinc-700">
           게시판 정보와 운영 정책을 변경하거나 게시판을 보관합니다.
         </p>
       </header>
 
       <p
           v-if="loading"
-          class="m-0 px-5 py-12 text-center font-medium text-slate-500"
+          class="m-0 px-5 py-12 text-center font-medium text-zinc-500"
       >
         게시판 목록을 불러오는 중입니다.
       </p>
@@ -85,7 +85,7 @@ onMounted(async () => {
 
       <div
           v-else-if="boards.length > 0"
-          class="divide-y divide-slate-200"
+          class="divide-y divide-zinc-200"
       >
         <article
             v-for="board in boards"
@@ -93,10 +93,10 @@ onMounted(async () => {
             class="flex flex-wrap items-center justify-between gap-4 px-5 py-4"
         >
           <div class="min-w-0">
-            <h3 class="m-0 truncate text-base font-semibold text-slate-900">
+            <h3 class="m-0 truncate text-base font-semibold text-zinc-900">
               {{ board.name }}
             </h3>
-            <p class="m-0 mt-1 truncate text-sm font-medium text-slate-500">
+            <p class="m-0 mt-1 truncate text-sm font-medium text-zinc-500">
               /boards/{{ board.slug }}
             </p>
           </div>
@@ -106,7 +106,7 @@ onMounted(async () => {
               name: 'admin-board-edit',
               params: { boardSlug: board.slug },
             }"
-              class="inline-flex shrink-0 items-center rounded border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-900 no-underline transition hover:bg-slate-50"
+              class="inline-flex shrink-0 items-center rounded border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 no-underline transition hover:bg-zinc-50"
           >
             설정
           </RouterLink>
@@ -115,76 +115,76 @@ onMounted(async () => {
 
       <p
           v-else
-          class="m-0 px-5 py-12 text-center font-medium text-slate-500"
+          class="m-0 px-5 py-12 text-center font-medium text-zinc-500"
       >
         생성된 게시판이 없습니다.
       </p>
     </section>
 
-    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <RouterLink
           :to="{name: 'admin-post-replies'}"
-          class="block rounded-md border border-slate-200 bg-white p-5 no-underline transition hover:border-blue-300 hover:bg-blue-50"
+          class="block rounded-xl border border-border bg-card p-5 shadow-xs no-underline transition hover:border-zinc-300 hover:bg-accent"
       >
-        <h2 class="text-lg font-semibold text-slate-900">
+        <h2 class="text-lg font-semibold text-zinc-900">
           관리자 공식 답변
         </h2>
-        <p class="mt-3 text-sm leading-6 text-slate-600">
+        <p class="mt-3 text-sm leading-6 text-zinc-600">
           미답변 게시글을 확인하고 공식 답변을 관리합니다.
         </p>
-        <span class="mt-4 inline-block text-xs font-medium text-blue-600">관리하기 →</span>
+        <span class="mt-4 inline-block text-xs font-medium text-primary">관리하기 →</span>
       </RouterLink>
       <RouterLink
           :to="{ name: 'admin-reports' }"
-          class="block rounded-md border border-slate-200 bg-white p-5 no-underline transition hover:border-blue-300 hover:bg-blue-50"
+          class="block rounded-xl border border-border bg-card p-5 shadow-xs no-underline transition hover:border-zinc-300 hover:bg-accent"
       >
-        <h2 class="text-lg font-semibold text-slate-900">
+        <h2 class="text-lg font-semibold text-zinc-900">
           신고 처리
         </h2>
-        <p class="mt-3 text-sm leading-6 text-slate-600">
+        <p class="mt-3 text-sm leading-6 text-zinc-600">
           게시글과 댓글 신고를 확인하고 처리합니다.
         </p>
-        <span class="mt-4 inline-block text-xs font-medium text-blue-600">관리하기 →</span>
+        <span class="mt-4 inline-block text-xs font-medium text-primary">관리하기 →</span>
       </RouterLink>
       <RouterLink
           :to="{name: 'admin-blinded'}"
-          class="block rounded-md border border-slate-200 bg-white p-5 no-underline transition hover:border-blue-300 hover:bg-blue-50"
+          class="block rounded-xl border border-border bg-card p-5 shadow-xs no-underline transition hover:border-zinc-300 hover:bg-accent"
       >
-        <h2 class="text-lg font-semibold text-slate-900">
+        <h2 class="text-lg font-semibold text-zinc-900">
           블라인드 관리
         </h2>
-        <p class="mt-3 text-sm leading-6 text-slate-600">
+        <p class="mt-3 text-sm leading-6 text-zinc-600">
           블라인드된 게시글과 댓글을 확인하고 해제하거나 삭제합니다.
         </p>
-        <span class="mt-4 inline-block text-xs font-medium text-blue-600">
+        <span class="mt-4 inline-block text-xs font-medium text-primary">
           관리하기 →
         </span>
       </RouterLink>
       <RouterLink
           :to="{ name: 'admin-member-sanctions' }"
-          class="block rounded-md border border-slate-200 bg-white p-5 no-underline transition hover:border-blue-300 hover:bg-blue-50"
+          class="block rounded-xl border border-border bg-card p-5 shadow-xs no-underline transition hover:border-zinc-300 hover:bg-accent"
       >
-        <h2 class="text-lg font-semibold text-slate-900">
+        <h2 class="text-lg font-semibold text-zinc-900">
           회원 제재
         </h2>
-        <p class="mt-3 text-sm leading-6 text-slate-600">
+        <p class="mt-3 text-sm leading-6 text-zinc-600">
           회원을 검색하고 제재 등록·이력 조회·해제를 처리합니다.
         </p>
-        <span class="mt-4 inline-block text-xs font-medium text-blue-600">
+        <span class="mt-4 inline-block text-xs font-medium text-primary">
           관리하기 →
         </span>
       </RouterLink>
       <RouterLink
           :to="{ name: 'admin-board-statistics' }"
-          class="block rounded-md border border-slate-200 bg-white p-5 no-underline transition hover:border-blue-300 hover:bg-blue-50"
+          class="block rounded-xl border border-border bg-card p-5 shadow-xs no-underline transition hover:border-zinc-300 hover:bg-accent"
       >
-        <h2 class="text-lg font-semibold text-slate-900">
+        <h2 class="text-lg font-semibold text-zinc-900">
           게시판 활동 통계
         </h2>
-        <p class="mt-3 text-sm leading-6 text-slate-600">
+        <p class="mt-3 text-sm leading-6 text-zinc-600">
           게시판별 현황과 게시글·댓글 작성 추이를 확인합니다.
         </p>
-        <span class="mt-4 inline-block text-xs font-medium text-blue-600">
+        <span class="mt-4 inline-block text-xs font-medium text-primary">
           통계 보기 →
         </span>
       </RouterLink>

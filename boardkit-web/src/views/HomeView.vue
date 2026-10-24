@@ -84,7 +84,7 @@ watch(
 
     <p
         v-if="loading"
-        class="rounded-lg border border-slate-200 bg-white px-6 py-16 text-center font-semibold text-slate-600"
+        class="rounded-lg border border-zinc-200 bg-white px-6 py-16 text-center font-semibold text-zinc-600"
     >
       커뮤니티 소식을 불러오는 중입니다.
     </p>
@@ -99,7 +99,7 @@ watch(
 
     <section
         v-else-if="previews.length > 0"
-        class="grid gap-5 xl:grid-cols-2"
+        class="grid items-start gap-5 xl:grid-cols-2"
         aria-label="게시판별 최신 글"
     >
       <HomeBoardCard
@@ -112,13 +112,13 @@ watch(
 
     <section
         v-else
-        class="rounded-lg border border-slate-200 bg-white px-6 py-16 text-center"
+        class="rounded-xl border border-border bg-card px-6 py-16 text-center shadow-xs"
     >
-      <h2 class="m-0 text-2xl font-semibold text-slate-900">아직 이용할 수 있는 게시판이 없습니다.</h2>
+      <h2 class="m-0 text-2xl font-semibold text-zinc-900">아직 이용할 수 있는 게시판이 없습니다.</h2>
       <RouterLink
           v-if="session?.role === 'ADMIN'"
           :to="{ name: 'admin-board-create' }"
-          class="mt-5 inline-flex rounded border border-slate-200 bg-blue-600 px-4 py-2 font-semibold text-white no-underline"
+          class="mt-5 inline-flex rounded border border-zinc-200 bg-primary px-4 py-2 font-semibold text-white no-underline"
       >
         게시판 만들기
       </RouterLink>

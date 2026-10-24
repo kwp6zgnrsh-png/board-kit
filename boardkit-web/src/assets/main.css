@@ -2,13 +2,32 @@
 
 @theme {
   --font-sans: "Pretendard", "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --color-background: #ffffff;
+  --color-foreground: #18181b;
+  --color-card: #ffffff;
+  --color-card-foreground: #18181b;
+  --color-primary: #18181b;
+  --color-primary-foreground: #fafafa;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #71717a;
+  --color-accent: #f4f4f5;
+  --color-accent-foreground: #18181b;
+  --color-border: #e4e4e7;
+  --color-input: #e4e4e7;
+  --color-ring: #a1a1aa;
+  --color-sidebar: #fafafa;
+  --color-sidebar-foreground: #3f3f46;
+}
+
+@utility field-control {
+  @apply w-full min-w-0 rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus:border-ring focus:ring-[3px] focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 @layer base {
-  html { @apply bg-white font-sans text-slate-800 antialiased; }
+  html { @apply bg-sidebar font-sans text-foreground antialiased; }
   body { @apply m-0 min-h-screen min-w-80; }
   button, input, select, textarea { font: inherit; }
   button:not(:disabled), select { @apply cursor-pointer; }
   button:disabled { @apply cursor-not-allowed; }
-  ::selection { @apply bg-blue-100 text-blue-900; }
+  ::selection { @apply bg-zinc-200 text-zinc-950; }
 }

@@ -47,7 +47,7 @@ const buttons: ToolbarButton[] = [
   {
     label: 'B',
     title: '굵게',
-    labelClass: 'font-bold',
+    labelClass: 'font-semibold',
     activeName: 'bold',
     command: chain => chain.toggleBold(),
   },
@@ -195,15 +195,15 @@ function editLink() {
 </script>
 
 <template>
-  <div class="border-b border-slate-300 bg-slate-50">
+  <div class="border-b border-input bg-zinc-50">
     <div class="overflow-x-auto px-2 py-2 sm:px-3" role="toolbar" aria-label="본문 서식">
       <div class="flex min-w-max items-center">
-        <div class="border-r border-slate-300 pr-2 sm:pr-3" role="group" aria-label="문단 유형">
+        <div class="border-r border-input pr-2 sm:pr-3" role="group" aria-label="문단 유형">
           <select
               :value="editor.isActive('heading', { level: 2 }) ? 1 : editor.isActive('heading', { level: 3 }) ? 2 : 0"
               :disabled="disabled"
               aria-label="본문 또는 제목 선택"
-              class="h-8 w-24 cursor-pointer rounded-sm border-0 bg-transparent px-2 text-sm text-slate-700 outline-none hover:bg-slate-200/70 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-40"
+              class="h-8 w-24 cursor-pointer rounded-md border-0 bg-transparent px-2 text-sm text-zinc-700 outline-none hover:bg-zinc-200/70 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-40"
               @change="changeBlockType"
           >
             <option value="0">본문</option>
@@ -212,7 +212,7 @@ function editLink() {
           </select>
         </div>
 
-        <div class="flex items-center gap-0.5 border-r border-slate-300 px-2 sm:px-3" role="group" aria-label="글자 서식">
+        <div class="flex items-center gap-0.5 border-r border-input px-2 sm:px-3" role="group" aria-label="글자 서식">
           <button
               v-for="button in buttons.slice(3, 7)"
               :key="button.title"
@@ -221,8 +221,8 @@ function editLink() {
               :aria-label="button.title"
               :aria-pressed="isActive(button)"
               :disabled="!canRun(button)"
-              class="inline-flex size-8 items-center justify-center rounded-sm focus-visible:outline-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-30"
-              :class="isActive(button) ? 'bg-blue-100 text-blue-700' : 'text-slate-700 hover:bg-slate-200/70'"
+              class="inline-flex size-8 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-30"
+              :class="isActive(button) ? 'bg-zinc-200/70 text-primary' : 'text-zinc-700 hover:bg-zinc-200/70'"
               @mousedown.prevent
               @click="run(button)"
           >
@@ -230,7 +230,7 @@ function editLink() {
           </button>
         </div>
 
-        <div class="flex items-center gap-0.5 border-r border-slate-300 px-2 sm:px-3" role="group" aria-label="목록과 인용 및 코드">
+        <div class="flex items-center gap-0.5 border-r border-input px-2 sm:px-3" role="group" aria-label="목록과 인용 및 코드">
           <button
               v-for="button in buttons.slice(7, 13)"
               :key="button.title"
@@ -239,8 +239,8 @@ function editLink() {
               :aria-label="button.title"
               :aria-pressed="button.activeName ? isActive(button) : undefined"
               :disabled="!canRun(button)"
-              class="inline-flex size-8 items-center justify-center rounded-sm focus-visible:outline-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-30"
-              :class="isActive(button) ? 'bg-blue-100 text-blue-700' : 'text-slate-700 hover:bg-slate-200/70'"
+              class="inline-flex size-8 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-30"
+              :class="isActive(button) ? 'bg-zinc-200/70 text-primary' : 'text-zinc-700 hover:bg-zinc-200/70'"
               @mousedown.prevent
               @click="run(button)"
           >
@@ -256,7 +256,7 @@ function editLink() {
               :title="button.title"
               :aria-label="button.title"
               :disabled="!canRun(button)"
-              class="inline-flex size-8 items-center justify-center rounded-sm text-slate-700 hover:bg-slate-200/70 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-30"
+              class="inline-flex size-8 items-center justify-center rounded-md text-zinc-700 hover:bg-zinc-200/70 focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-30"
               @mousedown.prevent
               @click="run(button)"
           >
@@ -268,8 +268,8 @@ function editLink() {
               aria-label="링크 추가·수정·제거"
               :aria-pressed="editor.isActive('link')"
               :disabled="disabled"
-              class="inline-flex size-8 items-center justify-center rounded-sm focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-30"
-              :class="editor.isActive('link') ? 'bg-blue-100 text-blue-700' : 'text-slate-700 hover:bg-slate-200/70'"
+              class="inline-flex size-8 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-30"
+              :class="editor.isActive('link') ? 'bg-zinc-200/70 text-primary' : 'text-zinc-700 hover:bg-zinc-200/70'"
               @mousedown.prevent
               @click="editLink"
           >
@@ -282,7 +282,7 @@ function editLink() {
     <p
         v-if="errorMessage"
         role="alert"
-        class="border-t border-slate-200 px-4 py-2 text-xs text-red-600"
+        class="border-t border-zinc-200 px-4 py-2 text-xs text-red-600"
     >
       {{ errorMessage }}
     </p>

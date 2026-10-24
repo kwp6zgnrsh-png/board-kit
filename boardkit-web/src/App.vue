@@ -6,7 +6,7 @@ import {getBoards} from '@/api/boardApi'
 import {ApiError} from '@/api/http'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import CommunityIcon from '@/components/ui/CommunityIcon.vue'
-import BoardMenu from '@/features/board/components/BoardMenu.vue'
+import AppSidebar from '@/components/layout/AppSidebar.vue'
 import type {BoardSummaryResponse} from '@/features/board/types/board'
 import {
   getAuthSession,
@@ -69,83 +69,94 @@ watch(
     },
     {immediate: true},
 )
+
+
+const mobileNavigation = ref<HTMLDialogElement | null>(null)
+const navigationOpen = ref(false)
+const routeTitles: Record<string, string> = {
+  home: '홈', login: '로그인', 'member-create': '회원가입', 'my-page': '마이페이지',
+  'board-detail': '게시판', 'post-detail': '게시글 상세', 'post-create': '글쓰기', 'post-edit': '글 수정',
+  'admin-dashboard': '게시판 관리', 'admin-board-create': '게시판 생성', 'admin-board-edit': '게시판 설정',
+  'admin-post-replies': '공식 답변', 'admin-reports': '신고 처리', 'admin-report-detail': '신고 상세',
+  'admin-blinded': '블라인드 관리', 'admin-member-sanctions': '회원 제재', 'admin-board-statistics': '활동 통계',
+}
+const pageTitle = computed(() => {
+  if (route.name === 'board-detail') {
+    return boards.value.find(board => board.slug === route.params.boardSlug)?.name ?? '게시판'
+  }
+  return routeTitles[String(route.name)] ?? 'BoardKit'
+})
+const sectionTitle = computed(() => String(route.name).startsWith('admin-') ? '운영 관리' : '커뮤니티')
+
+function openNavigation() {
+  mobileNavigation.value?.showModal()
+  navigationOpen.value = true
+}
+
+function closeNavigation() {
+  mobileNavigation.value?.close()
+  navigationOpen.value = false
+}
+
+watch(() => route.fullPath, closeNavigation)
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col">
-    <a href="#page-content"
-       class="sr-only z-50 bg-blue-600 p-3 text-sm text-white focus:not-sr-only focus:fixed focus:top-2 focus:left-2">본문으로
-      이동</a>
-    <header class="sticky top-0 z-40 border-b border-slate-200 bg-white">
-      <div class="mx-auto flex min-h-15 max-w-[1480px] items-center gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
-        <RouterLink :to="{ name: 'home' }"
-                    class="shrink-0 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl lg:w-48">
-          <span class="text-blue-600">Board</span>Kit
-        </RouterLink>
-        <BoardMenu :boards="boards" :loading="loading" class="hidden lg:flex"/>
-        <div class="ml-auto flex shrink-0 items-center gap-2 py-2">
-          <span v-if="session"
-                class="hidden max-w-28 truncate px-2 text-sm text-slate-600 sm:block">{{ session.displayName }}</span>
-          <RouterLink
-              v-if="session"
-              :to="{ name: 'my-page' }"
-              aria-label="마이페이지"
-              class="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:px-3 sm:text-sm"
-          >
-            <span class="sm:hidden">MY</span>
-            <span class="hidden sm:inline">마이페이지</span>
-          </RouterLink>
-          <RouterLink v-if="session?.role === 'ADMIN'" :to="{ name: 'admin-dashboard' }"
-                      class="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:text-sm"
-                      aria-label="게시판 관리"><span class="sm:hidden">관리</span><span class="hidden sm:inline">게시판 관리</span>
-          </RouterLink>
-          <BaseButton v-if="session" variant="secondary" :disabled="loggingOut" @click="logout">
-            {{ loggingOut ? '로그아웃 중...' : '로그아웃' }}
-          </BaseButton>
-          <template v-else>
-            <RouterLink :to="{ name: 'login' }"
-                        class="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
-              로그인
+  <div class="min-h-svh bg-sidebar text-foreground">
+    <a href="#page-content" class="sr-only z-50 rounded-md bg-primary p-3 text-sm text-primary-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3">본문으로 이동</a>
+
+    <aside class="fixed inset-y-0 left-0 z-30 hidden w-64 lg:block" aria-label="주 메뉴">
+      <AppSidebar :boards="boards" :loading="loading" :session="session"/>
+    </aside>
+
+    <dialog ref="mobileNavigation" aria-label="주 메뉴" class="m-0 h-dvh max-h-none w-[min(20rem,90vw)] max-w-none border-r border-border bg-sidebar p-0 text-foreground backdrop:bg-black/40"
+      @click.self="closeNavigation" @close="navigationOpen = false">
+      <button type="button" class="absolute right-3 top-4 z-10 grid size-8 place-items-center rounded-md bg-sidebar text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring" aria-label="메뉴 닫기" @click="closeNavigation">
+        <CommunityIcon name="close" class="size-4"/>
+      </button>
+      <AppSidebar :boards="boards" :loading="loading" :session="session" @navigate="closeNavigation"/>
+    </dialog>
+
+    <div class="min-w-0 p-2 lg:pl-64">
+      <div class="flex min-h-[calc(100svh-1rem)] min-w-0 flex-col overflow-clip rounded-xl border border-border bg-background shadow-xs">
+        <header class="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-sm sm:px-6">
+          <div class="flex min-w-0 items-center gap-3">
+            <button type="button" class="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring lg:hidden" aria-label="메뉴 열기" :aria-expanded="navigationOpen" @click="openNavigation">
+              <CommunityIcon name="menu" class="size-4"/>
+            </button>
+            <CommunityIcon name="panel" class="hidden size-4 text-muted-foreground lg:block"/>
+            <span class="hidden h-4 w-px bg-border sm:block" aria-hidden="true"/>
+            <nav aria-label="현재 위치" class="flex min-w-0 items-center gap-2 text-[13px]">
+              <RouterLink :to="{ name: 'home' }" class="hidden shrink-0 text-muted-foreground hover:text-foreground sm:block">{{ sectionTitle }}</RouterLink>
+              <CommunityIcon name="chevron" class="hidden size-3 text-zinc-400 sm:block"/>
+              <span class="truncate font-medium text-foreground" aria-current="page">{{ pageTitle }}</span>
+            </nav>
+          </div>
+
+          <div class="flex shrink-0 items-center gap-2">
+            <RouterLink v-if="session" :to="{ name: 'my-page' }" aria-label="마이페이지" class="hidden h-8 items-center gap-2 rounded-md px-2 text-xs font-medium text-zinc-600 transition-colors hover:bg-muted sm:inline-flex">
+              <CommunityIcon name="users" class="size-3.5"/>
+              {{ session.displayName }}
             </RouterLink>
-            <RouterLink :to="{ name: 'member-create' }"
-                        class="inline-flex h-9 items-center justify-center rounded-md border border-blue-600 bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700">
-              회원가입
-            </RouterLink>
-          </template>
-        </div>
+            <BaseButton v-if="session" size="sm" variant="secondary" :disabled="loggingOut" @click="logout">{{ loggingOut ? '로그아웃 중...' : '로그아웃' }}</BaseButton>
+            <template v-else>
+              <RouterLink :to="{ name: 'login' }" class="inline-flex h-8 items-center rounded-md px-3 text-xs font-medium text-zinc-600 transition-colors hover:bg-muted">로그인</RouterLink>
+              <RouterLink :to="{ name: 'member-create' }" class="inline-flex h-8 items-center rounded-md border border-primary bg-primary px-3 text-xs font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90">회원가입</RouterLink>
+            </template>
+          </div>
+        </header>
+
+        <p v-if="logoutErrorMessage" role="alert" class="mx-4 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:mx-6">{{ logoutErrorMessage }}</p>
+
+        <main id="page-content" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1600px] flex-1 p-4 outline-none sm:p-6 lg:p-8">
+          <RouterView/>
+        </main>
+
+        <footer class="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-4 text-[11px] text-muted-foreground sm:px-6">
+          <p>© 2026 BoardKit</p>
+          <RouterLink :to="{ name: 'home' }" class="transition-colors hover:text-foreground">이야기가 모이는 공간</RouterLink>
+        </footer>
       </div>
-      <BoardMenu :boards="boards" :loading="loading" class="border-t border-slate-100 px-1 lg:hidden"/>
-    </header>
-
-    <p v-if="logoutErrorMessage" role="alert"
-       class="mx-auto mt-3 w-full max-w-[1480px] px-4 text-sm text-red-600 sm:px-6 lg:px-8">
-      {{ logoutErrorMessage }}
-    </p>
-
-    <div class="mx-auto grid w-full max-w-[1480px] flex-1 lg:grid-cols-[240px_minmax(0,1fr)]">
-      <aside class="hidden border-r border-slate-200 bg-slate-50/70 px-5 py-8 lg:block" aria-label="커뮤니티 탐색">
-        <h2 class="mb-3 px-3 text-base font-semibold text-slate-900">전체 게시판</h2>
-        <BoardMenu :boards="boards" :loading="loading" variant="sidebar"/>
-        <div v-if="session?.role === 'ADMIN'" class="mt-5 border-t border-slate-200 pt-5">
-          <RouterLink :to="{ name: 'admin-dashboard' }"
-                      class="flex items-center gap-2.5 rounded-md px-3 py-3 text-sm font-medium"
-                      :class="String(route.name).startsWith('admin-') ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-100'">
-            <CommunityIcon name="settings"/>
-            게시판 관리
-          </RouterLink>
-        </div>
-      </aside>
-      <main id="page-content" tabindex="-1" class="min-w-0 px-4 py-7 outline-none sm:px-6 lg:px-8 lg:py-8">
-        <RouterView/>
-      </main>
     </div>
-
-    <footer class="border-t border-slate-200 bg-white">
-      <div
-          class="mx-auto flex max-w-[1480px] flex-wrap items-center justify-between gap-3 px-4 py-6 text-xs text-slate-500 sm:px-6 lg:px-8">
-        <p>© 2026 BoardKit. All rights reserved.</p>
-        <RouterLink :to="{ name: 'home' }" class="hover:text-blue-600">BoardKit 커뮤니티</RouterLink>
-      </div>
-    </footer>
   </div>
 </template>

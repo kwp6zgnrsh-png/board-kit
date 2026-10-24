@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import { createPost } from '@/api/postApi'
 import { ApiError } from '@/api/http'
@@ -18,6 +19,8 @@ import type { PostEditorImage, SelectedPostAttachment } from '@/features/post/ty
 const props = defineProps<{
   board: BoardDetailResponse
 }>()
+
+const router = useRouter()
 
 const form = reactive({
   title: '',
@@ -48,7 +51,6 @@ const bodyImages = computed(() => {
 
 const submitting = ref(false)
 const errorMessage = ref('')
-const createdPostId = ref<number | null>(null)
 
 const categoryOptions = computed(() => [
   {
@@ -93,7 +95,6 @@ async function submit() {
   if (submitting.value) return
 
   errorMessage.value = ''
-  createdPostId.value = null
 
   try {
     if (!form.title.trim()) {
@@ -137,7 +138,10 @@ async function submit() {
         upload.files,
     )
 
-    createdPostId.value = response.id
+    await router.replace({
+      name: 'post-detail',
+      params: { boardSlug: props.board.slug, postId: response.id },
+    })
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       errorMessage.value = '로그인이 필요합니다.'
@@ -153,7 +157,7 @@ async function submit() {
 </script>
 
 <template>
-  <form class="grid min-w-0 gap-6 rounded-lg border border-slate-200 bg-white p-5 sm:p-6" @submit.prevent="submit">
+  <form class="grid min-w-0 gap-6 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs" @submit.prevent="submit">
     <BaseInput
         id="post-title"
         v-model="form.title"
@@ -180,10 +184,10 @@ async function submit() {
           <button
               type="button"
               :disabled="submitting"
-              class="inline-flex h-11 shrink-0 items-center gap-2 rounded-sm border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50 sm:px-4"
+              class="inline-flex h-11 shrink-0 items-center gap-2 rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 hover:border-zinc-400 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 sm:px-4"
               @click="imageModalOpen = true"
           >
-            <svg class="size-5 text-indigo-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg class="size-5 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M3 3h18v18H3V3ZM3 16l6-6 4 4 3-3 5 5M16 7h.01" />
             </svg>
             이미지
@@ -204,7 +208,7 @@ async function submit() {
 
     <section
         v-if="board.policy.secretMode !== 'OFF'"
-        class="grid gap-4 rounded-md bg-slate-50 p-4"
+        class="grid gap-4 rounded-md bg-zinc-50 p-4"
     >
       <BaseCheckbox
           v-if="board.policy.secretMode === 'OPTIONAL'"
@@ -215,7 +219,7 @@ async function submit() {
 
       <p
           v-else
-          class="rounded-md bg-blue-50 p-3 text-sm text-slate-600"
+          class="rounded-md bg-accent p-3 text-sm text-zinc-600"
       >
         이 게시판의 모든 글은 비밀글로 작성됩니다.
       </p>
@@ -245,14 +249,7 @@ async function submit() {
       {{ errorMessage }}
     </p>
 
-    <p
-        v-if="createdPostId"
-        class="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700"
-    >
-      게시글이 등록되었습니다. 게시글 번호: {{ createdPostId }}
-    </p>
-
-    <div class="flex justify-end border-t border-slate-200 pt-5">
+    <div class="flex justify-end border-t border-zinc-200 pt-5">
       <BaseButton
           type="submit"
           :disabled="submitting"

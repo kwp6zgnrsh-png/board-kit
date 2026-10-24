@@ -102,10 +102,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
-    <header class="border-b border-slate-200 px-5 py-4">
-      <h2 class="text-base font-semibold text-slate-900">비밀번호 변경</h2>
-      <p class="mt-1 text-sm text-slate-500">
+  <section class="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+    <header class="border-b border-zinc-200 px-5 py-4">
+      <h2 class="text-base font-semibold text-zinc-900">비밀번호 변경</h2>
+      <p class="mt-1 text-sm text-zinc-500">
         변경하면 모든 기기에서 로그아웃되며, 다시 로그인해야 합니다.
       </p>
     </header>

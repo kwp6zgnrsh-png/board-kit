@@ -66,7 +66,7 @@ async function submit() {
 
 <template>
   <form
-      class="grid gap-3 rounded border border-slate-200 bg-blue-50 p-3"
+      class="grid gap-3 rounded border border-zinc-200 bg-accent p-3"
       @submit.prevent="submit"
   >
     <BaseTextarea

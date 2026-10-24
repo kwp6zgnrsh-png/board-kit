@@ -173,10 +173,10 @@ function cancel() {
   <dialog
       ref="dialog"
       aria-labelledby="post-image-modal-title"
-      class="m-auto max-h-[85dvh] w-[90vw] max-w-3xl overflow-y-auto rounded-lg border border-slate-200 bg-white p-0 text-slate-900 shadow-xl backdrop:bg-slate-950/40"
+      class="m-auto max-h-[85dvh] w-[90vw] max-w-3xl overflow-y-auto rounded-lg border border-zinc-200 bg-white p-0 text-zinc-900 shadow-xl backdrop:bg-zinc-950/40"
       @cancel.prevent="cancel"
   >
-    <header class="border-b border-slate-200 bg-slate-50 px-5 py-4">
+    <header class="border-b border-zinc-200 bg-zinc-50 px-5 py-4">
       <h2 id="post-image-modal-title" class="m-0 text-xl font-semibold">
         이미지 추가
       </h2>
@@ -186,7 +186,7 @@ function cancel() {
       <div class="flex flex-wrap items-center justify-between gap-3">
         <label
             v-if="allowAdd"
-            class="cursor-pointer rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-blue-50"
+            class="cursor-pointer rounded border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-accent"
         >
           + 이미지 추가
           <input
@@ -198,13 +198,13 @@ function cancel() {
           >
         </label>
 
-        <p class="m-0 text-sm text-slate-600">
+        <p class="m-0 text-sm text-zinc-600">
           이미지 {{ draftImages.length }}개
           · 전체 파일 {{ draftImages.length + otherFileCount }}개
         </p>
       </div>
 
-      <p class="m-0 text-sm text-slate-600">
+      <p class="m-0 text-sm text-zinc-600">
         이미지를 드래그해 순서를 바꾸세요.
         처음 추가한 이미지는 본문 상단에 배치됩니다.
         재정렬하면 텍스트를 유지하고 이미지 순서만 변경합니다.
@@ -223,7 +223,7 @@ function cancel() {
             v-for="(image, index) in draftImages"
             :key="image.key"
             draggable="true"
-            class="min-w-0 cursor-grab rounded border border-slate-200 bg-slate-50 p-2 active:cursor-grabbing"
+            class="min-w-0 cursor-grab rounded border border-zinc-200 bg-zinc-50 p-2 active:cursor-grabbing"
             :class="{ 'opacity-40': draggingKey === image.key }"
             @dragstart="startDrag($event, image.key)"
             @dragover.prevent
@@ -246,7 +246,7 @@ function cancel() {
                 type="button"
                 :disabled="index === 0"
                 :aria-label="`${image.name} 앞으로 이동`"
-                class="rounded border border-slate-200 bg-white px-2 py-1 text-xs font-medium disabled:opacity-30"
+                class="rounded border border-zinc-200 bg-white px-2 py-1 text-xs font-medium disabled:opacity-30"
                 @click="moveImage(index, -1)"
             >
               ←
@@ -255,7 +255,7 @@ function cancel() {
                 type="button"
                 :disabled="index === draftImages.length - 1"
                 :aria-label="`${image.name} 뒤로 이동`"
-                class="rounded border border-slate-200 bg-white px-2 py-1 text-xs font-medium disabled:opacity-30"
+                class="rounded border border-zinc-200 bg-white px-2 py-1 text-xs font-medium disabled:opacity-30"
                 @click="moveImage(index, 1)"
             >
               →
@@ -263,7 +263,7 @@ function cancel() {
             <button
                 type="button"
                 :aria-label="`${image.name} 삭제`"
-                class="ml-auto rounded border border-slate-200 bg-rose-50 px-2 py-1 text-xs font-medium"
+                class="ml-auto rounded border border-zinc-200 bg-rose-50 px-2 py-1 text-xs font-medium"
                 @click="removeImage(image.key)"
             >
               삭제
@@ -274,23 +274,23 @@ function cancel() {
 
       <p
           v-if="draftImages.length === 0"
-          class="m-0 py-10 text-center text-sm text-slate-500"
+          class="m-0 py-10 text-center text-sm text-zinc-500"
       >
         선택한 이미지가 없습니다.
       </p>
     </section>
 
-    <footer class="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 p-4">
+    <footer class="flex justify-end gap-2 border-t border-zinc-200 bg-zinc-50 p-4">
       <button
           type="button"
-          class="rounded border border-slate-200 bg-white px-4 py-2 text-sm font-semibold"
+          class="rounded border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold"
           @click="cancel"
       >
         취소
       </button>
       <button
           type="button"
-          class="rounded border border-slate-200 bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
+          class="rounded border border-zinc-200 bg-primary px-4 py-2 text-sm font-semibold text-white"
           @click="apply"
       >
         적용

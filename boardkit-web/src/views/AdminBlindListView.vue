@@ -251,18 +251,18 @@ onBeforeUnmount(() => {
   <div class="grid gap-6">
     <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p class="text-xs font-medium text-blue-600">관리자</p>
-        <h1 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
+        <p class="text-xs font-medium text-primary">관리자</p>
+        <h1 class="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
           블라인드 관리
         </h1>
-        <p class="mt-2 text-sm text-slate-500">
+        <p class="mt-2 text-sm text-zinc-500">
           블라인드된 게시글과 댓글을 확인하고 해제하거나 삭제합니다.
         </p>
       </div>
 
       <RouterLink
           :to="{name: 'admin-dashboard'}"
-          class="rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          class="rounded-md border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
       >
         관리자 메뉴
       </RouterLink>
@@ -285,10 +285,10 @@ onBeforeUnmount(() => {
     </p>
 
     <section
-        class="overflow-hidden rounded-lg border border-slate-200 bg-white"
+        class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
         :aria-busy="busy"
     >
-      <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+      <header class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4">
         <nav class="flex gap-2" aria-label="블라인드 대상 종류">
           <button
               v-for="tab in (['posts', 'comments'] as const)"
@@ -298,8 +298,8 @@ onBeforeUnmount(() => {
               :aria-pressed="selectedTab === tab"
               class="h-9 rounded-md border px-4 text-sm font-medium disabled:opacity-50"
               :class="selectedTab === tab
-                ? 'border-blue-600 bg-blue-600 text-white'
-                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
+                ? 'border-primary bg-primary text-white'
+                : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'"
               @click="changeTab(tab)"
           >
             {{ tab === 'posts' ? '게시글' : '댓글' }}
@@ -307,7 +307,7 @@ onBeforeUnmount(() => {
         </nav>
 
         <div class="flex items-center gap-3">
-          <span v-if="!loading && !loadError" class="text-sm text-slate-500">
+          <span v-if="!loading && !loadError" class="text-sm text-zinc-500">
             전체 {{ totalElements.toLocaleString() }}개
           </span>
           <BaseButton
@@ -329,18 +329,18 @@ onBeforeUnmount(() => {
         {{ loadError }}
       </p>
 
-      <p v-else-if="loading" class="px-5 py-12 text-center text-sm text-slate-500">
+      <p v-else-if="loading" class="px-5 py-12 text-center text-sm text-zinc-500">
         목록을 불러오는 중입니다.
       </p>
 
-      <p v-else-if="rows.length === 0" class="px-5 py-12 text-center text-sm text-slate-500">
+      <p v-else-if="rows.length === 0" class="px-5 py-12 text-center text-sm text-zinc-500">
         블라인드된 {{ selectedTab === 'posts' ? '게시글' : '댓글' }}이 없습니다.
       </p>
 
       <div v-else class="overflow-x-auto">
         <table class="w-full min-w-[960px] table-fixed text-sm">
           <caption class="sr-only">블라인드 관리 목록</caption>
-          <thead class="border-b border-slate-200 bg-slate-50 text-slate-600">
+          <thead class="border-b border-zinc-200 bg-zinc-50 text-zinc-600">
           <tr>
             <th scope="col" class="w-20 px-3 py-3 text-center font-medium">번호</th>
             <th scope="col" class="px-4 py-3 text-left font-medium">대상</th>
@@ -351,17 +351,17 @@ onBeforeUnmount(() => {
           </tr>
           </thead>
 
-          <tbody class="divide-y divide-slate-100">
-          <tr v-for="row in rows" :key="row.commentId ?? row.postId" class="hover:bg-slate-50">
-            <td class="px-3 py-3 text-center text-slate-500">
+          <tbody class="divide-y divide-zinc-100">
+          <tr v-for="row in rows" :key="row.commentId ?? row.postId" class="hover:bg-zinc-50">
+            <td class="px-3 py-3 text-center text-zinc-500">
               {{ row.commentId ?? row.postId }}
             </td>
 
             <td class="px-4 py-3">
-              <p class="truncate font-medium text-slate-800">{{ row.title }}</p>
+              <p class="truncate font-medium text-zinc-800">{{ row.title }}</p>
               <p
                   v-if="row.commentId !== null"
-                  class="mt-1 line-clamp-2 whitespace-pre-wrap break-words text-xs text-slate-500"
+                  class="mt-1 line-clamp-2 whitespace-pre-wrap break-words text-xs text-zinc-500"
               >
                 {{ row.contentPreview }}
               </p>
@@ -373,24 +373,24 @@ onBeforeUnmount(() => {
                   }"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="mt-2 inline-block text-xs font-medium text-blue-600 hover:underline"
+                  class="mt-2 inline-block text-xs font-medium text-primary hover:underline"
               >
                 원글 보기 ↗
               </RouterLink>
             </td>
 
-            <td class="px-3 py-3 text-slate-600">
+            <td class="px-3 py-3 text-zinc-600">
               <span class="block truncate">{{ row.boardName }}</span>
-              <span v-if="row.boardStatus === 'ARCHIVED'" class="mt-1 block text-xs text-slate-500">
+              <span v-if="row.boardStatus === 'ARCHIVED'" class="mt-1 block text-xs text-zinc-500">
                 보관된 게시판
               </span>
             </td>
 
-            <td class="truncate px-3 py-3 text-slate-600">
+            <td class="truncate px-3 py-3 text-zinc-600">
               {{ row.authorDisplayName }}
             </td>
 
-            <td class="px-3 py-3 text-xs text-slate-500">
+            <td class="px-3 py-3 text-xs text-zinc-500">
               {{ row.blindedAt.replace('T', ' ').slice(0, 16) }}
             </td>
 

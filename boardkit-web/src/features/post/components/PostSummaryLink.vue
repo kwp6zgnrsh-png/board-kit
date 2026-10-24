@@ -42,10 +42,10 @@ const canOpen = computed(() => {
       v-else
       v-bind="$attrs"
       data-blocked="true"
-      class="cursor-default data-[blocked=true]:hover:border-slate-200 data-[blocked=true]:hover:bg-slate-50 data-[blocked=true]:hover:text-slate-500"
+      class="cursor-default data-[blocked=true]:hover:border-zinc-200 data-[blocked=true]:hover:bg-zinc-50 data-[blocked=true]:hover:text-zinc-500"
   >
     <slot name="blocked">
-      <span class="text-sm text-slate-500">
+      <span class="text-sm text-zinc-500">
         블라인드된 게시글입니다.
       </span>
     </slot>

@@ -107,13 +107,13 @@ onBeforeUnmount(() => {
 
 <template>
   <section
-      class="overflow-hidden rounded-lg border border-slate-200 bg-white"
+      class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
       :aria-busy="loading"
   >
-    <header class="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+    <header class="flex items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4">
       <div>
-        <h2 class="text-base font-semibold text-slate-900">내가 쓴 게시글</h2>
-        <p v-if="postPage" class="mt-1 text-sm text-slate-500">
+        <h2 class="text-base font-semibold text-zinc-900">내가 쓴 게시글</h2>
+        <p v-if="postPage" class="mt-1 text-sm text-zinc-500">
           전체 {{ postPage.totalElements.toLocaleString() }}개
         </p>
       </div>
@@ -136,14 +136,14 @@ onBeforeUnmount(() => {
       {{ errorMessage }}
     </div>
 
-    <p v-else-if="loading" class="px-5 py-12 text-center text-sm text-slate-500">
+    <p v-else-if="loading" class="px-5 py-12 text-center text-sm text-zinc-500">
       게시글을 불러오는 중입니다.
     </p>
 
     <template v-else-if="postPage">
       <p
           v-if="postPage.posts.length === 0"
-          class="px-5 py-12 text-center text-sm text-slate-500"
+          class="px-5 py-12 text-center text-sm text-zinc-500"
       >
         작성한 게시글이 없습니다.
       </p>
@@ -152,7 +152,7 @@ onBeforeUnmount(() => {
         <div class="overflow-x-auto">
           <table class="w-full min-w-[620px] table-fixed text-sm">
             <caption class="sr-only">내가 작성한 게시글 목록</caption>
-            <thead class="border-b border-slate-200 bg-slate-50 text-slate-600">
+            <thead class="border-b border-zinc-200 bg-zinc-50 text-zinc-600">
             <tr>
               <th scope="col" class="px-5 py-3 text-left font-medium">제목</th>
               <th scope="col" class="w-32 px-3 py-3 text-left font-medium">게시판</th>
@@ -161,11 +161,11 @@ onBeforeUnmount(() => {
             </tr>
             </thead>
 
-            <tbody class="divide-y divide-slate-100">
+            <tbody class="divide-y divide-zinc-100">
             <tr
                 v-for="post in postPage.posts"
                 :key="post.id"
-                class="hover:bg-slate-50"
+                class="hover:bg-zinc-50"
             >
               <td class="px-5 py-3">
                 <RouterLink
@@ -176,30 +176,30 @@ onBeforeUnmount(() => {
                         postId: post.id,
                       },
                     }"
-                    class="block truncate font-medium text-slate-800 hover:text-blue-600 hover:underline"
+                    class="block truncate font-medium text-zinc-800 hover:text-primary hover:underline"
                 >
-                    <span v-if="post.secret" class="mr-1 text-xs text-slate-500">
+                    <span v-if="post.secret" class="mr-1 text-xs text-zinc-500">
                       [비밀]
                     </span>
                   {{ post.title }}
                 </RouterLink>
               </td>
 
-              <td class="px-3 py-3 text-slate-600">
+              <td class="px-3 py-3 text-zinc-600">
                 <span class="block truncate">{{ post.boardName }}</span>
                 <span
                     v-if="post.boardStatus === 'ARCHIVED'"
-                    class="mt-1 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500"
+                    class="mt-1 inline-block rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-500"
                 >
                     보관
                   </span>
               </td>
 
-              <td class="px-3 py-3 text-xs text-slate-500">
+              <td class="px-3 py-3 text-xs text-zinc-500">
                 {{ post.createdAt.replace('T', ' ').slice(0, 16) }}
               </td>
 
-              <td class="px-5 py-3 text-right tabular-nums text-slate-500">
+              <td class="px-5 py-3 text-right tabular-nums text-zinc-500">
                 {{ post.viewCount.toLocaleString() }}
               </td>
             </tr>
@@ -215,7 +215,7 @@ onBeforeUnmount(() => {
         />
       </template>
 
-      <p class="border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
+      <p class="border-t border-zinc-100 px-5 py-3 text-xs text-zinc-500">
         게시판 설정에 따라 게시글 상세 열람이 제한될 수 있습니다.
       </p>
     </template>

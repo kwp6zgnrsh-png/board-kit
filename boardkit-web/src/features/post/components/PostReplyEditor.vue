@@ -67,7 +67,7 @@ onBeforeUnmount(() => {
 
 <template>
   <section
-      class="overflow-hidden rounded-md border border-slate-300 bg-white"
+      class="overflow-hidden rounded-xl border border-input bg-card shadow-xs"
       aria-label="공식 답변 편집기"
   >
     <template v-if="editor">
@@ -76,7 +76,7 @@ onBeforeUnmount(() => {
       <EditorContent
           :editor="editor"
           class="max-h-[60vh] overflow-y-auto"
-          :class="{ 'bg-slate-100': disabled }"
+          :class="{ 'bg-zinc-100': disabled }"
       />
     </template>
   </section>

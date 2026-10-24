@@ -92,15 +92,15 @@ watch(boardSlug, loadBoard, { immediate: true })
   <div class="grid gap-6">
     <header class="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <p class="m-0 mb-2 text-xs font-semibold text-blue-600">
+        <p class="m-0 mb-2 text-xs font-semibold text-primary">
           게시판 관리
         </p>
 
-        <h1 class="m-0 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+        <h1 class="m-0 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
           게시판 설정
         </h1>
 
-        <p class="m-0 mt-3 text-sm font-medium text-slate-600">
+        <p class="m-0 mt-3 text-sm font-medium text-zinc-600">
           게시판 정보와 운영 정책을 수정합니다.
         </p>
       </div>
@@ -117,7 +117,7 @@ watch(boardSlug, loadBoard, { immediate: true })
 
     <p
         v-if="loading"
-        class="m-0 rounded-lg border border-slate-200 bg-slate-100 px-5 py-14 text-center font-semibold text-slate-600"
+        class="m-0 rounded-lg border border-zinc-200 bg-zinc-100 px-5 py-14 text-center font-semibold text-zinc-600"
     >
       게시판 설정을 불러오는 중입니다.
     </p>

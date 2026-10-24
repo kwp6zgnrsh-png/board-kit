@@ -158,12 +158,12 @@ onBeforeUnmount(() => {
 
 <template>
   <section
-      class="overflow-hidden rounded-lg border border-slate-200 bg-white"
+      class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
       :aria-busy="loading || submitting"
       :aria-labelledby="`${panelId}-heading`"
   >
-    <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-      <h2 :id="`${panelId}-heading`" class="text-base font-semibold text-slate-900">
+    <header class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4">
+      <h2 :id="`${panelId}-heading`" class="text-base font-semibold text-zinc-900">
         제재 상세
       </h2>
 
@@ -205,77 +205,77 @@ onBeforeUnmount(() => {
         {{ loadError }}
       </p>
 
-      <p v-else-if="loading" class="py-6 text-center text-sm text-slate-500">
+      <p v-else-if="loading" class="py-6 text-center text-sm text-zinc-500">
         제재 상세를 불러오는 중입니다.
       </p>
 
       <template v-else-if="detail">
-        <div class="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
+        <div class="rounded-md border border-zinc-200 bg-zinc-50 px-4 py-3">
           <div class="flex flex-wrap items-center gap-2">
-            <h3 class="font-semibold text-slate-900">{{ detail.displayName }}</h3>
-            <span class="rounded bg-white px-2 py-1 text-xs text-slate-600">
+            <h3 class="font-semibold text-zinc-900">{{ detail.displayName }}</h3>
+            <span class="rounded bg-white px-2 py-1 text-xs text-zinc-600">
               {{ sanctionStatusLabels[detail.status] }}
             </span>
-            <span v-if="detail.memberDeleted" class="text-xs text-slate-500">
+            <span v-if="detail.memberDeleted" class="text-xs text-zinc-500">
               탈퇴 회원
             </span>
           </div>
-          <p class="mt-1 break-all text-sm text-slate-500">
+          <p class="mt-1 break-all text-sm text-zinc-500">
             로그인 ID: {{ detail.loginId }}
           </p>
         </div>
 
         <dl class="grid gap-4 text-sm sm:grid-cols-2">
           <div>
-            <dt class="text-slate-500">등록 관리자</dt>
-            <dd class="mt-1 text-slate-800">{{ detail.adminDisplayName }}</dd>
+            <dt class="text-zinc-500">등록 관리자</dt>
+            <dd class="mt-1 text-zinc-800">{{ detail.adminDisplayName }}</dd>
           </div>
           <div>
-            <dt class="text-slate-500">등록 일시</dt>
-            <dd class="mt-1 text-slate-800">
+            <dt class="text-zinc-500">등록 일시</dt>
+            <dd class="mt-1 text-zinc-800">
               {{ formatSanctionDate(detail.createdAt) }}
             </dd>
           </div>
           <div>
-            <dt class="text-slate-500">시작 일시</dt>
-            <dd class="mt-1 text-slate-800">
+            <dt class="text-zinc-500">시작 일시</dt>
+            <dd class="mt-1 text-zinc-800">
               {{ formatSanctionDate(detail.startsAt) }}
             </dd>
           </div>
           <div>
-            <dt class="text-slate-500">종료 일시</dt>
-            <dd class="mt-1 text-slate-800">
+            <dt class="text-zinc-500">종료 일시</dt>
+            <dd class="mt-1 text-zinc-800">
               {{ detail.endsAt === null ? '영구' : formatSanctionDate(detail.endsAt) }}
             </dd>
           </div>
           <div class="sm:col-span-2">
-            <dt class="text-slate-500">제재 사유</dt>
-            <dd class="mt-1 whitespace-pre-wrap break-words text-slate-800">{{ detail.reason }}</dd>
+            <dt class="text-zinc-500">제재 사유</dt>
+            <dd class="mt-1 whitespace-pre-wrap break-words text-zinc-800">{{ detail.reason }}</dd>
           </div>
 
           <template v-if="detail.revokedAt !== null">
             <div>
-              <dt class="text-slate-500">해제 관리자</dt>
-              <dd class="mt-1 text-slate-800">
+              <dt class="text-zinc-500">해제 관리자</dt>
+              <dd class="mt-1 text-zinc-800">
                 {{ detail.revokerDisplayName ?? '기록 없음' }}
               </dd>
             </div>
             <div>
-              <dt class="text-slate-500">해제 일시</dt>
-              <dd class="mt-1 text-slate-800">
+              <dt class="text-zinc-500">해제 일시</dt>
+              <dd class="mt-1 text-zinc-800">
                 {{ formatSanctionDate(detail.revokedAt) }}
               </dd>
             </div>
             <div class="sm:col-span-2">
-              <dt class="text-slate-500">해제 사유</dt>
-              <dd class="mt-1 whitespace-pre-wrap break-words text-slate-800">{{ detail.revokeReason ?? '기록 없음' }}</dd>
+              <dt class="text-zinc-500">해제 사유</dt>
+              <dd class="mt-1 whitespace-pre-wrap break-words text-zinc-800">{{ detail.revokeReason ?? '기록 없음' }}</dd>
             </div>
           </template>
         </dl>
 
         <form
             v-if="canRevoke"
-            class="grid gap-4 border-t border-slate-200 pt-5"
+            class="grid gap-4 border-t border-zinc-200 pt-5"
             @submit.prevent="submitRevocation"
         >
           <fieldset class="m-0 min-w-0 border-0 p-0" :disabled="busy">
@@ -298,7 +298,7 @@ onBeforeUnmount(() => {
 
         <p
             v-else
-            class="rounded-md bg-slate-50 px-4 py-3 text-sm text-slate-500"
+            class="rounded-md bg-zinc-50 px-4 py-3 text-sm text-zinc-500"
         >
           {{
             detail.memberDeleted

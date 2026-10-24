@@ -120,13 +120,13 @@ const chartOptions: ChartOptions<'line'> = {
 </script>
 
 <template>
-  <section class="min-w-0 rounded-lg border border-slate-200 bg-white p-5">
+  <section class="min-w-0 rounded-xl border border-border bg-card p-5 shadow-xs">
     <header class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h3 class="text-base font-semibold text-slate-900">
+        <h3 class="text-base font-semibold text-zinc-900">
           일별 작성 추이
         </h3>
-        <p class="mt-1 text-xs text-slate-500">
+        <p class="mt-1 text-xs text-zinc-500">
           선택한 게시판과 기간의 게시글·댓글 작성 수입니다.
         </p>
       </div>
@@ -143,7 +143,7 @@ const chartOptions: ChartOptions<'line'> = {
 
     <p
         v-if="totals.postCount === 0 && totals.commentCount === 0"
-        class="mt-4 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-500"
+        class="mt-4 rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500"
     >
       선택한 기간에 작성된 게시글과 댓글이 없습니다.
     </p>
@@ -158,30 +158,30 @@ const chartOptions: ChartOptions<'line'> = {
       />
     </div>
 
-    <details class="mt-4 border-t border-slate-100 pt-4">
-      <summary class="cursor-pointer text-sm font-medium text-slate-600">
+    <details class="mt-4 border-t border-zinc-100 pt-4">
+      <summary class="cursor-pointer text-sm font-medium text-zinc-600">
         날짜별 수치 보기
       </summary>
 
       <div class="mt-3 max-h-80 overflow-auto">
         <table :id="tableId" class="w-full text-right text-sm">
           <caption class="sr-only">날짜별 게시글·댓글 작성 수</caption>
-          <thead class="bg-slate-50 text-slate-600">
+          <thead class="bg-zinc-50 text-zinc-600">
           <tr>
             <th scope="col" class="px-3 py-2 text-left font-medium">날짜</th>
             <th scope="col" class="px-3 py-2 font-medium">게시글</th>
             <th scope="col" class="px-3 py-2 font-medium">댓글</th>
           </tr>
           </thead>
-          <tbody class="divide-y divide-slate-100">
+          <tbody class="divide-y divide-zinc-100">
           <tr v-for="row in activities" :key="row.date">
-            <th scope="row" class="px-3 py-2 text-left font-normal text-slate-600">
+            <th scope="row" class="px-3 py-2 text-left font-normal text-zinc-600">
               {{ row.date }}
             </th>
-            <td class="px-3 py-2 tabular-nums text-slate-800">
+            <td class="px-3 py-2 tabular-nums text-zinc-800">
               {{ row.postCount.toLocaleString('ko-KR') }}
             </td>
-            <td class="px-3 py-2 tabular-nums text-slate-800">
+            <td class="px-3 py-2 tabular-nums text-zinc-800">
               {{ row.commentCount.toLocaleString('ko-KR') }}
             </td>
           </tr>

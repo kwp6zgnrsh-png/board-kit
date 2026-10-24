@@ -52,7 +52,7 @@ async function submit() {
 </script>
 
 <template>
-  <form class="grid w-full max-w-md gap-5 rounded-lg border border-slate-200 bg-white p-6 sm:p-8" @submit.prevent="submit">
+  <form class="grid w-full max-w-md gap-5 rounded-xl border border-border bg-card p-6 sm:p-8 shadow-xs" @submit.prevent="submit">
     <BaseInput
         id="login-id"
         v-model="form.loginId"

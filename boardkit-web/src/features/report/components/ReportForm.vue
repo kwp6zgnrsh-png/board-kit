@@ -64,7 +64,7 @@ function submit() {
 
 <template>
   <form
-      class="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4"
+      class="grid gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4"
       :aria-busy="submitting"
       :aria-labelledby="`${formId}-heading`"
       @submit.prevent="submit"
@@ -72,11 +72,11 @@ function submit() {
     <div>
       <h3
           :id="`${formId}-heading`"
-          class="text-sm font-semibold text-slate-900"
+          class="text-sm font-semibold text-zinc-900"
       >
         신고하기
       </h3>
-      <p class="mt-1 text-xs leading-5 text-slate-500">
+      <p class="mt-1 text-xs leading-5 text-zinc-500">
         신고 사유를 선택해 주세요. 관리자가 내용을 확인합니다.
       </p>
     </div>

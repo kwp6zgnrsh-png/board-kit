@@ -20,7 +20,7 @@ function formatDate(value: string): string {
 <template>
   <p
       v-if="posts.length === 0"
-      class="rounded-md border border-slate-200 px-4 py-20 text-center text-sm leading-6 text-slate-500"
+      class="rounded-md border border-zinc-200 px-4 py-20 text-center text-sm leading-6 text-zinc-500"
   >
     아직 등록된 게시글이 없습니다.<br/>
     첫 번째 이야기를 시작해 보세요.
@@ -33,9 +33,9 @@ function formatDate(value: string): string {
         :board-slug="boardSlug"
         :post="post"
         :query="route.query"
-        class="group overflow-hidden rounded-lg border border-slate-200 bg-white transition-colors hover:border-blue-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+        class="group overflow-hidden rounded-lg border border-zinc-200 bg-white transition-colors hover:border-zinc-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
-      <div class="aspect-square overflow-hidden border-b border-slate-100 bg-slate-50">
+      <div class="aspect-square overflow-hidden border-b border-zinc-100 bg-zinc-50">
         <PostThumbnail v-if="!post.secret &&post.representativeFileId !== null && post.thumbnailAvailable"
                        :board-slug="boardSlug"
                        :post-id="post.id"
@@ -43,7 +43,7 @@ function formatDate(value: string): string {
                        class="size-full"
         />
         <div v-else class="grid size-full place-items-center" aria-hidden="true">
-          <CommunityIcon name="image" class="size-10 text-slate-300"/>
+          <CommunityIcon name="image" class="size-10 text-zinc-300"/>
         </div>
       </div>
 
@@ -60,11 +60,11 @@ function formatDate(value: string): string {
           </span>
           <span
               v-if="post.pinned"
-              class="rounded bg-blue-50 px-2 py-0.5 font-medium text-blue-600"
+              class="rounded bg-accent px-2 py-0.5 font-medium text-primary"
           >
             공지
           </span>
-          <span v-if="post.categoryName" class="text-slate-500">
+          <span v-if="post.categoryName" class="text-zinc-500">
             {{ post.categoryName }}
           </span>
         </div>
@@ -73,42 +73,42 @@ function formatDate(value: string): string {
           <CommunityIcon
               v-if="post.secret"
               name="lock"
-              class="mt-0.5 size-4 text-slate-500"
+              class="mt-0.5 size-4 text-zinc-500"
               aria-label="비밀글"
               role="img"
               :aria-hidden="false"
           />
           <h2
-              class="min-w-0 break-words text-sm font-semibold leading-6 text-slate-800 group-hover:text-blue-600"
+              class="min-w-0 break-words text-sm font-semibold leading-6 text-zinc-800 group-hover:text-primary"
           >
             {{ post.title }}
           </h2>
         </div>
 
-        <div class="flex min-w-0 items-center justify-between gap-3 text-xs text-slate-500">
+        <div class="flex min-w-0 items-center justify-between gap-3 text-xs text-zinc-500">
           <span class="truncate">{{ post.authorDisplayName }}</span>
           <time :datetime="post.createdAt" class="shrink-0">
             {{ formatDate(post.createdAt) }}
           </time>
         </div>
 
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-zinc-100 pt-3 text-xs text-zinc-500">
           <span>조회 {{ post.viewCount.toLocaleString() }}</span>
           <span>댓글 {{ post.commentCount.toLocaleString() }}</span>
           <span>좋아요 {{ post.likeCount.toLocaleString() }}</span>
         </div>
       </div>
       <template #blocked>
-        <div class="grid aspect-square place-items-center border-b border-slate-100 bg-slate-50">
-          <CommunityIcon name="lock" class="size-8 text-slate-300" />
+        <div class="grid aspect-square place-items-center border-b border-zinc-100 bg-zinc-50">
+          <CommunityIcon name="lock" class="size-8 text-zinc-300" />
         </div>
 
         <div class="grid gap-3 p-4">
-          <h2 class="text-sm font-medium leading-6 text-slate-500">
+          <h2 class="text-sm font-medium leading-6 text-zinc-500">
             블라인드된 게시글입니다.
           </h2>
 
-          <div class="flex items-center justify-between gap-3 text-xs text-slate-400">
+          <div class="flex items-center justify-between gap-3 text-xs text-zinc-400">
             <span class="truncate">{{ post.authorDisplayName }}</span>
             <time :datetime="post.createdAt" class="shrink-0">
               {{ formatDate(post.createdAt) }}

@@ -168,8 +168,8 @@ defineExpose({applyImages})
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-sm border border-slate-300 bg-white" aria-label="본문 편집기">
-    <div v-if="$slots.uploads" class="border-b border-slate-300 bg-slate-50 px-3 py-3 sm:px-4">
+  <section class="overflow-hidden rounded-xl border border-input bg-card shadow-xs" aria-label="본문 편집기">
+    <div v-if="$slots.uploads" class="border-b border-input bg-zinc-50 px-3 py-3 sm:px-4">
       <slot name="uploads" />
     </div>
 
@@ -179,7 +179,7 @@ defineExpose({applyImages})
       <EditorContent
           :editor="editor"
           class="h-[52vh] min-h-80 resize-y overflow-auto sm:min-h-[420px]"
-          :class="{ 'bg-slate-100': disabled }"
+          :class="{ 'bg-zinc-100': disabled }"
       />
     </template>
   </section>

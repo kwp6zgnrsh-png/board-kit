@@ -192,7 +192,7 @@ onBeforeUnmount(() => {
     <p
         v-if="resultMessage"
         role="status"
-        class="max-w-xs text-xs text-slate-600"
+        class="max-w-xs text-xs text-zinc-600"
     >
       {{ resultMessage }}
     </p>
@@ -200,7 +200,7 @@ onBeforeUnmount(() => {
     <dialog
         ref="dialog"
         :aria-label="commentId === undefined ? '게시글 신고' : '댓글 신고'"
-        class="m-auto max-h-[calc(100dvh_-_2rem)] w-[calc(100%_-_2rem)] max-w-lg overflow-y-auto rounded-lg border border-slate-200 bg-white p-5 shadow-xl backdrop:bg-slate-950/40"
+        class="m-auto max-h-[calc(100dvh_-_2rem)] w-[calc(100%_-_2rem)] max-w-lg overflow-y-auto rounded-lg border border-zinc-200 bg-white p-5 shadow-xl backdrop:bg-zinc-950/40"
         @cancel.prevent="cancelReport"
     >
       <ReportForm

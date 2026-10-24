@@ -99,7 +99,7 @@ function submit() {
 <template>
   <form class="grid gap-4" :aria-busy="submitting" @submit.prevent="submit">
     <div>
-      <h3 class="mb-2 text-sm font-semibold text-slate-800">
+      <h3 class="mb-2 text-sm font-semibold text-zinc-800">
         {{ editing ? '공식 답변 수정' : '공식 답변 작성' }}
       </h3>
 
@@ -110,13 +110,13 @@ function submit() {
     </div>
 
     <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
-      <p class="text-slate-500">
+      <p class="text-zinc-500">
         서식을 사용할 수 있으며 이미지·첨부파일은 지원하지 않습니다.
       </p>
 
       <p
           class="tabular-nums"
-          :class="textLength > 2000 ? 'text-red-600' : 'text-slate-500'"
+          :class="textLength > 2000 ? 'text-red-600' : 'text-zinc-500'"
       >
         {{ textLength.toLocaleString() }} / 2,000자
       </p>

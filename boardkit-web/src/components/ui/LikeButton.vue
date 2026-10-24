@@ -22,12 +22,12 @@ const emit = defineEmits<{
 <template>
   <button
       type="button"
-      class="inline-flex items-center justify-center gap-2 rounded-md border font-medium leading-5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+      class="inline-flex items-center justify-center gap-2 rounded-md border font-medium leading-5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50"
       :class="[
         size === 'sm' ? 'h-8 px-3 text-xs' : 'h-9 px-4 text-sm',
         liked
-          ? 'border-blue-200 bg-blue-50 text-blue-600 enabled:hover:bg-blue-100'
-          : 'border-slate-200 bg-white text-slate-400 enabled:hover:bg-slate-50',
+          ? 'border-zinc-300 bg-zinc-100 text-zinc-950 enabled:hover:bg-zinc-200'
+          : 'border-zinc-200 bg-white text-zinc-400 enabled:hover:bg-zinc-50',
       ]"
       :disabled="disabled || loading"
       :aria-pressed="liked"
@@ -48,7 +48,8 @@ const emit = defineEmits<{
         stroke-linejoin="round"
         aria-hidden="true"
     >
-      <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>
+      <path d="m7 10 4-7a2 2 0 0 1 3 2v5h5a2 2 0 0 1 1.96 2.4l-1.4 7A2 2 0 0 1 17.6 21H7Z"/>
+      <rect x="3" y="10" width="4" height="11" rx="1"/>
     </svg>
 
     <span class="tabular-nums">{{ count.toLocaleString() }}</span>

@@ -79,7 +79,7 @@ const DisplayImageExtension = PostImage.extend({
         class:
             'my-3 rounded border p-4 text-sm ' +
             (status === 'loading'
-                ? 'border-slate-200 bg-slate-50 text-slate-500'
+                ? 'border-zinc-200 bg-zinc-50 text-zinc-500'
                 : 'border-red-200 bg-red-50 text-red-700'),
       },
       message,
@@ -303,7 +303,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="min-h-36 min-w-0 py-5 text-slate-800 max-sm:min-h-24">
+  <div class="min-h-36 min-w-0 py-5 text-zinc-800 max-sm:min-h-24">
     <p
         v-if="renderedBody.error"
         role="alert"
@@ -320,9 +320,9 @@ onBeforeUnmount(() => {
 
     <section
         v-if="downloadFiles.length"
-        class="mt-6 grid gap-3 border-t border-slate-200 pt-4"
+        class="mt-6 grid gap-3 border-t border-zinc-200 pt-4"
     >
-      <h2 class="m-0 text-base font-semibold text-slate-900">
+      <h2 class="m-0 text-base font-semibold text-zinc-900">
         첨부파일 {{ downloadFiles.length }}개
       </h2>
 
@@ -330,13 +330,13 @@ onBeforeUnmount(() => {
         <li
             v-for="file in downloadFiles"
             :key="file.id"
-            class="flex flex-wrap items-center justify-between gap-3 rounded border border-slate-200 bg-slate-50 p-3"
+            class="flex flex-wrap items-center justify-between gap-3 rounded border border-zinc-200 bg-zinc-50 p-3"
         >
           <div class="min-w-0">
-            <p class="m-0 truncate font-medium text-slate-900">
+            <p class="m-0 truncate font-medium text-zinc-900">
               {{ file.originalName }}
             </p>
-            <p class="m-0 text-xs text-slate-600">
+            <p class="m-0 text-xs text-zinc-600">
               {{ formatFileSize(file.sizeBytes) }}
             </p>
           </div>
@@ -344,7 +344,7 @@ onBeforeUnmount(() => {
           <button
               type="button"
               :disabled="downloadingIds.includes(file.id)"
-              class="rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50"
+              class="rounded border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50"
               @click="downloadFile(file)"
           >
             {{ downloadingIds.includes(file.id) ? '받는 중...' : '다운로드' }}

@@ -253,11 +253,11 @@ onBeforeUnmount(() => {
   <div class="grid gap-6">
     <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p class="text-xs font-medium text-blue-600">관리자</p>
-        <h1 class="mt-1 text-2xl font-semibold text-slate-900">
+        <p class="text-xs font-medium text-primary">관리자</p>
+        <h1 class="mt-1 text-2xl font-semibold text-zinc-900">
           회원 제재 관리
         </h1>
-        <p class="mt-2 text-sm text-slate-500">
+        <p class="mt-2 text-sm text-zinc-500">
           회원 제재를 등록하고 이력을 조회하거나 해제합니다.
         </p>
       </div>
@@ -265,7 +265,7 @@ onBeforeUnmount(() => {
       <div class="flex items-center gap-2">
         <RouterLink
             :to="{ name: 'admin-dashboard' }"
-            class="text-sm text-slate-600 hover:text-blue-600"
+            class="text-sm text-zinc-600 hover:text-primary"
         >
           관리자 메뉴
         </RouterLink>
@@ -313,7 +313,7 @@ onBeforeUnmount(() => {
 
           <section
               v-else
-              class="rounded-lg border border-slate-200 bg-white px-5 py-10 text-center text-sm text-slate-500"
+              class="rounded-xl border border-border bg-card px-5 py-10 text-center text-sm text-zinc-500 shadow-xs"
           >
             제재를 등록하려면 검색 결과에서 회원을 선택하세요.
           </section>
@@ -322,9 +322,9 @@ onBeforeUnmount(() => {
 
       <div
           v-if="memberId !== null"
-          class="flex flex-wrap items-center justify-between gap-3 rounded-md bg-slate-50 px-4 py-3"
+          class="flex flex-wrap items-center justify-between gap-3 rounded-md bg-zinc-50 px-4 py-3"
       >
-        <p class="text-sm text-slate-600">
+        <p class="text-sm text-zinc-600">
           선택한 회원의 제재 이력을 조회 중입니다.
         </p>
 

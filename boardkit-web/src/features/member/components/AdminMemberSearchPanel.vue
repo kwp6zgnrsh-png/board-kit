@@ -159,15 +159,15 @@ onBeforeUnmount(() => {
 
 <template>
   <section
-      class="overflow-hidden rounded-lg border border-slate-200 bg-white"
+      class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
       :aria-busy="loading"
       :aria-labelledby="`${formId}-heading`"
   >
-    <header class="border-b border-slate-200 px-5 py-4">
-      <h2 :id="`${formId}-heading`" class="text-base font-semibold text-slate-900">
+    <header class="border-b border-zinc-200 px-5 py-4">
+      <h2 :id="`${formId}-heading`" class="text-base font-semibold text-zinc-900">
         회원 검색
       </h2>
-      <p class="mt-1 text-sm text-slate-500">
+      <p class="mt-1 text-sm text-zinc-500">
         관리할 회원을 로그인 ID 또는 닉네임으로 검색하세요.
       </p>
     </header>
@@ -207,18 +207,18 @@ onBeforeUnmount(() => {
       {{ errorMessage }}
     </p>
 
-    <p v-else-if="loading" class="px-5 pb-8 text-center text-sm text-slate-500">
+    <p v-else-if="loading" class="px-5 pb-8 text-center text-sm text-zinc-500">
       회원을 검색하는 중입니다.
     </p>
 
     <template v-else-if="result">
-      <p class="border-t border-slate-100 px-5 py-3 text-sm text-slate-500">
+      <p class="border-t border-zinc-100 px-5 py-3 text-sm text-zinc-500">
         검색 결과 {{ result.totalElements.toLocaleString() }}명
       </p>
 
       <p
           v-if="result.members.length === 0"
-          class="px-5 pb-8 text-center text-sm text-slate-500"
+          class="px-5 pb-8 text-center text-sm text-zinc-500"
       >
         검색 조건에 맞는 회원이 없습니다.
       </p>
@@ -227,7 +227,7 @@ onBeforeUnmount(() => {
         <div class="overflow-x-auto">
           <table class="w-full min-w-[480px] text-sm">
             <caption class="sr-only">회원 검색 결과</caption>
-            <thead class="border-y border-slate-200 bg-slate-50 text-slate-600">
+            <thead class="border-y border-zinc-200 bg-zinc-50 text-zinc-600">
             <tr>
               <th scope="col" class="px-5 py-3 text-left font-medium">로그인 ID</th>
               <th scope="col" class="px-3 py-3 text-left font-medium">닉네임</th>
@@ -235,16 +235,16 @@ onBeforeUnmount(() => {
               <th scope="col" class="px-5 py-3 text-right font-medium">선택</th>
             </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody class="divide-y divide-zinc-100">
             <tr
                 v-for="member in result.members"
                 :key="member.memberId"
-                :class="selectedMemberId === member.memberId ? 'bg-blue-50' : 'hover:bg-slate-50'"
+                :class="selectedMemberId === member.memberId ? 'bg-accent' : 'hover:bg-zinc-50'"
             >
-              <td class="break-all px-5 py-3 text-slate-700">
+              <td class="break-all px-5 py-3 text-zinc-700">
                 {{ member.loginId }}
               </td>
-              <td class="px-3 py-3 font-medium text-slate-800">
+              <td class="px-3 py-3 font-medium text-zinc-800">
                 {{ member.displayName }}
               </td>
               <td class="px-3 py-3">
@@ -252,7 +252,7 @@ onBeforeUnmount(() => {
                       class="inline-block whitespace-nowrap rounded px-2 py-1 text-xs"
                       :class="member.sanctioned
                       ? 'bg-amber-50 text-amber-700'
-                      : 'bg-slate-100 text-slate-500'"
+                      : 'bg-zinc-100 text-zinc-500'"
                   >
                     {{ member.sanctioned ? '제재 중' : '제재 없음' }}
                   </span>
@@ -281,7 +281,7 @@ onBeforeUnmount(() => {
       </template>
     </template>
 
-    <p v-else class="px-5 pb-8 text-center text-sm text-slate-500">
+    <p v-else class="px-5 pb-8 text-center text-sm text-zinc-500">
       검색어를 입력하고 검색 버튼을 눌러 주세요.
     </p>
   </section>

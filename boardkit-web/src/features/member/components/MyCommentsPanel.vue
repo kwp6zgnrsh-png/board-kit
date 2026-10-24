@@ -107,13 +107,13 @@ onBeforeUnmount(() => {
 
 <template>
   <section
-      class="overflow-hidden rounded-lg border border-slate-200 bg-white"
+      class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
       :aria-busy="loading"
   >
-    <header class="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+    <header class="flex items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4">
       <div>
-        <h2 class="text-base font-semibold text-slate-900">내가 쓴 댓글</h2>
-        <p v-if="commentPage" class="mt-1 text-sm text-slate-500">
+        <h2 class="text-base font-semibold text-zinc-900">내가 쓴 댓글</h2>
+        <p v-if="commentPage" class="mt-1 text-sm text-zinc-500">
           전체 {{ commentPage.totalElements.toLocaleString() }}개
         </p>
       </div>
@@ -136,51 +136,51 @@ onBeforeUnmount(() => {
       {{ errorMessage }}
     </div>
 
-    <p v-else-if="loading" class="px-5 py-12 text-center text-sm text-slate-500">
+    <p v-else-if="loading" class="px-5 py-12 text-center text-sm text-zinc-500">
       댓글을 불러오는 중입니다.
     </p>
 
     <template v-else-if="commentPage">
       <p
           v-if="commentPage.comments.length === 0"
-          class="px-5 py-12 text-center text-sm text-slate-500"
+          class="px-5 py-12 text-center text-sm text-zinc-500"
       >
         작성한 댓글이 없습니다.
       </p>
 
       <template v-else>
-        <ul class="divide-y divide-slate-100">
+        <ul class="divide-y divide-zinc-100">
           <li
               v-for="comment in commentPage.comments"
               :key="comment.id"
               class="px-5 py-4"
           >
-            <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <div class="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
               <span>{{ comment.boardName }}</span>
 
               <span
                   v-if="comment.parentId !== null"
-                  class="rounded bg-blue-50 px-1.5 py-0.5 text-blue-600"
+                  class="rounded bg-accent px-1.5 py-0.5 text-primary"
               >
                 대댓글
               </span>
 
               <span
                   v-if="comment.boardStatus === 'ARCHIVED'"
-                  class="rounded bg-slate-100 px-1.5 py-0.5"
+                  class="rounded bg-zinc-100 px-1.5 py-0.5"
               >
                 보관
               </span>
             </div>
 
-            <p class="line-clamp-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-800">{{ comment.content }}</p>
+            <p class="line-clamp-3 whitespace-pre-wrap break-words text-sm leading-6 text-zinc-800">{{ comment.content }}</p>
 
             <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
-              <time :datetime="comment.createdAt" class="text-xs text-slate-500">
+              <time :datetime="comment.createdAt" class="text-xs text-zinc-500">
                 {{ comment.createdAt.replace('T', ' ').slice(0, 16) }}
               </time>
 
-              <span v-if="comment.postDeleted" class="text-xs text-slate-400">
+              <span v-if="comment.postDeleted" class="text-xs text-zinc-400">
                 원문이 삭제되었습니다.
               </span>
 
@@ -193,7 +193,7 @@ onBeforeUnmount(() => {
                     postId: comment.postId,
                   },
                 }"
-                  class="text-xs font-medium text-blue-600 hover:underline"
+                  class="text-xs font-medium text-primary hover:underline"
               >
                 원문 보기
               </RouterLink>
@@ -209,7 +209,7 @@ onBeforeUnmount(() => {
         />
       </template>
 
-      <p class="border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
+      <p class="border-t border-zinc-100 px-5 py-3 text-xs text-zinc-500">
         게시판 설정에 따라 원문 열람이 제한될 수 있습니다.
       </p>
     </template>

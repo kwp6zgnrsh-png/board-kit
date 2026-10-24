@@ -35,14 +35,14 @@ const cards = computed(() => [
     <div
         v-for="card in cards"
         :key="card.key"
-        class="rounded-lg border border-slate-200 bg-white p-5"
+        class="rounded-xl border border-border bg-card p-5 shadow-xs"
     >
-      <dt class="text-sm font-medium text-slate-500">
+      <dt class="text-sm font-medium text-zinc-500">
         {{ card.label }}
       </dt>
-      <dd class="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-slate-900">
+      <dd class="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-zinc-900">
         {{ card.value.toLocaleString('ko-KR') }}
-        <span class="ml-1 text-sm font-normal text-slate-500">개</span>
+        <span class="ml-1 text-sm font-normal text-zinc-500">개</span>
       </dd>
     </div>
   </dl>

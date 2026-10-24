@@ -164,18 +164,18 @@ onBeforeUnmount(() => {
   <div class="grid gap-6">
     <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p class="text-xs font-medium text-blue-600">관리자</p>
-        <h1 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
+        <p class="text-xs font-medium text-primary">관리자</p>
+        <h1 class="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
           게시판 활동 통계
         </h1>
-        <p class="mt-2 text-sm text-slate-500">
+        <p class="mt-2 text-sm text-zinc-500">
           게시판별 현황과 작성 활동을 확인하세요.
         </p>
       </div>
 
       <RouterLink
           :to="{ name: 'admin-dashboard' }"
-          class="rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          class="rounded-md border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
       >
         관리자 메뉴
       </RouterLink>
@@ -183,7 +183,7 @@ onBeforeUnmount(() => {
 
     <section
         aria-label="통계 조회 조건"
-        class="flex flex-wrap items-end gap-4 rounded-lg border border-slate-200 bg-white p-5"
+        class="flex flex-wrap items-end gap-4 rounded-xl border border-border bg-card p-5 shadow-xs"
     >
       <div class="w-full sm:w-56">
         <BaseSelect
@@ -213,7 +213,7 @@ onBeforeUnmount(() => {
         새로고침
       </BaseButton>
 
-      <p class="text-xs text-slate-500 sm:ml-auto">
+      <p class="text-xs text-zinc-500 sm:ml-auto">
         한국 시각 기준
       </p>
     </section>
@@ -241,24 +241,24 @@ onBeforeUnmount(() => {
       <p
           v-else-if="loading"
           role="status"
-          class="py-16 text-center text-sm text-slate-500"
+          class="py-16 text-center text-sm text-zinc-500"
       >
         통계를 불러오는 중입니다.
       </p>
 
       <div v-else-if="result" class="grid gap-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <h2 class="text-lg font-semibold text-slate-900">
+          <h2 class="text-lg font-semibold text-zinc-900">
             {{ selectedBoardName }}
           </h2>
-          <p class="text-sm text-slate-500">
+          <p class="text-sm text-zinc-500">
             작성 활동 조회 기간: {{ result.startDate }} ~ {{ result.endDate }}
           </p>
         </div>
 
         <BoardStatisticsSummary :summary="result.summary"/>
 
-        <p class="text-xs leading-5 text-slate-500">
+        <p class="text-xs leading-5 text-zinc-500">
           현재 수는 삭제되지 않은 내용 기준이며,
           오늘 작성 수에는 이후 삭제한 내용도 포함됩니다.
         </p>

@@ -52,8 +52,8 @@ const filterOptions = [
 
 const statusClasses: Record<MemberSanctionStatus, string> = {
   ACTIVE: 'bg-amber-50 text-amber-700',
-  EXPIRED: 'bg-slate-100 text-slate-600',
-  REVOKED: 'bg-blue-50 text-blue-700',
+  EXPIRED: 'bg-zinc-100 text-zinc-600',
+  REVOKED: 'bg-accent text-primary',
 }
 
 const adminId = computed(() => {
@@ -198,16 +198,16 @@ onBeforeUnmount(() => {
 
 <template>
   <section
-      class="overflow-hidden rounded-lg border border-slate-200 bg-white"
+      class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
       :aria-busy="loading"
       :aria-labelledby="`${panelId}-heading`"
   >
-    <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+    <header class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4">
       <div>
-        <h2 :id="`${panelId}-heading`" class="text-base font-semibold text-slate-900">
+        <h2 :id="`${panelId}-heading`" class="text-base font-semibold text-zinc-900">
           제재 이력
         </h2>
-        <p class="mt-1 text-sm text-slate-500">
+        <p class="mt-1 text-sm text-zinc-500">
           {{ memberId === null ? '전체 회원의 이력입니다.' : '선택한 회원의 이력입니다.' }}
         </p>
       </div>
@@ -245,18 +245,18 @@ onBeforeUnmount(() => {
       {{ errorMessage }}
     </p>
 
-    <p v-else-if="loading" class="px-5 pb-8 text-center text-sm text-slate-500">
+    <p v-else-if="loading" class="px-5 pb-8 text-center text-sm text-zinc-500">
       제재 이력을 불러오는 중입니다.
     </p>
 
     <template v-else-if="result">
-      <p class="px-5 pb-3 text-sm text-slate-500">
+      <p class="px-5 pb-3 text-sm text-zinc-500">
         전체 {{ result.totalElements.toLocaleString() }}건
       </p>
 
       <p
           v-if="result.sanctions.length === 0"
-          class="px-5 pb-8 text-center text-sm text-slate-500"
+          class="px-5 pb-8 text-center text-sm text-zinc-500"
       >
         해당 조건의 제재 이력이 없습니다.
       </p>
@@ -265,7 +265,7 @@ onBeforeUnmount(() => {
         <div class="overflow-x-auto">
           <table class="w-full min-w-[800px] text-sm">
             <caption class="sr-only">회원 제재 이력 목록</caption>
-            <thead class="border-y border-slate-200 bg-slate-50 text-slate-600">
+            <thead class="border-y border-zinc-200 bg-zinc-50 text-zinc-600">
             <tr>
               <th scope="col" class="px-5 py-3 text-left font-medium">회원</th>
               <th scope="col" class="px-3 py-3 text-left font-medium">상태</th>
@@ -274,20 +274,20 @@ onBeforeUnmount(() => {
               <th scope="col" class="px-5 py-3 text-right font-medium">관리</th>
             </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody class="divide-y divide-zinc-100">
             <tr
                 v-for="sanction in result.sanctions"
                 :key="sanction.sanctionId"
                 :class="selectedSanctionId === sanction.sanctionId
-                  ? 'bg-blue-50'
-                  : 'hover:bg-slate-50'"
+                  ? 'bg-accent'
+                  : 'hover:bg-zinc-50'"
             >
               <td class="px-5 py-3">
-                <p class="font-medium text-slate-800">{{ sanction.displayName }}</p>
-                <p class="mt-1 break-all text-xs text-slate-500">{{ sanction.loginId }}</p>
+                <p class="font-medium text-zinc-800">{{ sanction.displayName }}</p>
+                <p class="mt-1 break-all text-xs text-zinc-500">{{ sanction.loginId }}</p>
                 <span
                     v-if="sanction.memberDeleted"
-                    class="mt-1 inline-block text-xs text-slate-500"
+                    class="mt-1 inline-block text-xs text-zinc-500"
                 >
                     탈퇴 회원
                   </span>
@@ -302,11 +302,11 @@ onBeforeUnmount(() => {
                   </span>
               </td>
 
-              <td class="max-w-64 px-3 py-3 text-slate-700">
+              <td class="max-w-64 px-3 py-3 text-zinc-700">
                 <p class="line-clamp-2 break-words">{{ sanction.reason }}</p>
               </td>
 
-              <td class="whitespace-nowrap px-3 py-3 text-xs leading-6 text-slate-500">
+              <td class="whitespace-nowrap px-3 py-3 text-xs leading-6 text-zinc-500">
                 <p>시작 {{ formatSanctionDate(sanction.startsAt) }}</p>
                 <p>
                   종료 {{ sanction.endsAt === null ? '영구' : formatSanctionDate(sanction.endsAt) }}

@@ -68,7 +68,7 @@ watch(boardSlug, loadBoard, {
 
 <template>
   <div class="grid min-w-0 gap-6">
-    <p v-if="loading" class="rounded-md bg-slate-50 p-5 text-sm text-slate-500">
+    <p v-if="loading" class="rounded-md bg-zinc-50 p-5 text-sm text-zinc-500">
       게시판 정보를 불러오는 중입니다.
     </p>
 

@@ -44,8 +44,8 @@ const statusLabels: Record<ReportStatus, string> = {
 
 const statusClasses: Record<ReportStatus, string> = {
   PENDING: 'bg-amber-50 text-amber-700',
-  ACCEPTED: 'bg-blue-50 text-blue-700',
-  REJECTED: 'bg-slate-100 text-slate-600',
+  ACCEPTED: 'bg-accent text-primary',
+  REJECTED: 'bg-zinc-100 text-zinc-600',
 }
 
 const adminId = computed(() => {
@@ -177,28 +177,28 @@ onBeforeUnmount(() => {
   <div class="grid gap-6">
     <header class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p class="text-xs font-medium text-blue-600">관리자</p>
-        <h1 class="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
+        <p class="text-xs font-medium text-primary">관리자</p>
+        <h1 class="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
           신고 처리
         </h1>
-        <p class="mt-2 text-sm text-slate-500">
+        <p class="mt-2 text-sm text-zinc-500">
           게시글과 댓글 신고를 확인합니다.
         </p>
       </div>
 
       <RouterLink
           :to="{ name: 'admin-dashboard' }"
-          class="rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          class="rounded-md border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
       >
         관리자 메뉴
       </RouterLink>
     </header>
 
     <section
-        class="overflow-hidden rounded-lg border border-slate-200 bg-white"
+        class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
         :aria-busy="loading"
     >
-      <header class="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 px-5 py-4">
+      <header class="flex flex-wrap items-end justify-between gap-4 border-b border-zinc-200 px-5 py-4">
         <div class="w-40">
           <BaseSelect
               id="report-status-filter"
@@ -210,7 +210,7 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="flex items-center gap-3">
-          <p v-if="result" class="text-sm text-slate-500">
+          <p v-if="result" class="text-sm text-zinc-500">
             전체 {{ result.totalElements.toLocaleString() }}개
           </p>
           <BaseButton
@@ -232,14 +232,14 @@ onBeforeUnmount(() => {
         {{ errorMessage }}
       </p>
 
-      <p v-else-if="loading" class="px-5 py-12 text-center text-sm text-slate-500">
+      <p v-else-if="loading" class="px-5 py-12 text-center text-sm text-zinc-500">
         목록을 불러오는 중입니다.
       </p>
 
       <template v-else-if="result">
         <p
             v-if="result.reports.length === 0"
-            class="px-5 py-12 text-center text-sm text-slate-500"
+            class="px-5 py-12 text-center text-sm text-zinc-500"
         >
           조건에 해당하는 신고가 없습니다.
         </p>
@@ -249,7 +249,7 @@ onBeforeUnmount(() => {
             <table class="w-full min-w-[960px] table-fixed text-sm">
               <caption class="sr-only">관리자 신고 목록</caption>
 
-              <thead class="border-b border-slate-200 bg-slate-50 text-slate-600">
+              <thead class="border-b border-zinc-200 bg-zinc-50 text-zinc-600">
               <tr>
                 <th scope="col" class="w-20 px-3 py-3 text-center font-medium">번호</th>
                 <th scope="col" class="px-4 py-3 text-left font-medium">신고 대상</th>
@@ -261,13 +261,13 @@ onBeforeUnmount(() => {
               </tr>
               </thead>
 
-              <tbody class="divide-y divide-slate-100">
+              <tbody class="divide-y divide-zinc-100">
               <tr
                   v-for="report in result.reports"
                   :key="report.id"
-                  class="hover:bg-slate-50"
+                  class="hover:bg-zinc-50"
               >
-                <td class="px-3 py-3 text-center text-slate-500">
+                <td class="px-3 py-3 text-center text-zinc-500">
                   {{ report.id }}
                 </td>
 
@@ -281,11 +281,11 @@ onBeforeUnmount(() => {
                           page: route.query.page,
                         },
                       }"
-                      class="block truncate font-medium text-slate-800 hover:text-blue-600 hover:underline"
+                      class="block truncate font-medium text-zinc-800 hover:text-primary hover:underline"
                   >
                     {{ report.postTitle }}
                   </RouterLink>
-                  <div class="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
+                  <div class="mt-1 flex flex-wrap gap-2 text-xs text-zinc-500">
                       <span>
                         {{ report.commentId === null ? '게시글 신고' : '댓글 신고' }}
                       </span>
@@ -298,21 +298,21 @@ onBeforeUnmount(() => {
                   </div>
                 </td>
 
-                <td class="px-3 py-3 text-slate-600">
+                <td class="px-3 py-3 text-zinc-600">
                   <span class="block truncate">{{ report.boardName }}</span>
                   <span
                       v-if="report.boardStatus === 'ARCHIVED'"
-                      class="mt-1 inline-block text-xs text-slate-500"
+                      class="mt-1 inline-block text-xs text-zinc-500"
                   >
                       보관된 게시판
                     </span>
                 </td>
 
-                <td class="truncate px-3 py-3 text-slate-600">
+                <td class="truncate px-3 py-3 text-zinc-600">
                   {{ report.reporterDisplayName }}
                 </td>
 
-                <td class="px-3 py-3 text-slate-600">
+                <td class="px-3 py-3 text-zinc-600">
                   {{ reasonLabels[report.reason] }}
                 </td>
 
@@ -325,7 +325,7 @@ onBeforeUnmount(() => {
                     </span>
                 </td>
 
-                <td class="px-3 py-3 text-xs text-slate-500">
+                <td class="px-3 py-3 text-xs text-zinc-500">
                   {{ report.createdAt.replace('T', ' ').slice(0, 16) }}
                 </td>
               </tr>

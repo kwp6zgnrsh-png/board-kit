@@ -269,13 +269,13 @@ async function submit() {
 
 <template>
   <form class="grid min-w-0 gap-5" @submit.prevent="submit">
-    <section class="grid gap-5 rounded-lg border border-slate-200 bg-white p-5 sm:p-6">
-      <div class="flex flex-col justify-between gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-center">
+    <section class="grid gap-5 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs">
+      <div class="flex flex-col justify-between gap-2 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center">
         <div class="flex items-center gap-2">
-          <span class="text-xs font-semibold text-blue-600">01</span>
-          <h2 class="text-base font-semibold text-slate-900">기본 정보</h2>
+          <span class="text-xs font-semibold text-primary">01</span>
+          <h2 class="text-base font-semibold text-zinc-900">기본 정보</h2>
         </div>
-        <p class="text-xs leading-5 text-slate-500">게시판 이름과 화면 표시 방식을 설정합니다.</p>
+        <p class="text-xs leading-5 text-zinc-500">게시판 이름과 화면 표시 방식을 설정합니다.</p>
       </div>
 
       <div class="grid gap-5 sm:grid-cols-2">
@@ -323,13 +323,13 @@ async function submit() {
       />
     </section>
 
-    <section class="grid gap-5 rounded-lg border border-slate-200 bg-white p-5 sm:p-6">
-      <div class="flex flex-col justify-between gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-center">
+    <section class="grid gap-5 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs">
+      <div class="flex flex-col justify-between gap-2 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center">
         <div class="flex items-center gap-2">
-          <span class="text-xs font-semibold text-blue-600">02</span>
-          <h2 class="text-base font-semibold text-slate-900">접근 권한</h2>
+          <span class="text-xs font-semibold text-primary">02</span>
+          <h2 class="text-base font-semibold text-zinc-900">접근 권한</h2>
         </div>
-        <p class="text-xs leading-5 text-slate-500">조회, 게시글 작성, 댓글 작성 권한을 지정합니다.</p>
+        <p class="text-xs leading-5 text-zinc-500">조회, 게시글 작성, 댓글 작성 권한을 지정합니다.</p>
       </div>
 
       <div class="grid gap-5 sm:grid-cols-2">
@@ -360,11 +360,11 @@ async function submit() {
       </div>
     </section>
 
-    <section class="grid gap-5 rounded-lg border border-slate-200 bg-white p-5 sm:p-6">
-      <div class="flex flex-col justify-between gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center">
+    <section class="grid gap-5 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs">
+      <div class="flex flex-col justify-between gap-3 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center">
         <div class="flex items-center gap-2">
-          <span class="text-xs font-semibold text-blue-600">03</span>
-          <h2 class="text-base font-semibold text-slate-900">카테고리</h2>
+          <span class="text-xs font-semibold text-primary">03</span>
+          <h2 class="text-base font-semibold text-zinc-900">카테고리</h2>
         </div>
         <BaseCheckbox v-model="form.categoriesEnabled" label="카테고리 사용" />
       </div>
@@ -380,7 +380,7 @@ async function submit() {
           <div
             v-for="category in form.categories"
             :key="category.key"
-            class="grid items-end gap-3 rounded-md bg-slate-50 p-4 sm:grid-cols-[minmax(0,1fr)_7rem_auto]"
+            class="grid items-end gap-3 rounded-md bg-zinc-50 p-4 sm:grid-cols-[minmax(0,1fr)_7rem_auto]"
           >
             <BaseInput
               :id="`category-name-${category.key}`"
@@ -407,18 +407,18 @@ async function submit() {
       </template>
     </section>
 
-    <section class="grid gap-5 rounded-lg border border-slate-200 bg-white p-5 sm:p-6">
-      <div class="flex flex-col justify-between gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-center">
+    <section class="grid gap-5 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs">
+      <div class="flex flex-col justify-between gap-3 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center">
         <div class="flex items-center gap-2">
-          <span class="text-xs font-semibold text-blue-600">04</span>
-          <h2 class="text-base font-semibold text-slate-900">첨부파일과 이미지</h2>
+          <span class="text-xs font-semibold text-primary">04</span>
+          <h2 class="text-base font-semibold text-zinc-900">첨부파일과 이미지</h2>
         </div>
         <BaseCheckbox v-model="form.attachmentsEnabled" label="첨부파일 사용" />
       </div>
 
       <p
           v-if="form.attachmentsEnabled"
-          class="m-0 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600"
+          class="m-0 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-semibold text-zinc-600"
       >
         대표 이미지는 게시글 본문에서 가장 먼저 배치된 이미지로 자동 지정됩니다.
       </p>
@@ -454,13 +454,13 @@ async function submit() {
       </div>
     </section>
 
-    <section class="grid gap-5 rounded-lg border border-slate-200 bg-white p-5 sm:p-6">
-      <div class="flex flex-col justify-between gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-center">
+    <section class="grid gap-5 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs">
+      <div class="flex flex-col justify-between gap-2 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center">
         <div class="flex items-center gap-2">
-          <span class="text-xs font-semibold text-blue-600">05</span>
-          <h2 class="text-base font-semibold text-slate-900">상호작용 기능</h2>
+          <span class="text-xs font-semibold text-primary">05</span>
+          <h2 class="text-base font-semibold text-zinc-900">상호작용 기능</h2>
         </div>
-        <p class="text-xs leading-5 text-slate-500">댓글과 좋아요, 관리자 공식 답변 사용 여부를 선택합니다.</p>
+        <p class="text-xs leading-5 text-zinc-500">댓글과 좋아요, 관리자 공식 답변 사용 여부를 선택합니다.</p>
       </div>
 
       <div class="grid gap-3 sm:grid-cols-2">
@@ -491,7 +491,7 @@ async function submit() {
       {{ successMessage }}
     </p>
 
-    <div class="flex justify-end border-t border-slate-200 pt-5">
+    <div class="flex justify-end border-t border-zinc-200 pt-5">
       <BaseButton type="submit" :disabled="submitting">
         {{
           submitting

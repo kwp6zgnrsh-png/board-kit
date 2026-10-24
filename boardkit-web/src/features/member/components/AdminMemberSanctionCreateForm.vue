@@ -82,14 +82,14 @@ watch(() => props.member.memberId, () => {
 
 <template>
   <section
-      class="overflow-hidden rounded-lg border border-slate-200 bg-white"
+      class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
       :aria-labelledby="`${formId}-heading`"
   >
-    <header class="border-b border-slate-200 px-5 py-4">
-      <h2 :id="`${formId}-heading`" class="text-base font-semibold text-slate-900">
+    <header class="border-b border-zinc-200 px-5 py-4">
+      <h2 :id="`${formId}-heading`" class="text-base font-semibold text-zinc-900">
         회원 제재 등록
       </h2>
-      <p class="mt-1 text-sm text-slate-500">
+      <p class="mt-1 text-sm text-zinc-500">
         등록 즉시 제재가 시작됩니다.
       </p>
     </header>
@@ -99,11 +99,11 @@ watch(() => props.member.memberId, () => {
         :aria-busy="submitting"
         @submit.prevent="submit"
     >
-      <div class="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
-        <p class="font-medium text-slate-900">
+      <div class="rounded-md border border-zinc-200 bg-zinc-50 px-4 py-3">
+        <p class="font-medium text-zinc-900">
           {{ member.displayName }}
         </p>
-        <p class="mt-1 break-all text-sm text-slate-500">
+        <p class="mt-1 break-all text-sm text-zinc-500">
           로그인 ID: {{ member.loginId }}
         </p>
       </div>
@@ -131,7 +131,7 @@ watch(() => props.member.memberId, () => {
             :for="`${formId}-ends-at`"
             class="grid max-w-sm gap-2"
         >
-          <span class="text-sm font-medium text-slate-700">
+          <span class="text-sm font-medium text-zinc-700">
             종료 일시
             <span aria-hidden="true" class="ml-0.5 text-red-500">*</span>
           </span>
@@ -140,9 +140,9 @@ watch(() => props.member.memberId, () => {
               v-model="endDateTime"
               type="datetime-local"
               required
-              class="h-10 w-full min-w-0 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400"
+              class="h-10 w-full min-w-0 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-800 outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:bg-zinc-50 disabled:text-zinc-400"
           />
-          <small class="text-xs text-slate-500">
+          <small class="text-xs text-zinc-500">
             현재 기기의 현지 시각을 기준으로 입력하세요.
           </small>
         </label>

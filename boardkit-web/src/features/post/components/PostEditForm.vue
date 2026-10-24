@@ -299,7 +299,7 @@ async function submit() {
 
 <template>
   <form
-      class="grid min-w-0 gap-6 rounded-lg border border-slate-200 bg-white p-5 sm:p-6"
+      class="grid min-w-0 gap-6 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs"
       @submit.prevent="submit"
   >
     <BaseInput
@@ -319,14 +319,14 @@ async function submit() {
     />
 
     <section class="min-w-0">
-      <p v-if="loadingImages" class="m-0 text-sm font-medium text-slate-600">
+      <p v-if="loadingImages" class="m-0 text-sm font-medium text-zinc-600">
         본문 이미지를 불러오는 중입니다.
       </p>
 
       <button
           v-else-if="!editorReady"
           type="button"
-          class="justify-self-start rounded border border-slate-200 bg-white px-3 py-2 text-sm font-semibold"
+          class="justify-self-start rounded border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold"
           @click="loadDocument"
       >
         본문 다시 불러오기
@@ -343,10 +343,10 @@ async function submit() {
             <button
                 type="button"
                 :disabled="submitting"
-                class="inline-flex h-11 shrink-0 items-center gap-2 rounded-sm border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 hover:border-slate-400 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50 sm:px-4"
+                class="inline-flex h-11 shrink-0 items-center gap-2 rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 hover:border-zinc-400 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 sm:px-4"
                 @click="imageModalOpen = true"
             >
-              <svg class="size-5 text-indigo-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <svg class="size-5 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M3 3h18v18H3V3ZM3 16l6-6 4 4 3-3 5 5M16 7h.01" />
               </svg>
               이미지
@@ -369,20 +369,20 @@ async function submit() {
 
     <section
         v-if="existingAttachments.length"
-        class="grid gap-3 rounded border border-slate-200 bg-slate-50 p-4"
+        class="grid gap-3 rounded border border-zinc-200 bg-zinc-50 p-4"
     >
-      <h3 class="m-0 font-semibold text-slate-900">기존 다운로드 첨부파일</h3>
+      <h3 class="m-0 font-semibold text-zinc-900">기존 다운로드 첨부파일</h3>
 
       <ul class="m-0 grid list-none gap-2 p-0">
         <li
             v-for="file in existingAttachments"
             :key="file.id"
-            class="flex flex-wrap items-center justify-between gap-3 rounded border border-slate-200 bg-white p-3"
+            class="flex flex-wrap items-center justify-between gap-3 rounded border border-zinc-200 bg-white p-3"
             :class="{ 'opacity-50': removedAttachmentIds.includes(file.id) }"
         >
           <div class="min-w-0">
             <p class="m-0 truncate font-semibold">{{ file.originalName }}</p>
-            <p class="m-0 text-sm text-slate-600">
+            <p class="m-0 text-sm text-zinc-600">
               {{ formatFileSize(file.sizeBytes) }}
             </p>
           </div>
@@ -390,7 +390,7 @@ async function submit() {
           <button
               type="button"
               :disabled="submitting || !editorReady"
-              class="rounded border border-slate-200 px-3 py-1 text-sm font-semibold disabled:opacity-50"
+              class="rounded border border-zinc-200 px-3 py-1 text-sm font-semibold disabled:opacity-50"
               :class="removedAttachmentIds.includes(file.id) ? 'bg-emerald-100' : 'bg-rose-100'"
               @click="toggleExistingAttachment(file.id)"
           >
@@ -402,7 +402,7 @@ async function submit() {
 
     <section
         v-if="board.policy.secretMode !== 'OFF' || post.secret"
-        class="grid gap-4 rounded border border-slate-200 bg-slate-50 p-4 sm:p-5"
+        class="grid gap-4 rounded border border-zinc-200 bg-zinc-50 p-4 sm:p-5"
     >
       <BaseCheckbox
           v-if="board.policy.secretMode === 'OPTIONAL'"
@@ -413,11 +413,11 @@ async function submit() {
 
       <p
           v-else-if="board.policy.secretMode === 'REQUIRED'"
-          class="m-0 rounded border border-slate-200 bg-blue-50 px-4 py-3 font-medium text-slate-700"
+          class="m-0 rounded border border-zinc-200 bg-accent px-4 py-3 font-medium text-zinc-700"
       >
         이 게시판의 모든 글은 비밀글로 작성됩니다.
       </p>
-      <p v-else class="m-0 rounded border border-slate-200 bg-blue-50 px-4 py-3 font-medium text-slate-700">
+      <p v-else class="m-0 rounded border border-zinc-200 bg-accent px-4 py-3 font-medium text-zinc-700">
         새 비밀글은 만들 수 없지만 이 글의 비밀 설정은 유지됩니다.
       </p>
 
@@ -447,13 +447,13 @@ async function submit() {
 
     <p
         v-if="errorMessage"
-        class="m-0 rounded border border-slate-200 bg-rose-50 px-4 py-3 font-medium text-red-900"
+        class="m-0 rounded border border-zinc-200 bg-rose-50 px-4 py-3 font-medium text-red-900"
         role="alert"
     >
       {{ errorMessage }}
     </p>
 
-    <div class="flex justify-end border-t border-slate-200 pt-4">
+    <div class="flex justify-end border-t border-zinc-200 pt-4">
       <BaseButton
           type="submit"
           :disabled="submitting || !editorReady"

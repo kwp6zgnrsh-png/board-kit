@@ -81,9 +81,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-lg border border-slate-200 bg-white">
-    <header class="border-b border-slate-200 px-5 py-4">
-      <h2 class="text-base font-semibold text-slate-900">닉네임 변경</h2>
+  <section class="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+    <header class="border-b border-zinc-200 px-5 py-4">
+      <h2 class="text-base font-semibold text-zinc-900">닉네임 변경</h2>
     </header>
 
     <form class="grid gap-4 p-5" :aria-busy="submitting" @submit.prevent="submit">

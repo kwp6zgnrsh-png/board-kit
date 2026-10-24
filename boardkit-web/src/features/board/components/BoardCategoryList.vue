@@ -15,7 +15,7 @@ defineProps<{
     <span
         v-for="category in categories"
         :key="category.id"
-        class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600"
+        class="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600"
     >
       {{ category.name }}
     </span>

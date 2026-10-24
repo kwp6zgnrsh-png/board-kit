@@ -37,12 +37,12 @@ function submit() {
 
 <template>
   <form
-      class="grid w-full max-w-120 gap-5 rounded-lg border border-slate-200 bg-white p-5 sm:p-8"
+      class="grid w-full max-w-120 gap-5 rounded-xl border border-border bg-card p-5 sm:p-8 shadow-xs"
       @submit.prevent="submit"
   >
     <div>
-      <h2 class="m-0 text-2xl font-semibold text-slate-900">비밀글입니다</h2>
-      <p class="mt-2 mb-0 text-slate-600">게시글 비밀번호를 입력하세요.</p>
+      <h2 class="m-0 text-2xl font-semibold text-zinc-900">비밀글입니다</h2>
+      <p class="mt-2 mb-0 text-zinc-600">게시글 비밀번호를 입력하세요.</p>
     </div>
 
     <BaseInput
