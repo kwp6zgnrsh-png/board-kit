@@ -61,6 +61,5 @@ function formatDate(value: string): string {
       </li>
     </ol>
     <p v-else class="px-4 py-12 text-center text-sm text-zinc-400">첫 번째 글을 기다리고 있어요.</p>
-    <footer class="border-t border-zinc-100 px-4 py-2.5 text-xs text-zinc-400">전체 {{ preview.postPage.totalElements.toLocaleString() }}개 · 최신 {{ preview.postPage.posts.length }}개 표시</footer>
   </article>
 </template>

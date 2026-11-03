@@ -33,7 +33,7 @@ const managementLinks = [
         </svg>
       </span>
       <span class="grid gap-0.5">
-        <span class="text-sm font-semibold tracking-tight text-foreground">BoardKit</span>
+        <span class="text-sm font-semibold tracking-tight text-foreground">Board</span>
         <span class="text-xs text-muted-foreground">Community workspace</span>
       </span>
     </RouterLink>
