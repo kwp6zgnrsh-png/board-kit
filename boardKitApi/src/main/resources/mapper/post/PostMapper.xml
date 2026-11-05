@@ -61,69 +61,81 @@
         </if>
     </sql>
 
-    <select id="selectPostSummaries" resultType="io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostSummaryResponse">
-        SELECT
-            p.id,
-            CASE
-                WHEN <include refid="postSummaryBlindAccess"/>
-                THEN p.title
-                ELSE '블라인드된 게시글입니다.'
-            END AS title,
-            p.author_id AS authorId,
-            m.display_name AS authorDisplayName,
-            p.category_id AS categoryId,
-            bc.name AS categoryName,
-            p.is_secret AS secret,
-            p.is_pinned AS pinned,
-            p.view_count AS viewCount,
-            (
-                SELECT COUNT(*)
-                FROM comment c
-                WHERE c.post_id = p.id
-                    AND c.deleted_at IS NULL
-            ) AS commentCount,
-            p.created_at AS createdAt,
-            pf.id AS representativeFileId,
-            (pf.thumbnail_key IS NOT NULL) AS thumbnailAvailable,
-            (
-                SELECT COUNT(*)
-                FROM post_like pl
-                WHERE pl.post_id = p.id
-            ) AS likeCount,
-            (p.blinded_at IS NOT NULL) AS blinded
-        FROM post p
-            INNER JOIN member m
-                ON m.id = p.author_id
-            LEFT JOIN board_category bc
-                ON bc.id = p.category_id
-            LEFT JOIN post_file pf
-                ON pf.id = p.representative_file_id
-                AND pf.post_id = p.id
-                AND pf.deleted_at IS NULL
-                AND pf.file_usage = 'BODY_IMAGE'
-                AND p.is_secret = FALSE
-                AND <include refid="postSummaryBlindAccess"/>
-        WHERE
-            <include refid="postSummaryConditions"/>
+    <sql id="postSummaryOrderBy">
         ORDER BY
-            p.is_pinned DESC,
-            <choose>
-                <when test="sort.name() == 'OLDEST'">
-                    p.created_at ASC,
-                    p.id ASC
-                </when>
-                <when test="sort.name() == 'VIEWS'">
-                    p.view_count DESC,
-                    p.created_at DESC,
-                    p.id DESC
-                </when>
-                <otherwise>
-                    p.created_at DESC,
-                    p.id DESC
-                </otherwise>
-            </choose>
+        p.is_pinned DESC,
+        <choose>
+            <when test="sort.name() == 'OLDEST'">
+                p.created_at ASC,
+                p.id ASC
+            </when>
+            <when test="sort.name() == 'VIEWS'">
+                p.view_count DESC,
+                p.created_at DESC,
+                p.id DESC
+            </when>
+            <otherwise>
+                p.created_at DESC,
+                p.id DESC
+            </otherwise>
+        </choose>
+    </sql>
+
+    <select id="selectPostSummaries"
+            resultType="io.github.kwp6zgnrsh.boardkitapi.post.dto.response.PostSummaryResponse">
+        WITH page_posts AS (
+        SELECT p.id
+        FROM post p
+        WHERE
+        <include refid="postSummaryConditions"/>
+        <include refid="postSummaryOrderBy"/>
         LIMIT #{limit}
         OFFSET #{offset}
+        )
+        SELECT
+        p.id,
+        CASE
+        WHEN <include refid="postSummaryBlindAccess"/>
+        THEN p.title
+        ELSE '블라인드된 게시글입니다.'
+        END AS title,
+        p.author_id AS authorId,
+        m.display_name AS authorDisplayName,
+        p.category_id AS categoryId,
+        bc.name AS categoryName,
+        p.is_secret AS secret,
+        p.is_pinned AS pinned,
+        p.view_count AS viewCount,
+        (
+        SELECT COUNT(*)
+        FROM comment c
+        WHERE c.post_id = p.id
+        AND c.deleted_at IS NULL
+        ) AS commentCount,
+        p.created_at AS createdAt,
+        pf.id AS representativeFileId,
+        (pf.thumbnail_key IS NOT NULL) AS thumbnailAvailable,
+        (
+        SELECT COUNT(*)
+        FROM post_like pl
+        WHERE pl.post_id = p.id
+        ) AS likeCount,
+        (p.blinded_at IS NOT NULL) AS blinded
+        FROM page_posts page
+        INNER JOIN post p
+        ON p.id = page.id
+        INNER JOIN member m
+        ON m.id = p.author_id
+        LEFT JOIN board_category bc
+        ON bc.id = p.category_id
+        LEFT JOIN post_file pf
+        ON pf.id = p.representative_file_id
+        AND pf.post_id = p.id
+        AND pf.deleted_at IS NULL
+        AND pf.file_usage = 'BODY_IMAGE'
+        AND p.is_secret = FALSE
+        AND <include refid="postSummaryBlindAccess"/>
+        <include refid="postSummaryOrderBy"/>
     </select>
 
     <select id="countPostSummaries" resultType="long">

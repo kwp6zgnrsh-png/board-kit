@@ -2,12 +2,16 @@ package io.github.kwp6zgnrsh.boardkitapi.post.mapper;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mapstruct.factory.Mappers;
 import org.mybatis.spring.annotation.MapperScan;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
@@ -359,6 +363,43 @@ class PostMapperIntegrationTest {
 		}
 	}
 
+	@ParameterizedTest(name = "{0}")
+	@EnumSource(PostSort.class)
+	@DisplayName("세 정렬에서 고정글 우선과 동률 순서 및 페이지 경계를 유지한다")
+	void paginatePostSummariesWithEverySort(PostSort sort) {
+		Long pinned = insertSummaryFixture(true, "2025-01-01 12:00:00", 0);
+		Long oldest = insertSummaryFixture(false, "2025-02-01 12:00:00", 50);
+		Long firstTie = insertSummaryFixture(false, "2025-03-01 12:00:00", 100);
+		Long secondTie = insertSummaryFixture(false, "2025-03-01 12:00:00", 100);
+		Long lowViews = insertSummaryFixture(false, "2025-03-02 12:00:00", 10);
+		Long newest = insertSummaryFixture(false, "2025-03-03 12:00:00", 100);
+
+		List<Long> expected = switch (sort) {
+			case LATEST ->
+				List.of(pinned, newest, lowViews, secondTie, firstTie, oldest);
+			case OLDEST ->
+				List.of(pinned, oldest, firstTie, secondTie, lowViews, newest);
+			case VIEWS ->
+				List.of(pinned, newest, secondTie, firstTie, oldest, lowViews);
+		};
+
+		List<Long> actual = new ArrayList<>();
+
+		for (long offset = 0; offset < expected.size(); offset += 2) {
+			List<PostSummaryResponse> page = postMapper.selectPostSummaries(
+				boardId, null, null, sort, 2, offset, null, false
+			);
+
+			assertEquals(2, page.size());
+
+			for (PostSummaryResponse row : page) {
+				actual.add(row.id());
+			}
+		}
+
+		assertEquals(expected, actual);
+	}
+
 	private Long insertListViewer(String role) {
 		String key = UUID.randomUUID().toString().replace("-", "");
 		jdbcTemplate.update("""
@@ -414,5 +455,19 @@ class PostMapperIntegrationTest {
 		paragraph.putArray("content").addObject().put("type", "text").put("text", text);
 
 		return document;
+	}
+
+	private Long insertSummaryFixture(boolean pinned, String createdAt, long viewCount) {
+		Post post = insertPost();
+
+		assertEquals(1, jdbcTemplate.update("""
+        UPDATE post
+        SET is_pinned = ?, created_at = ?, view_count = ?
+        WHERE id = ?
+        """,
+			pinned, Timestamp.valueOf(createdAt), viewCount, post.getId()
+		));
+
+		return post.getId();
 	}
 }
