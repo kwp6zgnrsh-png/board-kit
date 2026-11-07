@@ -133,3 +133,102 @@ jobs:
           path: boardkit-web/dist/
           if-no-files-found: error
           retention-days: 7
+          
+  deploy:
+    name: Deploy to Ubuntu
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Download backend artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: backend-jar
+          path: deploy/backend
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist
+          path: deploy/frontend
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:boardkit-ci
+
+      - name: Upload and deploy
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -Eeuo pipefail
+          umask 077
+
+          # SSH 설정에 사용할 값의 형식을 확인한다.
+          [[ "$DEPLOY_HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$DEPLOY_USER" == "yun" ]]
+
+          test -s deploy/backend/boardKitApi-0.0.1-SNAPSHOT.jar
+          test -s deploy/frontend/index.html
+
+          ssh_dir="$RUNNER_TEMP/boardkit-ssh"
+          mkdir -p "$ssh_dir"
+          trap 'rm -f "$ssh_dir/key"' EXIT
+
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$ssh_dir/key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+
+          {
+            printf 'Host boardkit\n'
+            printf '  HostName %s\n' "$DEPLOY_HOST"
+            printf '  User %s\n' "$DEPLOY_USER"
+            printf '  Port 22\n'
+            printf '  IdentityFile %s/key\n' "$ssh_dir"
+            printf '  UserKnownHostsFile %s/known_hosts\n' "$ssh_dir"
+            printf '  IdentitiesOnly yes\n'
+            printf '  StrictHostKeyChecking yes\n'
+            printf '  BatchMode yes\n'
+            printf '  ConnectTimeout 15\n'
+            printf '  ServerAliveInterval 15\n'
+            printf '  ServerAliveCountMax 8\n'
+          } > "$ssh_dir/config"
+
+          remote_dir="/home/yun/boardkit-deploy/incoming/$RELEASE_ID"
+
+          ssh -F "$ssh_dir/config" boardkit \
+            "mkdir -p '$remote_dir'"
+
+          scp -F "$ssh_dir/config" -r \
+            deploy/backend deploy/frontend \
+            "boardkit:$remote_dir/"
+
+          # 오래된 커밋의 재실행으로 최신 버전을 덮어쓰지 않는다.
+          latest_sha="$(
+            curl --fail --silent --show-error \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "Accept: application/vnd.github+json" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
+              | jq -er '.object.sha'
+          )"
+
+          if [[ "$latest_sha" != "$GITHUB_SHA" ]]; then
+            echo "현재 main의 최신 커밋이 아니므로 배포를 건너뜁니다."
+            exit 0
+          fi
+
+          ssh -F "$ssh_dir/config" boardkit \
+            "bash /home/yun/boardkit-deploy/deploy.sh '$RELEASE_ID'"
