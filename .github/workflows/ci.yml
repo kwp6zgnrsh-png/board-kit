@@ -43,7 +43,6 @@ jobs:
       SPRING_DATASOURCE_URL: "jdbc:mysql://127.0.0.1:3306/boardkit_test?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&sslMode=DISABLED"
       SPRING_DATASOURCE_USERNAME: boardkit_test
       SPRING_DATASOURCE_PASSWORD: ci_test_password
-      FILE_STORAGE_ROOT: ${{ runner.temp }}/boardkit-store
 
     steps:
       - name: Checkout
@@ -76,6 +75,8 @@ jobs:
 
       - name: Test and build backend
         working-directory: boardKitApi
+        env:
+          FILE_STORAGE_ROOT: ${{ runner.temp }}/boardkit-store
         run: |
           chmod +x gradlew
           ./gradlew test bootJar --no-daemon --stacktrace
