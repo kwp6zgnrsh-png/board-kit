@@ -41,8 +41,8 @@ const chartData = computed<ChartData<'line', number[], string>>(() => ({
     {
       label: '게시글',
       data: props.activities.map((row) => row.postCount),
-      borderColor: '#2563eb',
-      backgroundColor: '#2563eb',
+      borderColor: '#27272a',
+      backgroundColor: '#27272a',
       borderWidth: 2,
       pointRadius: props.activities.length > 30 ? 0 : 2,
       tension: 0,
@@ -50,8 +50,8 @@ const chartData = computed<ChartData<'line', number[], string>>(() => ({
     {
       label: '댓글',
       data: props.activities.map((row) => row.commentCount),
-      borderColor: '#059669',
-      backgroundColor: '#059669',
+      borderColor: '#a1a1aa',
+      backgroundColor: '#a1a1aa',
       borderWidth: 2,
       borderDash: [5, 4],
       pointRadius: props.activities.length > 30 ? 0 : 2,
@@ -120,7 +120,7 @@ const chartOptions: ChartOptions<'line'> = {
 </script>
 
 <template>
-  <section class="min-w-0 rounded-xl border border-border bg-card p-5 shadow-xs">
+  <section class="min-w-0 surface-panel p-5 ">
     <header class="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h3 class="text-base font-semibold text-zinc-900">
@@ -132,10 +132,10 @@ const chartOptions: ChartOptions<'line'> = {
       </div>
 
       <div class="flex flex-wrap gap-3 text-sm">
-        <span class="text-blue-600">
+        <span class="text-zinc-900">
           게시글 {{ totals.postCount.toLocaleString('ko-KR') }}개
         </span>
-        <span class="text-emerald-600">
+        <span class="text-zinc-500">
           댓글 {{ totals.commentCount.toLocaleString('ko-KR') }}개
         </span>
       </div>
@@ -143,7 +143,7 @@ const chartOptions: ChartOptions<'line'> = {
 
     <p
         v-if="totals.postCount === 0 && totals.commentCount === 0"
-        class="mt-4 rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500"
+        class="mt-4 rounded-none bg-zinc-50 px-3 py-2 text-sm text-zinc-500"
     >
       선택한 기간에 작성된 게시글과 댓글이 없습니다.
     </p>

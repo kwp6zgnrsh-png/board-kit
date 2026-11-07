@@ -27,12 +27,12 @@ const model = defineModel<string | number>({ required: true })
   <label class="grid min-w-0 content-start gap-2" :for="id">
     <span class="text-sm font-medium text-zinc-700">
       {{ label }}
-      <span v-if="required" aria-hidden="true" class="ml-0.5 text-red-500">*</span>
+      <span v-if="required" aria-hidden="true" class="ml-0.5 text-zinc-500">*</span>
     </span>
     <input
       :id="id"
       v-model="model"
-      class="field-control h-9"
+      class="field-control h-10"
       :type="type"
       :placeholder="placeholder"
       :min="min"

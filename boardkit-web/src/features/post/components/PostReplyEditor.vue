@@ -67,7 +67,7 @@ onBeforeUnmount(() => {
 
 <template>
   <section
-      class="overflow-hidden rounded-xl border border-input bg-card shadow-xs"
+      class="overflow-hidden surface-panel"
       aria-label="공식 답변 편집기"
   >
     <template v-if="editor">

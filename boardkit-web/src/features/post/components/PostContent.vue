@@ -61,7 +61,7 @@ const DisplayImageExtension = PostImage.extend({
           alt: node.attrs.alt,
           draggable: 'false',
           decoding: 'async',
-          class: 'mx-auto my-3 block h-auto max-w-full rounded',
+          class: 'mx-auto my-3 block h-auto max-w-full rounded-none',
         },
       ]
     }
@@ -77,7 +77,7 @@ const DisplayImageExtension = PostImage.extend({
       {
         role: status === 'loading' ? 'status' : 'alert',
         class:
-            'my-3 rounded border p-4 text-sm ' +
+            'my-3 rounded-none border p-4 text-sm ' +
             (status === 'loading'
                 ? 'border-zinc-200 bg-zinc-50 text-zinc-500'
                 : 'border-red-200 bg-red-50 text-red-700'),
@@ -307,7 +307,7 @@ onBeforeUnmount(() => {
     <p
         v-if="renderedBody.error"
         role="alert"
-        class="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+        class="rounded-none border border-red-200 bg-red-50 p-4 text-sm text-red-700"
     >
       {{ renderedBody.error }}
     </p>
@@ -322,7 +322,7 @@ onBeforeUnmount(() => {
         v-if="downloadFiles.length"
         class="mt-6 grid gap-3 border-t border-zinc-200 pt-4"
     >
-      <h2 class="m-0 text-base font-semibold text-zinc-900">
+      <h2 class="m-0 text-base font-medium text-zinc-900">
         첨부파일 {{ downloadFiles.length }}개
       </h2>
 
@@ -330,7 +330,7 @@ onBeforeUnmount(() => {
         <li
             v-for="file in downloadFiles"
             :key="file.id"
-            class="flex flex-wrap items-center justify-between gap-3 rounded border border-zinc-200 bg-zinc-50 p-3"
+            class="flex flex-wrap items-center justify-between gap-3 rounded-none border border-zinc-200 bg-zinc-50 p-3"
         >
           <div class="min-w-0">
             <p class="m-0 truncate font-medium text-zinc-900">
@@ -344,7 +344,7 @@ onBeforeUnmount(() => {
           <button
               type="button"
               :disabled="downloadingIds.includes(file.id)"
-              class="rounded border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50"
+              class="rounded-none border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50"
               @click="downloadFile(file)"
           >
             {{ downloadingIds.includes(file.id) ? '받는 중...' : '다운로드' }}
@@ -355,7 +355,7 @@ onBeforeUnmount(() => {
       <p
           v-if="downloadErrorMessage"
           role="alert"
-          class="m-0 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+          class="m-0 rounded-none border border-red-200 bg-red-50 p-3 text-sm text-red-700"
       >
         {{ downloadErrorMessage }}
       </p>

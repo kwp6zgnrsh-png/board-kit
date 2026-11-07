@@ -260,12 +260,12 @@ onBeforeUnmount(() => {
 <template>
   <section
       v-if="visible"
-      class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
+      class="overflow-hidden surface-panel"
       aria-label="관리자 공식 답변"
       :aria-busy="busy"
   >
     <header class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 bg-accent px-5 py-3">
-      <h2 class="text-sm font-semibold text-zinc-900">관리자 공식 답변</h2>
+      <h2 class="text-sm font-medium text-zinc-900">관리자 공식 답변</h2>
 
       <div class="flex items-center gap-2">
         <BaseButton
@@ -299,7 +299,7 @@ onBeforeUnmount(() => {
       <p
           v-if="resultMessage"
           role="status"
-          class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
+          class="rounded-none border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
       >
         {{ resultMessage }}
       </p>
@@ -307,7 +307,7 @@ onBeforeUnmount(() => {
       <p
           v-if="loadError"
           role="alert"
-          class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          class="rounded-none border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
       >
         {{ loadError }}
       </p>
@@ -349,7 +349,7 @@ onBeforeUnmount(() => {
       <p
           v-if="actionError && !formOpen"
           role="alert"
-          class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          class="rounded-none border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
       >
         {{ actionError }}
       </p>

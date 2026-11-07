@@ -28,16 +28,16 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="grid gap-6">
+  <div class="grid gap-8">
     <header
-        class="flex flex-wrap items-center justify-between gap-4 pb-1"
+        class="page-heading"
     >
       <div>
         <p class="m-0 text-xs font-medium text-primary">
           관리자
         </p>
 
-        <h1 class="m-0 mt-1 text-3xl font-semibold tracking-tight text-zinc-900">
+        <h1 class="page-title">
           게시판 관리
         </h1>
 
@@ -48,19 +48,19 @@ onMounted(async () => {
 
       <RouterLink
           :to="{ name: 'admin-board-create' }"
-          class="inline-flex items-center rounded border border-zinc-200 bg-primary px-4 py-2.5 text-sm font-semibold text-white no-underline transition hover:bg-primary"
+          class="inline-flex items-center rounded-none border border-zinc-200 bg-primary px-4 py-2.5 text-sm font-semibold text-white no-underline transition hover:bg-primary"
       >
         + 게시판 생성
       </RouterLink>
     </header>
 
     <section
-        class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
+        class="overflow-hidden surface-panel"
     >
       <header
           class="border-b border-zinc-200 px-5 py-4"
       >
-        <h2 class="m-0 text-base font-semibold text-zinc-900">
+        <h2 class="m-0 text-base font-medium text-zinc-900">
           게시판 설정
         </h2>
         <p class="m-0 mt-1 text-sm font-medium text-zinc-700">
@@ -77,7 +77,7 @@ onMounted(async () => {
 
       <p
           v-else-if="errorMessage"
-          class="m-4 rounded border border-red-200 bg-red-50 px-4 py-6 text-center font-semibold text-red-900"
+          class="m-4 rounded-none border border-red-200 bg-red-50 px-4 py-6 text-center font-semibold text-red-900"
           role="alert"
       >
         {{ errorMessage }}
@@ -106,7 +106,7 @@ onMounted(async () => {
               name: 'admin-board-edit',
               params: { boardSlug: board.slug },
             }"
-              class="inline-flex shrink-0 items-center rounded border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 no-underline transition hover:bg-zinc-50"
+              class="inline-flex shrink-0 items-center rounded-none border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 no-underline transition hover:bg-zinc-50"
           >
             설정
           </RouterLink>
@@ -124,9 +124,9 @@ onMounted(async () => {
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <RouterLink
           :to="{name: 'admin-post-replies'}"
-          class="block rounded-xl border border-border bg-card p-5 shadow-xs no-underline transition hover:border-zinc-300 hover:bg-accent"
+          class="block surface-panel p-5 no-underline transition hover:border-zinc-300 hover:bg-accent"
       >
-        <h2 class="text-lg font-semibold text-zinc-900">
+        <h2 class="text-lg font-medium text-zinc-900">
           관리자 공식 답변
         </h2>
         <p class="mt-3 text-sm leading-6 text-zinc-600">
@@ -136,9 +136,9 @@ onMounted(async () => {
       </RouterLink>
       <RouterLink
           :to="{ name: 'admin-reports' }"
-          class="block rounded-xl border border-border bg-card p-5 shadow-xs no-underline transition hover:border-zinc-300 hover:bg-accent"
+          class="block surface-panel p-5 no-underline transition hover:border-zinc-300 hover:bg-accent"
       >
-        <h2 class="text-lg font-semibold text-zinc-900">
+        <h2 class="text-lg font-medium text-zinc-900">
           신고 처리
         </h2>
         <p class="mt-3 text-sm leading-6 text-zinc-600">
@@ -148,9 +148,9 @@ onMounted(async () => {
       </RouterLink>
       <RouterLink
           :to="{name: 'admin-blinded'}"
-          class="block rounded-xl border border-border bg-card p-5 shadow-xs no-underline transition hover:border-zinc-300 hover:bg-accent"
+          class="block surface-panel p-5 no-underline transition hover:border-zinc-300 hover:bg-accent"
       >
-        <h2 class="text-lg font-semibold text-zinc-900">
+        <h2 class="text-lg font-medium text-zinc-900">
           블라인드 관리
         </h2>
         <p class="mt-3 text-sm leading-6 text-zinc-600">
@@ -162,9 +162,9 @@ onMounted(async () => {
       </RouterLink>
       <RouterLink
           :to="{ name: 'admin-member-sanctions' }"
-          class="block rounded-xl border border-border bg-card p-5 shadow-xs no-underline transition hover:border-zinc-300 hover:bg-accent"
+          class="block surface-panel p-5 no-underline transition hover:border-zinc-300 hover:bg-accent"
       >
-        <h2 class="text-lg font-semibold text-zinc-900">
+        <h2 class="text-lg font-medium text-zinc-900">
           회원 제재
         </h2>
         <p class="mt-3 text-sm leading-6 text-zinc-600">
@@ -176,9 +176,9 @@ onMounted(async () => {
       </RouterLink>
       <RouterLink
           :to="{ name: 'admin-board-statistics' }"
-          class="block rounded-xl border border-border bg-card p-5 shadow-xs no-underline transition hover:border-zinc-300 hover:bg-accent"
+          class="block surface-panel p-5 no-underline transition hover:border-zinc-300 hover:bg-accent"
       >
-        <h2 class="text-lg font-semibold text-zinc-900">
+        <h2 class="text-lg font-medium text-zinc-900">
           게시판 활동 통계
         </h2>
         <p class="mt-3 text-sm leading-6 text-zinc-600">

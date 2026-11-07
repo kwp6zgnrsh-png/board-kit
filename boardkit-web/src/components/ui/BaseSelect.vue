@@ -12,7 +12,7 @@ const model = defineModel<string>({ required: true })
 <template>
   <label class="grid min-w-0 content-start gap-2" :for="id">
     <span class="text-sm font-medium text-zinc-700">{{ label }}</span>
-    <select :id="id" v-model="model" class="field-control h-9">
+    <select :id="id" v-model="model" class="field-control h-10">
       <option v-for="option in options" :key="option.value" :value="option.value">
         {{ option.label }}
       </option>

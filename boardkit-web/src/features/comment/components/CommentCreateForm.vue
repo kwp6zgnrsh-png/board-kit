@@ -58,7 +58,7 @@ async function submit() {
 
 <template>
   <form
-      class="grid gap-3 border-t border-zinc-200 bg-muted/60 p-4"
+      class="my-4 -mx-3 grid min-w-0 gap-2 border border-border bg-zinc-50 p-3"
       @submit.prevent="submit"
   >
     <BaseTextarea
@@ -68,11 +68,12 @@ async function submit() {
         :placeholder="parentId ? '답글 내용을 입력하세요.' : '댓글 내용을 입력하세요.'"
         :rows="parentId ? 3 : 4"
         :max-length="2000"
+        :show-count="false"
     />
 
     <p
         v-if="errorMessage"
-        class="m-0 rounded border border-red-200 bg-rose-50 px-4 py-3 text-sm font-medium text-red-900"
+        class="m-0 rounded-none border border-red-200 bg-rose-50 px-4 py-3 text-sm font-medium text-red-900"
         role="alert"
     >
       {{ errorMessage }}

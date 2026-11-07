@@ -107,12 +107,12 @@ onBeforeUnmount(() => {
 
 <template>
   <section
-      class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
+      class="overflow-hidden surface-panel"
       :aria-busy="loading"
   >
     <header class="flex items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4">
       <div>
-        <h2 class="text-base font-semibold text-zinc-900">내가 쓴 댓글</h2>
+        <h2 class="text-base font-medium text-zinc-900">내가 쓴 댓글</h2>
         <p v-if="commentPage" class="mt-1 text-sm text-zinc-500">
           전체 {{ commentPage.totalElements.toLocaleString() }}개
         </p>
@@ -131,7 +131,7 @@ onBeforeUnmount(() => {
     <div
         v-if="errorMessage"
         role="alert"
-        class="m-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        class="m-5 rounded-none border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
     >
       {{ errorMessage }}
     </div>
@@ -160,14 +160,14 @@ onBeforeUnmount(() => {
 
               <span
                   v-if="comment.parentId !== null"
-                  class="rounded bg-accent px-1.5 py-0.5 text-primary"
+                  class="rounded-none bg-accent px-1.5 py-0.5 text-primary"
               >
                 대댓글
               </span>
 
               <span
                   v-if="comment.boardStatus === 'ARCHIVED'"
-                  class="rounded bg-zinc-100 px-1.5 py-0.5"
+                  class="rounded-none bg-zinc-100 px-1.5 py-0.5"
               >
                 보관
               </span>

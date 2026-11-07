@@ -81,9 +81,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+  <section class="overflow-hidden surface-panel">
     <header class="border-b border-zinc-200 px-5 py-4">
-      <h2 class="text-base font-semibold text-zinc-900">닉네임 변경</h2>
+      <h2 class="text-base font-medium text-zinc-900">닉네임 변경</h2>
     </header>
 
     <form class="grid gap-4 p-5" :aria-busy="submitting" @submit.prevent="submit">
@@ -102,7 +102,7 @@ onBeforeUnmount(() => {
       <p
           v-if="errorMessage"
           role="alert"
-          class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          class="rounded-none border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
       >
         {{ errorMessage }}
       </p>
@@ -110,7 +110,7 @@ onBeforeUnmount(() => {
       <p
           v-if="successMessage"
           role="status"
-          class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
+          class="rounded-none border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
       >
         {{ successMessage }}
       </p>

@@ -14,7 +14,7 @@ const totals = computed(() => ({
 </script>
 
 <template>
-  <section class="min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+  <section class="min-w-0 overflow-hidden surface-panel">
     <header class="border-b border-zinc-200 px-5 py-4">
       <h3 class="text-base font-semibold text-zinc-900">
         게시판별 작성 수
@@ -53,7 +53,7 @@ const totals = computed(() => ({
             {{ row.boardName }}
             <span
                 v-if="row.boardId === selectedBoardId"
-                class="ml-2 rounded bg-zinc-200/70 px-1.5 py-0.5 text-xs text-primary"
+                class="ml-2 rounded-none bg-zinc-200/70 px-1.5 py-0.5 text-xs text-primary"
             >
                 선택
               </span>

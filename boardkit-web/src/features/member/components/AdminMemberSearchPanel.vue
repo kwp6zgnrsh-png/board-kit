@@ -159,12 +159,12 @@ onBeforeUnmount(() => {
 
 <template>
   <section
-      class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
+      class="overflow-hidden surface-panel"
       :aria-busy="loading"
       :aria-labelledby="`${formId}-heading`"
   >
     <header class="border-b border-zinc-200 px-5 py-4">
-      <h2 :id="`${formId}-heading`" class="text-base font-semibold text-zinc-900">
+      <h2 :id="`${formId}-heading`" class="text-base font-medium text-zinc-900">
         회원 검색
       </h2>
       <p class="mt-1 text-sm text-zinc-500">
@@ -202,7 +202,7 @@ onBeforeUnmount(() => {
     <p
         v-if="errorMessage"
         role="alert"
-        class="mx-5 mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        class="mx-5 mb-5 rounded-none border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
     >
       {{ errorMessage }}
     </p>
@@ -249,7 +249,7 @@ onBeforeUnmount(() => {
               </td>
               <td class="px-3 py-3">
                   <span
-                      class="inline-block whitespace-nowrap rounded px-2 py-1 text-xs"
+                      class="inline-block whitespace-nowrap rounded-none px-2 py-1 text-xs"
                       :class="member.sanctioned
                       ? 'bg-amber-50 text-amber-700'
                       : 'bg-zinc-100 text-zinc-500'"

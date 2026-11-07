@@ -311,10 +311,10 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="grid gap-5" :aria-busy="busy">
-    <header class="flex flex-wrap items-center justify-between gap-3">
+    <header class="page-heading">
       <div>
         <p class="text-xs font-medium text-primary">관리자</p>
-        <h1 class="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
+        <h1 class="page-title">
           신고 상세
         </h1>
       </div>
@@ -331,7 +331,7 @@ onBeforeUnmount(() => {
 
         <RouterLink
             :to="listLocation"
-            class="inline-flex h-8 items-center rounded-md border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+            class="inline-flex h-8 items-center rounded-none border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
         >
           목록으로
         </RouterLink>
@@ -341,7 +341,7 @@ onBeforeUnmount(() => {
     <p
         v-if="resultMessage"
         role="status"
-        class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
+        class="rounded-none border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
     >
       {{ resultMessage }}
     </p>
@@ -349,7 +349,7 @@ onBeforeUnmount(() => {
     <p
         v-if="actionError"
         role="alert"
-        class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        class="rounded-none border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
     >
       {{ actionError }}
     </p>
@@ -357,7 +357,7 @@ onBeforeUnmount(() => {
     <p
         v-if="loadError"
         role="alert"
-        class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        class="rounded-none border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
     >
       {{ loadError }}
     </p>
@@ -367,12 +367,12 @@ onBeforeUnmount(() => {
     </p>
 
     <template v-else-if="report">
-      <section class="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+      <section class="overflow-hidden surface-panel">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4">
-          <h2 class="font-semibold text-zinc-900">
+          <h2 class="font-medium text-zinc-900">
             신고 #{{ report.id }}
           </h2>
-          <span class="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700">
+          <span class="rounded-none bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700">
             {{ statusLabels[report.status] }}
           </span>
         </header>
@@ -405,16 +405,16 @@ onBeforeUnmount(() => {
 
           <div>
             <h3 class="text-sm font-medium text-zinc-700">상세 사유</h3>
-            <p class="mt-2 whitespace-pre-wrap break-all rounded-md bg-zinc-50 p-4 text-sm text-zinc-700">
+            <p class="mt-2 whitespace-pre-wrap break-all rounded-none bg-zinc-50 p-4 text-sm text-zinc-700">
               {{ report.detail || '입력된 상세 사유가 없습니다.' }}
             </p>
           </div>
         </div>
       </section>
 
-      <section class="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+      <section class="overflow-hidden surface-panel">
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4">
-          <h2 class="font-semibold text-zinc-900">현재 원문</h2>
+          <h2 class="font-medium text-zinc-900">현재 원문</h2>
 
           <RouterLink
               v-if="report.boardStatus === 'ACTIVE' && !report.postDeleted"
@@ -450,32 +450,32 @@ onBeforeUnmount(() => {
           <div class="flex flex-wrap gap-2 text-xs">
             <span
                 v-if="report.postBlinded"
-                class="rounded bg-amber-50 px-2 py-1 text-amber-700"
+                class="rounded-none bg-amber-50 px-2 py-1 text-amber-700"
             >
             게시글 블라인드
             </span>
 
             <span
                 v-if="report.commentId !== null && report.commentBlinded"
-                class="rounded bg-amber-50 px-2 py-1 text-amber-700"
+                class="rounded-none bg-amber-50 px-2 py-1 text-amber-700"
             >
             댓글 블라인드
             </span>
             <span
                 v-if="report.boardStatus === 'ARCHIVED'"
-                class="rounded bg-zinc-100 px-2 py-1 text-zinc-600"
+                class="rounded-none bg-zinc-100 px-2 py-1 text-zinc-600"
             >
               보관된 게시판
             </span>
             <span
                 v-if="report.postDeleted"
-                class="rounded bg-red-50 px-2 py-1 text-red-600"
+                class="rounded-none bg-red-50 px-2 py-1 text-red-600"
             >
               게시글 삭제됨
             </span>
             <span
                 v-if="report.commentDeleted"
-                class="rounded bg-red-50 px-2 py-1 text-red-600"
+                class="rounded-none bg-red-50 px-2 py-1 text-red-600"
             >
               댓글 삭제됨
             </span>
@@ -487,20 +487,20 @@ onBeforeUnmount(() => {
           </p>
 
           <div
-              class="min-h-32 whitespace-pre-wrap break-all rounded-md border border-zinc-200 bg-zinc-50 p-4 text-sm leading-7 text-zinc-800">
+              class="min-h-32 whitespace-pre-wrap break-all rounded-none border border-zinc-200 bg-zinc-50 p-4 text-sm leading-7 text-zinc-800">
             {{ report.content || '텍스트 본문이 없습니다.' }}
           </div>
         </div>
       </section>
 
-      <section class="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+      <section class="overflow-hidden surface-panel">
         <header
             class="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4"
         >
-          <h2 class="font-semibold text-zinc-900">대상 관리</h2>
+          <h2 class="font-medium text-zinc-900">대상 관리</h2>
 
           <span
-              class="rounded-full px-3 py-1 text-xs font-medium"
+              class="rounded-none px-3 py-1 text-xs font-medium"
               :class="targetDeleted
         ? 'bg-zinc-100 text-zinc-600'
         : targetBlinded
@@ -519,7 +519,7 @@ onBeforeUnmount(() => {
 
           <p
               v-if="targetDeleted"
-              class="rounded-md bg-zinc-50 px-4 py-3 text-sm text-zinc-500"
+              class="rounded-none bg-zinc-50 px-4 py-3 text-sm text-zinc-500"
           >
             삭제된 대상은 이력만 조회할 수 있습니다.
           </p>
@@ -566,9 +566,9 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <section class="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+      <section class="overflow-hidden surface-panel">
         <header class="border-b border-zinc-200 px-5 py-4">
-          <h2 class="font-semibold text-zinc-900">처리 결과</h2>
+          <h2 class="font-medium text-zinc-900">처리 결과</h2>
         </header>
         <div class="grid gap-4 p-5">
           <template v-if="report.status === 'PENDING'">
@@ -617,7 +617,7 @@ onBeforeUnmount(() => {
               <span>처리자 {{ report.reviewerDisplayName ?? '-' }}</span>
               <span>처리일 {{ formatDate(report.reviewedAt) }}</span>
             </div>
-            <p class="whitespace-pre-wrap break-all rounded-md bg-zinc-50 p-4 text-sm leading-6 text-zinc-700">
+            <p class="whitespace-pre-wrap break-all rounded-none bg-zinc-50 p-4 text-sm leading-6 text-zinc-700">
               {{ report.reviewNote ?? '-' }}
             </p>
           </template>

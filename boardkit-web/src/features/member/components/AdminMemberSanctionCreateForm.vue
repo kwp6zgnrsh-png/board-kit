@@ -82,11 +82,11 @@ watch(() => props.member.memberId, () => {
 
 <template>
   <section
-      class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
+      class="overflow-hidden surface-panel"
       :aria-labelledby="`${formId}-heading`"
   >
     <header class="border-b border-zinc-200 px-5 py-4">
-      <h2 :id="`${formId}-heading`" class="text-base font-semibold text-zinc-900">
+      <h2 :id="`${formId}-heading`" class="text-base font-medium text-zinc-900">
         회원 제재 등록
       </h2>
       <p class="mt-1 text-sm text-zinc-500">
@@ -99,7 +99,7 @@ watch(() => props.member.memberId, () => {
         :aria-busy="submitting"
         @submit.prevent="submit"
     >
-      <div class="rounded-md border border-zinc-200 bg-zinc-50 px-4 py-3">
+      <div class="rounded-none border border-zinc-200 bg-zinc-50 px-4 py-3">
         <p class="font-medium text-zinc-900">
           {{ member.displayName }}
         </p>
@@ -110,7 +110,7 @@ watch(() => props.member.memberId, () => {
 
       <p
           v-if="member.sanctioned"
-          class="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          class="rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
       >
         제재 중인 것으로 조회된 회원입니다.
         기존 제재가 유효하면 해제 후 새로 등록할 수 있습니다.
@@ -133,14 +133,14 @@ watch(() => props.member.memberId, () => {
         >
           <span class="text-sm font-medium text-zinc-700">
             종료 일시
-            <span aria-hidden="true" class="ml-0.5 text-red-500">*</span>
+            <span aria-hidden="true" class="ml-0.5 text-zinc-500">*</span>
           </span>
           <input
               :id="`${formId}-ends-at`"
               v-model="endDateTime"
               type="datetime-local"
               required
-              class="h-10 w-full min-w-0 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-800 outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:bg-zinc-50 disabled:text-zinc-400"
+              class="h-10 w-full min-w-0 rounded-none border border-zinc-200 bg-white px-3 text-sm text-zinc-800 outline-none focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:bg-zinc-50 disabled:text-zinc-400"
           />
           <small class="text-xs text-zinc-500">
             현재 기기의 현지 시각을 기준으로 입력하세요.
@@ -160,7 +160,7 @@ watch(() => props.member.memberId, () => {
       <p
           v-if="validationError || errorMessage"
           role="alert"
-          class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          class="rounded-none border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
       >
         {{ validationError || errorMessage }}
       </p>

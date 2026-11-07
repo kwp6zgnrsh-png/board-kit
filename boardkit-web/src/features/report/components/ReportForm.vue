@@ -64,7 +64,7 @@ function submit() {
 
 <template>
   <form
-      class="grid gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4"
+      class="grid gap-4 rounded-none border border-zinc-200 bg-zinc-50 p-4"
       :aria-busy="submitting"
       :aria-labelledby="`${formId}-heading`"
       @submit.prevent="submit"
@@ -106,7 +106,7 @@ function submit() {
     <p
         v-if="validationError || errorMessage"
         role="alert"
-        class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+        class="rounded-none border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
     >
       {{ validationError || errorMessage }}
     </p>

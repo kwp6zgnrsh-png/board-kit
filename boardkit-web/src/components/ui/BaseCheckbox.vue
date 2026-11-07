@@ -15,7 +15,7 @@ const model = defineModel<boolean>({ required: true })
 </script>
 
 <template>
-  <label class="flex items-start gap-3 rounded-lg border border-input bg-background p-3 shadow-xs"
+  <label class="flex items-start gap-3 rounded-none border border-border bg-background p-4 "
     :class="disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-zinc-300'">
     <input v-model="model" type="checkbox" :disabled="disabled"
       class="mt-0.5 size-4 shrink-0 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" />

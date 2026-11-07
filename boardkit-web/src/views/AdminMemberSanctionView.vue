@@ -250,11 +250,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="grid gap-6">
-    <header class="flex flex-wrap items-center justify-between gap-3">
+  <div class="grid gap-8">
+    <header class="page-heading">
       <div>
         <p class="text-xs font-medium text-primary">관리자</p>
-        <h1 class="mt-1 text-2xl font-semibold text-zinc-900">
+        <h1 class="page-title">
           회원 제재 관리
         </h1>
         <p class="mt-2 text-sm text-zinc-500">
@@ -284,7 +284,7 @@ onBeforeUnmount(() => {
     <p
         v-if="resultMessage"
         role="status"
-        class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
+        class="rounded-none border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
     >
       {{ resultMessage }}
     </p>
@@ -313,7 +313,7 @@ onBeforeUnmount(() => {
 
           <section
               v-else
-              class="rounded-xl border border-border bg-card px-5 py-10 text-center text-sm text-zinc-500 shadow-xs"
+              class="surface-panel px-5 py-10 text-center text-sm text-zinc-500 "
           >
             제재를 등록하려면 검색 결과에서 회원을 선택하세요.
           </section>
@@ -322,7 +322,7 @@ onBeforeUnmount(() => {
 
       <div
           v-if="memberId !== null"
-          class="flex flex-wrap items-center justify-between gap-3 rounded-md bg-zinc-50 px-4 py-3"
+          class="flex flex-wrap items-center justify-between gap-3 rounded-none bg-zinc-50 px-4 py-3"
       >
         <p class="text-sm text-zinc-600">
           선택한 회원의 제재 이력을 조회 중입니다.
@@ -369,7 +369,7 @@ onBeforeUnmount(() => {
     <p
         v-else
         role="alert"
-        class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        class="rounded-none border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
     >
       관리자 계정으로 다시 로그인해 주세요.
     </p>

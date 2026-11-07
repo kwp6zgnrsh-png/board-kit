@@ -91,7 +91,7 @@ async function submit() {
 </script>
 
 <template>
-  <form class="grid w-full max-w-md gap-5 rounded-xl border border-border bg-card p-6 sm:p-8 shadow-xs" @submit.prevent="submit">
+  <form class="grid w-full gap-6" @submit.prevent="submit">
     <BaseInput
         id="member-login-id"
         v-model="form.loginId"
@@ -131,7 +131,7 @@ async function submit() {
 
     <p
         v-if="errorMessage"
-        class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+        class="rounded-none border border-red-200 bg-red-50 p-3 text-sm text-red-700"
         role="alert"
     >
       {{ errorMessage }}

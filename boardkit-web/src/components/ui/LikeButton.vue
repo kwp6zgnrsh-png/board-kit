@@ -22,7 +22,7 @@ const emit = defineEmits<{
 <template>
   <button
       type="button"
-      class="inline-flex items-center justify-center gap-2 rounded-md border font-medium leading-5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50"
+      class="inline-flex items-center justify-center gap-2 rounded-none border font-medium leading-5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50"
       :class="[
         size === 'sm' ? 'h-8 px-3 text-xs' : 'h-9 px-4 text-sm',
         liked

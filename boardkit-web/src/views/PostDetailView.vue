@@ -3,7 +3,6 @@ import {computed, onBeforeUnmount, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {getBoardDetail} from '@/api/boardApi'
 import {ApiError} from '@/api/http'
-import BoardHero from '@/features/board/components/BoardHero.vue'
 import type {BoardDetailResponse,} from '@/features/board/types/board'
 import PostCommentsPanel from '@/features/comment/components/PostCommentsPanel.vue'
 import SecretPostPasswordForm from '@/features/post/components/SecretPostPasswordForm.vue'
@@ -363,37 +362,31 @@ onBeforeUnmount(() => {
   <div class="grid min-w-0 gap-5">
     <p
         v-if="loading && !board"
-        class="m-0 rounded-lg border border-zinc-200 bg-zinc-100 p-5 font-medium text-zinc-700"
+        class="m-0 rounded-none border border-zinc-200 bg-zinc-100 p-5 font-medium text-zinc-700"
     >
       게시글을 불러오는 중입니다.
     </p>
 
     <p
         v-else-if="errorMessage && !board"
-        class="m-0 rounded-lg border border-red-200 bg-rose-50 p-5 font-medium text-red-900"
+        class="m-0 rounded-none border border-red-200 bg-rose-50 p-5 font-medium text-red-900"
         role="alert"
     >
       {{ errorMessage }}
     </p>
 
     <template v-else-if="board">
-      <BoardHero
-          :name="board.name"
-          :slug="board.slug"
-          :description="board.description"
-      />
-
       <p
           v-if="board.status === 'ARCHIVED'"
           role="status"
-          class="m-0 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          class="m-0 rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
       >
         보관된 게시판입니다. 조회만 가능합니다.
       </p>
 
       <p
           v-if="loading"
-          class="m-0 rounded-lg border border-zinc-200 bg-zinc-100 p-5 font-medium text-zinc-700"
+          class="m-0 rounded-none border border-zinc-200 bg-zinc-100 p-5 font-medium text-zinc-700"
       >
         게시글을 불러오는 중입니다.
       </p>
@@ -411,7 +404,7 @@ onBeforeUnmount(() => {
 
       <p
           v-else-if="errorMessage"
-          class="m-0 rounded-lg border border-red-200 bg-rose-50 p-5 font-medium text-red-900"
+          class="m-0 rounded-none border border-red-200 bg-rose-50 p-5 font-medium text-red-900"
           role="alert"
       >
         {{ errorMessage }}
@@ -422,18 +415,18 @@ onBeforeUnmount(() => {
           class="grid min-w-0 items-start gap-3"
       >
         <div class="grid min-w-0 content-start gap-3">
-          <article class="grid min-w-0 gap-0 rounded-xl border border-border bg-card px-4 sm:px-6 shadow-xs">
-            <header class="grid gap-3 border-b border-zinc-200 py-4">
+          <article class="grid w-full min-w-0 gap-0 bg-card">
+            <header class="grid gap-5 border-b border-border pb-8 pt-4">
               <div class="flex flex-wrap items-center gap-2 text-xs font-medium text-zinc-600">
-                <span class="rounded bg-accent px-2 py-1 font-medium text-primary">{{ board.name }}</span>
-                <span v-if="post.pinned" class="rounded bg-zinc-100 px-2 py-1 font-medium text-zinc-600">고정</span>
-                <span v-if="post.secret" class="rounded bg-zinc-100 px-2 py-1 font-medium text-zinc-600">비밀글</span>
-                <span v-if="post.categoryName" class="rounded bg-zinc-100 px-2 py-1 font-medium text-zinc-600">
+                <span class="rounded-none bg-accent px-2 py-1 font-medium text-primary">{{ board.name }}</span>
+                <span v-if="post.pinned" class="rounded-none bg-zinc-100 px-2 py-1 font-medium text-zinc-600">고정</span>
+                <span v-if="post.secret" class="rounded-none bg-zinc-100 px-2 py-1 font-medium text-zinc-600">비밀글</span>
+                <span v-if="post.categoryName" class="rounded-none bg-zinc-100 px-2 py-1 font-medium text-zinc-600">
                   {{ post.categoryName }}
                 </span>
               </div>
 
-              <h1 class="m-0 text-xl leading-relaxed font-semibold break-words text-zinc-900 sm:text-2xl">{{
+              <h1 class="page-title">{{
                   post.title
                 }}</h1>
 
@@ -458,7 +451,7 @@ onBeforeUnmount(() => {
             <p
                 v-if="post.blinded"
                 role="status"
-                class="my-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800"
+                class="my-4 rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800"
             >
               블라인드된 게시글입니다.
               작성자와 관리자만 원문을 볼 수 있으며 수정과 추가 활동이 제한됩니다.
@@ -475,7 +468,7 @@ onBeforeUnmount(() => {
             />
 
             <div
-                class="grid justify-items-center gap-2 border-t border-zinc-100 py-5"
+                class="grid justify-items-center gap-2 py-5"
                 :aria-busy="likeSubmitting"
             >
               <LikeButton
@@ -503,14 +496,14 @@ onBeforeUnmount(() => {
 
             <p
                 v-if="deleteErrorMessage"
-                class="m-0 rounded-lg border border-red-200 bg-rose-50 p-4 font-medium text-red-900"
+                class="m-0 rounded-none border border-red-200 bg-rose-50 p-4 font-medium text-red-900"
                 role="alert"
             >
               {{ deleteErrorMessage }}
             </p>
 
             <footer
-                class="flex flex-wrap items-center justify-end gap-3 border-t border-zinc-200 py-3 max-sm:justify-stretch">
+                class="flex flex-wrap items-center justify-end gap-3 py-3 max-sm:justify-stretch">
               <ReportAction
                   v-if="board.status === 'ACTIVE' && !post.blinded"
                   :board-slug="board.slug"
@@ -523,7 +516,7 @@ onBeforeUnmount(() => {
               <div v-if="canEdit || canDelete" class="flex flex-wrap gap-3 max-sm:flex-1 max-sm:[&>*]:flex-1">
                 <RouterLink
                     v-if="canEdit"
-                    class="inline-flex h-9 items-center justify-center rounded-md border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    class="inline-flex h-9 items-center justify-center rounded-none border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     :to="{
                       name: 'post-edit',
                       params: { boardSlug, postId: post.id },
@@ -548,7 +541,7 @@ onBeforeUnmount(() => {
                     params: { boardSlug },
                     query: route.query,
                   }"
-                  class="inline-flex h-9 items-center justify-center rounded-md border border-primary bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring max-sm:flex-1"
+                  class="inline-flex h-9 items-center justify-center rounded-none border border-primary bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring max-sm:flex-1"
               >
                 ← 목록으로
               </RouterLink>

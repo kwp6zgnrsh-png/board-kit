@@ -7,9 +7,9 @@ defineProps<{
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+  <section class="overflow-hidden surface-panel">
     <header class="border-b border-zinc-200 px-5 py-4">
-      <h2 class="text-base font-semibold text-zinc-900">기본 정보</h2>
+      <h2 class="text-base font-medium text-zinc-900">기본 정보</h2>
     </header>
 
     <dl class="grid gap-5 px-5 py-5 sm:grid-cols-2">

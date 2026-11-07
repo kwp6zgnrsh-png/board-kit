@@ -28,8 +28,8 @@ const secretModeLabel = computed(() => ({
 
 <template>
   <details class="mt-3 border-t border-zinc-100 pt-4 text-xs text-zinc-500">
-    <summary class="w-fit cursor-pointer rounded py-1 font-medium hover:text-primary focus-visible:outline-2 focus-visible:outline-ring">게시판 이용 안내</summary>
-    <dl class="mt-3 grid gap-3 rounded-md bg-zinc-50 p-4 sm:grid-cols-2">
+    <summary class="w-fit cursor-pointer rounded-none py-1 font-medium hover:text-primary focus-visible:outline-2 focus-visible:outline-ring">게시판 이용 안내</summary>
+    <dl class="mt-3 grid gap-3 rounded-none bg-zinc-50 p-4 sm:grid-cols-2">
       <div><dt class="mb-1 font-medium text-zinc-700">읽기 권한</dt><dd>{{ readPermissionLabel }}</dd></div>
       <div><dt class="mb-1 font-medium text-zinc-700">글쓰기 권한</dt><dd>{{ writePermissionLabel }}</dd></div>
       <div><dt class="mb-1 font-medium text-zinc-700">비밀글</dt><dd>{{ secretModeLabel }}</dd></div>

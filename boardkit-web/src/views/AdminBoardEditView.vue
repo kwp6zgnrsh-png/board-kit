@@ -89,14 +89,14 @@ watch(boardSlug, loadBoard, { immediate: true })
 </script>
 
 <template>
-  <div class="grid gap-6">
-    <header class="flex flex-wrap items-start justify-between gap-4">
+  <div class="grid gap-8">
+    <header class="page-heading">
       <div>
         <p class="m-0 mb-2 text-xs font-semibold text-primary">
           게시판 관리
         </p>
 
-        <h1 class="m-0 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
+        <h1 class="page-title">
           게시판 설정
         </h1>
 
@@ -117,14 +117,14 @@ watch(boardSlug, loadBoard, { immediate: true })
 
     <p
         v-if="loading"
-        class="m-0 rounded-lg border border-zinc-200 bg-zinc-100 px-5 py-14 text-center font-semibold text-zinc-600"
+        class="m-0 rounded-none border border-zinc-200 bg-zinc-100 px-5 py-14 text-center font-semibold text-zinc-600"
     >
       게시판 설정을 불러오는 중입니다.
     </p>
 
     <p
         v-else-if="errorMessage"
-        class="m-0 rounded-lg border border-red-200 bg-red-50 px-5 py-12 text-center font-semibold text-red-900"
+        class="m-0 rounded-none border border-red-200 bg-red-50 px-5 py-12 text-center font-semibold text-red-900"
         role="alert"
     >
       {{ errorMessage }}
@@ -133,7 +133,7 @@ watch(boardSlug, loadBoard, { immediate: true })
     <template v-else-if="board">
       <p
           v-if="archiveErrorMessage"
-          class="m-0 rounded-lg border border-red-200 bg-red-50 px-5 py-4 text-center font-semibold text-red-900"
+          class="m-0 rounded-none border border-red-200 bg-red-50 px-5 py-4 text-center font-semibold text-red-900"
           role="alert"
       >
         {{ archiveErrorMessage }}

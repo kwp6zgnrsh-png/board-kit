@@ -66,7 +66,7 @@ async function submit() {
 
 <template>
   <form
-      class="grid gap-3 rounded border border-zinc-200 bg-accent p-3"
+      class="grid min-w-0 gap-3 py-2"
       @submit.prevent="submit"
   >
     <BaseTextarea
@@ -79,7 +79,7 @@ async function submit() {
 
     <p
         v-if="errorMessage"
-        class="m-0 rounded border border-red-200 bg-rose-50 p-3 text-sm font-medium text-red-900"
+        class="m-0 rounded-none border border-red-200 bg-rose-50 p-3 text-sm font-medium text-red-900"
         role="alert"
     >
       {{ errorMessage }}

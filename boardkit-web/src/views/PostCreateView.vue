@@ -67,14 +67,14 @@ watch(boardSlug, loadBoard, {
 </script>
 
 <template>
-  <div class="grid min-w-0 gap-6">
-    <p v-if="loading" class="rounded-md bg-zinc-50 p-5 text-sm text-zinc-500">
+  <div class="mx-auto grid w-full min-w-0 max-w-5xl gap-8">
+    <p v-if="loading" class="rounded-none bg-zinc-50 p-5 text-sm text-zinc-500">
       게시판 정보를 불러오는 중입니다.
     </p>
 
     <p
         v-else-if="errorMessage"
-        class="rounded-md border border-red-200 bg-red-50 p-5 text-sm text-red-700"
+        class="rounded-none border border-red-200 bg-red-50 p-5 text-sm text-red-700"
         role="alert"
     >
       {{ errorMessage }}

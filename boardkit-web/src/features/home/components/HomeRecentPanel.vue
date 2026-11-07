@@ -16,18 +16,18 @@ function formatDate(value: string): string {
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-xl border border-border bg-card shadow-xs" aria-labelledby="recent-heading">
-    <header class="border-b border-zinc-200 bg-zinc-50 px-4 py-3"><h2 id="recent-heading" class="text-sm font-semibold text-zinc-800">최근 올라온 글</h2></header>
-    <ol v-if="posts.length" class="divide-y divide-zinc-100">
+  <section class="min-w-0" aria-labelledby="recent-heading">
+    <header class="mb-4 flex items-baseline justify-between gap-4"><h2 id="recent-heading" class="text-lg font-medium tracking-tight text-zinc-800">최근 게시글</h2></header>
+    <ol v-if="posts.length" class="divide-y divide-border border-y border-border">
       <li v-for="{ board, post } in posts" :key="`${board.id}-${post.id}`">
         <PostSummaryLink
             :board-slug="board.slug"
             :post="post"
-            class="flex min-w-0 items-center gap-3 px-4 py-2.5 text-sm text-zinc-700 hover:bg-muted/60 hover:text-primary"
+            class="flex min-w-0 items-center gap-3 px-1 py-4 text-sm text-zinc-700 hover:bg-muted/60 hover:text-primary"
         >
           <span class="hidden w-24 shrink-0 truncate text-xs text-zinc-400 sm:block">{{ board.name }}</span>
           <span class="truncate">{{ post.title }}</span>
-          <span v-if="post.commentCount" class="shrink-0 text-xs text-red-500">[{{ post.commentCount }}]</span>
+          <span v-if="post.commentCount" class="shrink-0 text-xs text-zinc-500">[{{ post.commentCount }}]</span>
           <time :datetime="post.createdAt" class="ml-auto shrink-0 text-xs text-zinc-400">{{ formatDate(post.createdAt) }}</time>
           <template #blocked>
             <span class="hidden w-24 shrink-0 truncate text-xs text-zinc-400 sm:block">

@@ -4,7 +4,6 @@ import {getBoards} from '@/api/boardApi'
 import {getPosts} from '@/api/postApi'
 import {getAuthSession} from '@/features/auth/services/authSession'
 import HomeBoardCard from '@/features/home/components/HomeBoardCard.vue'
-import HomeHero from '@/features/home/components/HomeHero.vue'
 import HomeRecentPanel from '@/features/home/components/HomeRecentPanel.vue'
 import type {
   HomeBoardPreview,
@@ -76,22 +75,21 @@ watch(
 </script>
 
 <template>
-  <div class="grid gap-5">
-    <section class="grid gap-6">
-      <HomeHero/>
+  <div class="grid gap-12 sm:gap-16">
+    <section class="grid gap-10 sm:gap-12">
       <HomeRecentPanel :posts="recentPosts"/>
     </section>
 
     <p
         v-if="loading"
-        class="rounded-lg border border-zinc-200 bg-white px-6 py-16 text-center font-semibold text-zinc-600"
+        class="rounded-none border border-zinc-200 bg-white px-6 py-16 text-center font-semibold text-zinc-600"
     >
       커뮤니티 소식을 불러오는 중입니다.
     </p>
 
     <p
         v-else-if="errorMessage"
-        class="rounded-lg border border-red-200 bg-red-50 px-6 py-12 text-center font-semibold text-red-800"
+        class="rounded-none border border-red-200 bg-red-50 px-6 py-12 text-center font-semibold text-red-800"
         role="alert"
     >
       {{ errorMessage }}
@@ -99,7 +97,7 @@ watch(
 
     <section
         v-else-if="previews.length > 0"
-        class="grid items-start gap-5 xl:grid-cols-2"
+        class="grid items-stretch gap-6 md:grid-cols-2 2xl:grid-cols-3"
         aria-label="게시판별 최신 글"
     >
       <HomeBoardCard
@@ -112,13 +110,13 @@ watch(
 
     <section
         v-else
-        class="rounded-xl border border-border bg-card px-6 py-16 text-center shadow-xs"
+        class="border border-dashed border-border bg-card px-6 py-20 text-center"
     >
-      <h2 class="m-0 text-2xl font-semibold text-zinc-900">아직 이용할 수 있는 게시판이 없습니다.</h2>
+      <h2 class="m-0 text-2xl font-medium text-zinc-900">아직 이용할 수 있는 게시판이 없습니다.</h2>
       <RouterLink
           v-if="session?.role === 'ADMIN'"
           :to="{ name: 'admin-board-create' }"
-          class="mt-5 inline-flex rounded border border-zinc-200 bg-primary px-4 py-2 font-semibold text-white no-underline"
+          class="mt-5 inline-flex rounded-none border border-zinc-200 bg-primary px-4 py-2 font-semibold text-white no-underline"
       >
         게시판 만들기
       </RouterLink>

@@ -103,9 +103,9 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="mx-auto grid w-full max-w-4xl gap-6" :aria-busy="loading">
-    <header class="flex flex-wrap items-start justify-between gap-4">
+    <header class="page-heading">
       <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-zinc-900">
+        <h1 class="page-title">
           마이페이지
         </h1>
         <p class="mt-2 text-sm text-zinc-500">
@@ -125,7 +125,7 @@ onBeforeUnmount(() => {
 
     <div
         v-if="!session"
-        class="rounded-lg border border-zinc-200 bg-zinc-50 px-5 py-8 text-center"
+        class="rounded-none border border-zinc-200 bg-zinc-50 px-5 py-8 text-center"
     >
       <p class="text-sm text-zinc-600">다시 로그인해 주세요.</p>
       <RouterLink
@@ -140,14 +140,14 @@ onBeforeUnmount(() => {
       <p
           v-if="errorMessage"
           role="alert"
-          class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          class="rounded-none border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
       >
         {{ errorMessage }}
       </p>
 
       <p
           v-if="loading && !profile"
-          class="rounded-lg border border-zinc-200 bg-zinc-50 px-5 py-12 text-center text-sm text-zinc-500"
+          class="rounded-none border border-zinc-200 bg-zinc-50 px-5 py-12 text-center text-sm text-zinc-500"
       >
         회원 정보를 불러오는 중입니다.
       </p>

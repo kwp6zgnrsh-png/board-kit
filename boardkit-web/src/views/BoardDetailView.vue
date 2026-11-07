@@ -309,17 +309,17 @@ watch(
 
 <template>
   <div class="grid min-w-0 gap-5">
-    <p v-if="boardLoading" class="rounded-md bg-zinc-50 px-5 py-14 text-center text-sm text-zinc-500">게시판을 불러오는
+    <p v-if="boardLoading" class="rounded-none bg-zinc-50 px-5 py-14 text-center text-sm text-zinc-500">게시판을 불러오는
       중입니다.</p>
     <p v-else-if="boardErrorMessage"
-       class="rounded-md border border-red-200 bg-red-50 px-5 py-12 text-center text-sm text-red-700" role="alert">
+       class="rounded-none border border-red-200 bg-red-50 px-5 py-12 text-center text-sm text-red-700" role="alert">
       {{ boardErrorMessage }}</p>
     <template v-else-if="board">
       <BoardHero :name="board.name" :slug="board.slug" :description="board.description"/>
       <p
           v-if="board.status === 'ARCHIVED'"
           role="status"
-          class="m-0 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          class="m-0 rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
       >
         보관된 게시판입니다. 조회만 가능합니다.
       </p>
@@ -330,7 +330,7 @@ watch(
             <span v-if="postPage" class="tabular-nums">{{ postPage.totalElements.toLocaleString() }}개</span>
           </p>
           <RouterLink v-if="canWrite" :to="{ name: 'post-create', params: { boardSlug: board.slug } }"
-                      class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-primary bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                      class="inline-flex h-10 items-center justify-center gap-2 rounded-none border border-primary bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
             <CommunityIcon name="write" class="size-4"/>
             글쓰기
           </RouterLink>
@@ -340,13 +340,13 @@ watch(
           <nav v-if="board.policy.categoriesEnabled" class="flex max-w-full gap-1.5 overflow-x-auto pb-1"
                aria-label="카테고리 필터">
             <button type="button"
-                    class="h-9 shrink-0 rounded-md border px-5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring"
-                    :class="!selectedCategoryId ? 'border-primary bg-primary text-white' : 'border-zinc-200 bg-zinc-50 text-zinc-600 hover:bg-zinc-100'"
+                    class="h-9 shrink-0 rounded-none border px-5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring"
+                    :class="!selectedCategoryId ? 'border-foreground bg-white text-foreground' : 'border-transparent bg-white text-zinc-500 hover:border-zinc-300'"
                     :aria-pressed="!selectedCategoryId" @click="selectedCategoryId = ''">전체
             </button>
             <button v-for="category in board.categories" :key="category.id" type="button"
-                    class="h-9 shrink-0 rounded-md border px-5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring"
-                    :class="selectedCategoryId === String(category.id) ? 'border-primary bg-primary text-white' : 'border-zinc-200 bg-zinc-50 text-zinc-600 hover:bg-zinc-100'"
+                    class="h-9 shrink-0 rounded-none border px-5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring"
+                    :class="selectedCategoryId === String(category.id) ? 'border-foreground bg-white text-foreground' : 'border-transparent bg-white text-zinc-500 hover:border-zinc-300'"
                     :aria-pressed="selectedCategoryId === String(category.id)"
                     @click="selectedCategoryId = String(category.id)">{{ category.name }}
             </button>
@@ -354,7 +354,7 @@ watch(
           <label class="ml-auto">
             <span class="sr-only">게시글 정렬</span>
             <select v-model="selectedSort"
-                    class="h-9 rounded-md border border-zinc-200 bg-white px-3 text-xs text-zinc-600 outline-none focus:border-ring focus:ring-2 focus:ring-ring/20">
+                    class="h-9 rounded-none border border-zinc-200 bg-white px-3 text-xs text-zinc-600 outline-none focus:border-ring focus:ring-2 focus:ring-ring/20">
               <option value="LATEST">최신순</option>
               <option value="OLDEST">오래된순</option>
               <option value="VIEWS">조회순</option>
@@ -362,10 +362,10 @@ watch(
           </label>
         </div>
 
-        <p v-if="postsLoading" class="rounded-md border border-zinc-200 py-16 text-center text-sm text-zinc-500"
+        <p v-if="postsLoading" class="rounded-none border border-zinc-200 py-16 text-center text-sm text-zinc-500"
            role="status">게시글을 불러오는 중입니다.</p>
         <p v-else-if="postsErrorMessage"
-           class="rounded-md border border-red-200 bg-red-50 py-12 text-center text-sm text-red-700" role="alert">
+           class="rounded-none border border-red-200 bg-red-50 py-12 text-center text-sm text-red-700" role="alert">
           {{ postsErrorMessage }}</p>
         <template v-else-if="postPage">
           <PostCardList v-if="board.displayType === 'CARD'" :board-slug="board.slug" :posts="postPage.posts"/>
@@ -376,18 +376,18 @@ watch(
         <form class="mx-auto flex w-full max-w-xl flex-wrap items-center justify-center gap-2 pt-2"
               @submit.prevent="applySearch">
           <span
-              class="hidden h-10 items-center rounded-md border border-zinc-200 bg-white px-4 text-sm text-zinc-600 sm:inline-flex">제목 + 내용</span>
+              class="hidden h-10 items-center rounded-none border border-zinc-200 bg-white px-4 text-sm text-zinc-600 sm:inline-flex">제목 + 내용</span>
           <label class="min-w-0 flex-1">
             <span class="sr-only">게시글 검색어</span>
             <input v-model="searchKeyword" type="search" maxlength="100" placeholder="검색어를 입력하세요."
-                   class="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none placeholder:text-zinc-400 focus:border-ring focus:ring-2 focus:ring-ring/20"/>
+                   class="h-10 w-full rounded-none border border-zinc-200 bg-white px-3 text-sm outline-none placeholder:text-zinc-400 focus:border-ring focus:ring-2 focus:ring-ring/20"/>
           </label>
           <button type="submit"
-                  class="h-10 rounded-md border border-primary bg-primary px-5 text-sm font-medium text-white hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-ring">
+                  class="h-10 rounded-none border border-primary bg-primary px-5 text-sm font-medium text-white hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-ring">
             검색
           </button>
           <button v-if="hasActiveFilters" type="button"
-                  class="h-10 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-600 hover:bg-zinc-50"
+                  class="h-10 rounded-none border border-zinc-200 bg-white px-3 text-sm text-zinc-600 hover:bg-zinc-50"
                   @click="resetFilters">초기화
           </button>
         </form>

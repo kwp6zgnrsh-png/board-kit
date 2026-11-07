@@ -77,7 +77,7 @@ function removeFile(key: string) {
     <button
         type="button"
         :disabled="disabled"
-        class="inline-flex h-11 items-center gap-2 justify-self-start rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 hover:border-zinc-400 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 sm:px-4"
+        class="inline-flex h-11 items-center gap-2 justify-self-start rounded-none border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 hover:border-zinc-400 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 sm:px-4"
         @click="fileInput?.click()"
     >
       <svg class="size-5 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -100,7 +100,7 @@ function removeFile(key: string) {
       <li
           v-for="item in attachments"
           :key="item.key"
-          class="flex min-w-0 items-center justify-between gap-3 rounded-md border border-zinc-200 bg-white px-3 py-2"
+          class="flex min-w-0 items-center justify-between gap-3 rounded-none border border-zinc-200 bg-white px-3 py-2"
       >
         <div class="min-w-0">
           <p class="m-0 truncate text-sm font-medium">{{ item.file.name }}</p>
@@ -112,7 +112,7 @@ function removeFile(key: string) {
         <button
             type="button"
             :disabled="disabled"
-            class="shrink-0 rounded border border-zinc-200 bg-rose-50 px-2 py-1 text-xs font-medium disabled:opacity-50"
+            class="shrink-0 rounded-none border border-zinc-200 bg-rose-50 px-2 py-1 text-xs font-medium disabled:opacity-50"
             @click="removeFile(item.key)"
         >
           삭제

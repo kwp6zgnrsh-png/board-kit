@@ -6,11 +6,13 @@ withDefaults(
     placeholder?: string
     rows?: number
     maxLength?: number
+    showCount?: boolean
   }>(),
   {
     placeholder: '',
     rows: 4,
     maxLength: 2000,
+    showCount: true,
   },
 )
 
@@ -28,6 +30,6 @@ const model = defineModel<string>({ required: true })
         :rows="rows"
         :maxlength="maxLength"
     />
-    <small class="justify-self-end text-xs tabular-nums text-zinc-400">{{ model.length }} / {{ maxLength }}</small>
+    <small v-if="showCount" class="justify-self-end text-xs tabular-nums text-zinc-400">{{ model.length }} / {{ maxLength }}</small>
   </label>
 </template>

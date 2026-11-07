@@ -20,20 +20,19 @@ function formatDate(value: string): string {
 <template>
   <p
       v-if="posts.length === 0"
-      class="rounded-md border border-zinc-200 px-4 py-20 text-center text-sm leading-6 text-zinc-500"
+      class="rounded-none border border-zinc-200 px-4 py-20 text-center text-sm leading-6 text-zinc-500"
   >
-    아직 등록된 게시글이 없습니다.<br/>
-    첫 번째 이야기를 시작해 보세요.
+    아직 등록된 게시글이 없습니다.
   </p>
 
-  <div v-else class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+  <div v-else class="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
     <PostSummaryLink
         v-for="post in posts"
         :key="post.id"
         :board-slug="boardSlug"
         :post="post"
         :query="route.query"
-        class="group overflow-hidden rounded-lg border border-zinc-200 bg-white transition-colors hover:border-zinc-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        class="group overflow-hidden border border-border bg-white transition-colors hover:border-zinc-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       <div class="aspect-square overflow-hidden border-b border-zinc-100 bg-zinc-50">
         <PostThumbnail v-if="!post.secret &&post.representativeFileId !== null && post.thumbnailAvailable"
@@ -47,20 +46,20 @@ function formatDate(value: string): string {
         </div>
       </div>
 
-      <div class="grid gap-3 p-4">
+      <div class="grid gap-4 p-5">
         <div
             v-if="post.pinned || post.categoryName || post.blinded"
             class="flex flex-wrap items-center gap-2 text-xs"
         >
           <span
               v-if="post.blinded"
-              class="rounded bg-amber-50 px-2 py-0.5 font-medium text-amber-700"
+              class="rounded-none bg-amber-50 px-2 py-0.5 font-medium text-amber-700"
           >
             블라인드
           </span>
           <span
               v-if="post.pinned"
-              class="rounded bg-accent px-2 py-0.5 font-medium text-primary"
+              class="rounded-none bg-accent px-2 py-0.5 font-medium text-primary"
           >
             공지
           </span>
@@ -79,7 +78,7 @@ function formatDate(value: string): string {
               :aria-hidden="false"
           />
           <h2
-              class="min-w-0 break-words text-sm font-semibold leading-6 text-zinc-800 group-hover:text-primary"
+              class="min-w-0 break-words text-sm font-medium leading-6 text-zinc-800 group-hover:text-primary"
           >
             {{ post.title }}
           </h2>
@@ -103,7 +102,7 @@ function formatDate(value: string): string {
           <CommunityIcon name="lock" class="size-8 text-zinc-300" />
         </div>
 
-        <div class="grid gap-3 p-4">
+        <div class="grid gap-4 p-5">
           <h2 class="text-sm font-medium leading-6 text-zinc-500">
             블라인드된 게시글입니다.
           </h2>

@@ -268,12 +268,12 @@ async function submit() {
 </script>
 
 <template>
-  <form class="grid min-w-0 gap-5" @submit.prevent="submit">
-    <section class="grid gap-5 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs">
+  <form class="grid min-w-0 gap-2" @submit.prevent="submit">
+    <section class="settings-section">
       <div class="flex flex-col justify-between gap-2 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center">
         <div class="flex items-center gap-2">
           <span class="text-xs font-semibold text-primary">01</span>
-          <h2 class="text-base font-semibold text-zinc-900">기본 정보</h2>
+          <h2 class="text-base font-medium text-zinc-900">기본 정보</h2>
         </div>
         <p class="text-xs leading-5 text-zinc-500">게시판 이름과 화면 표시 방식을 설정합니다.</p>
       </div>
@@ -323,11 +323,11 @@ async function submit() {
       />
     </section>
 
-    <section class="grid gap-5 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs">
+    <section class="settings-section">
       <div class="flex flex-col justify-between gap-2 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center">
         <div class="flex items-center gap-2">
           <span class="text-xs font-semibold text-primary">02</span>
-          <h2 class="text-base font-semibold text-zinc-900">접근 권한</h2>
+          <h2 class="text-base font-medium text-zinc-900">접근 권한</h2>
         </div>
         <p class="text-xs leading-5 text-zinc-500">조회, 게시글 작성, 댓글 작성 권한을 지정합니다.</p>
       </div>
@@ -360,11 +360,11 @@ async function submit() {
       </div>
     </section>
 
-    <section class="grid gap-5 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs">
+    <section class="settings-section">
       <div class="flex flex-col justify-between gap-3 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center">
         <div class="flex items-center gap-2">
           <span class="text-xs font-semibold text-primary">03</span>
-          <h2 class="text-base font-semibold text-zinc-900">카테고리</h2>
+          <h2 class="text-base font-medium text-zinc-900">카테고리</h2>
         </div>
         <BaseCheckbox v-model="form.categoriesEnabled" label="카테고리 사용" />
       </div>
@@ -380,7 +380,7 @@ async function submit() {
           <div
             v-for="category in form.categories"
             :key="category.key"
-            class="grid items-end gap-3 rounded-md bg-zinc-50 p-4 sm:grid-cols-[minmax(0,1fr)_7rem_auto]"
+            class="grid items-end gap-4 border border-border p-4 sm:grid-cols-[minmax(0,1fr)_7rem_auto]"
           >
             <BaseInput
               :id="`category-name-${category.key}`"
@@ -407,18 +407,18 @@ async function submit() {
       </template>
     </section>
 
-    <section class="grid gap-5 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs">
+    <section class="settings-section">
       <div class="flex flex-col justify-between gap-3 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center">
         <div class="flex items-center gap-2">
           <span class="text-xs font-semibold text-primary">04</span>
-          <h2 class="text-base font-semibold text-zinc-900">첨부파일과 이미지</h2>
+          <h2 class="text-base font-medium text-zinc-900">첨부파일과 이미지</h2>
         </div>
         <BaseCheckbox v-model="form.attachmentsEnabled" label="첨부파일 사용" />
       </div>
 
       <p
           v-if="form.attachmentsEnabled"
-          class="m-0 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-semibold text-zinc-600"
+          class="m-0 rounded-none border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-semibold text-zinc-600"
       >
         대표 이미지는 게시글 본문에서 가장 먼저 배치된 이미지로 자동 지정됩니다.
       </p>
@@ -454,11 +454,11 @@ async function submit() {
       </div>
     </section>
 
-    <section class="grid gap-5 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs">
+    <section class="settings-section">
       <div class="flex flex-col justify-between gap-2 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center">
         <div class="flex items-center gap-2">
           <span class="text-xs font-semibold text-primary">05</span>
-          <h2 class="text-base font-semibold text-zinc-900">상호작용 기능</h2>
+          <h2 class="text-base font-medium text-zinc-900">상호작용 기능</h2>
         </div>
         <p class="text-xs leading-5 text-zinc-500">댓글과 좋아요, 관리자 공식 답변 사용 여부를 선택합니다.</p>
       </div>
@@ -479,13 +479,13 @@ async function submit() {
       </div>
     </section>
 
-    <p v-if="errorMessage" class="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
+    <p v-if="errorMessage" class="rounded-none border border-red-200 bg-red-50 p-4 text-sm text-red-700" role="alert">
       {{ errorMessage }}
     </p>
 
     <p
         v-if="successMessage"
-        class="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700"
+        class="rounded-none border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700"
         role="status"
     >
       {{ successMessage }}

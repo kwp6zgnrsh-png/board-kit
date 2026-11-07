@@ -157,7 +157,7 @@ async function submit() {
 </script>
 
 <template>
-  <form class="grid min-w-0 gap-6 rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs" @submit.prevent="submit">
+  <form class="editor-form" @submit.prevent="submit">
     <BaseInput
         id="post-title"
         v-model="form.title"
@@ -184,7 +184,7 @@ async function submit() {
           <button
               type="button"
               :disabled="submitting"
-              class="inline-flex h-11 shrink-0 items-center gap-2 rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 hover:border-zinc-400 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 sm:px-4"
+              class="inline-flex h-11 shrink-0 items-center gap-2 rounded-none border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 hover:border-zinc-400 hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 sm:px-4"
               @click="imageModalOpen = true"
           >
             <svg class="size-5 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -208,7 +208,7 @@ async function submit() {
 
     <section
         v-if="board.policy.secretMode !== 'OFF'"
-        class="grid gap-4 rounded-md bg-zinc-50 p-4"
+        class="grid gap-4 border-y border-border py-5"
     >
       <BaseCheckbox
           v-if="board.policy.secretMode === 'OPTIONAL'"
@@ -219,7 +219,7 @@ async function submit() {
 
       <p
           v-else
-          class="rounded-md bg-accent p-3 text-sm text-zinc-600"
+          class="rounded-none bg-accent p-3 text-sm text-zinc-600"
       >
         이 게시판의 모든 글은 비밀글로 작성됩니다.
       </p>
@@ -243,7 +243,7 @@ async function submit() {
 
     <p
         v-if="errorMessage"
-        class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+        class="rounded-none border border-red-200 bg-red-50 p-3 text-sm text-red-700"
         role="alert"
     >
       {{ errorMessage }}

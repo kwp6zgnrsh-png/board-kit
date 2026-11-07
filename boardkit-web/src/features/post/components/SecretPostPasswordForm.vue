@@ -37,11 +37,11 @@ function submit() {
 
 <template>
   <form
-      class="grid w-full max-w-120 gap-5 rounded-xl border border-border bg-card p-5 sm:p-8 shadow-xs"
+      class="grid w-full max-w-120 gap-5 surface-panel p-5 sm:p-8 "
       @submit.prevent="submit"
   >
     <div>
-      <h2 class="m-0 text-2xl font-semibold text-zinc-900">비밀글입니다</h2>
+      <h2 class="m-0 text-2xl font-medium text-zinc-900">비밀글입니다</h2>
       <p class="mt-2 mb-0 text-zinc-600">게시글 비밀번호를 입력하세요.</p>
     </div>
 
@@ -55,7 +55,7 @@ function submit() {
 
     <p
         v-if="validationMessage || errorMessage"
-        class="m-0 rounded border border-red-200 bg-rose-50 px-4 py-3 font-medium text-red-900"
+        class="m-0 rounded-none border border-red-200 bg-rose-50 px-4 py-3 font-medium text-red-900"
         role="alert"
     >
       {{ validationMessage || errorMessage }}

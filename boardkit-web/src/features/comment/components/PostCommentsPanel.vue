@@ -104,6 +104,7 @@ function canLikeComment(comment: CommentItemResponse): boolean {
       !comment.deleted &&
       !comment.blinded &&
       session.value !== null &&
+      session.value.memberId !== comment.authorId &&
       props.commentLikesEnabled &&
       !loading.value &&
       deletingCommentId.value !== comment.id
@@ -407,16 +408,17 @@ onBeforeUnmount(() => {
 
 <template>
   <section
-      class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
+      class="mt-6 min-w-0 border-t border-border"
       aria-labelledby="comments-heading"
   >
-    <header class="flex min-h-12 items-center gap-2 border-b border-zinc-200 bg-zinc-50 px-4 py-3">
+    <header class="flex min-h-12 items-center gap-2 border-b border-border py-5">
 
       <h2
           id="comments-heading"
-          class="m-0 text-sm font-semibold text-zinc-900"
+          class="m-0 text-sm font-medium text-zinc-900"
       >
         댓글
+        <span v-if="!loading && !errorMessage" class="ml-1 tabular-nums text-zinc-500">{{ totalElements.toLocaleString() }}</span>
       </h2>
     </header>
 
@@ -457,7 +459,7 @@ onBeforeUnmount(() => {
 
     <p
         v-if="actionErrorMessage"
-        class="m-4 rounded border border-red-200 bg-rose-50 p-3 text-sm font-medium text-red-900"
+        class="m-4 rounded-none border border-red-200 bg-rose-50 p-3 text-sm font-medium text-red-900"
         role="alert"
     >
       {{ actionErrorMessage }}
@@ -465,14 +467,14 @@ onBeforeUnmount(() => {
 
     <p
         v-if="loading"
-        class="m-0 p-5 text-sm font-medium text-zinc-600"
+        class="m-0 py-6 text-sm text-zinc-500"
     >
       댓글을 불러오는 중입니다.
     </p>
 
     <p
         v-else-if="errorMessage"
-        class="m-4 rounded border border-red-200 bg-rose-50 p-4 text-sm font-medium text-red-900"
+        class="m-4 rounded-none border border-red-200 bg-rose-50 p-4 text-sm font-medium text-red-900"
         role="alert"
     >
       {{ errorMessage }}
@@ -480,22 +482,22 @@ onBeforeUnmount(() => {
 
     <p
         v-else-if="comments.length === 0"
-        class="m-0 p-5 text-sm font-medium text-zinc-600"
+        class="m-0 py-6 text-sm text-zinc-500"
     >
       등록된 댓글이 없습니다.
     </p>
 
     <ol
         v-else
-        class="m-0 grid list-none divide-y divide-zinc-300 p-0"
+        class="m-0 grid min-w-0 list-none divide-y divide-border p-0"
     >
       <li
           v-for="comment in comments"
           :key="comment.id"
-          class="grid gap-2 px-4 py-4"
+          class="grid min-w-0 gap-3 py-5"
           :class=" comment.parentId === null
-          ? 'bg-white'
-          : 'border-l-2 border-zinc-200 bg-zinc-50/60 pl-8'"
+          ? ''
+          : 'border-l-2 border-border pl-6 sm:pl-8'"
       >
         <div
             v-if="editingCommentId === comment.id && canEditComment(comment)"
@@ -513,10 +515,10 @@ onBeforeUnmount(() => {
 
         <template v-else>
           <div
-              class="grid gap-2"
+              class="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 sm:gap-x-4"
               :class="
       canOpenReplyForm(comment)
-        ? 'cursor-pointer rounded p-2 transition hover:bg-muted/60 focus-visible:outline-3 focus-visible:outline-ring'
+        ? 'cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
         : '' "
               :role="canOpenReplyForm(comment) ? 'button' : undefined"
               :tabindex="canOpenReplyForm(comment) ? 0 : undefined"
@@ -524,34 +526,28 @@ onBeforeUnmount(() => {
               @keydown.enter.prevent="toggleReplyForm(comment)"
               @keydown.space.prevent="toggleReplyForm(comment)"
           >
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <strong class="text-sm font-semibold text-zinc-900">
+            <div class="grid max-w-24 gap-1">
+              <strong class="text-sm font-semibold leading-6 text-zinc-900 [overflow-wrap:anywhere]">
                 {{ comment.deleted ? '삭제된 댓글' : comment.authorDisplayName }}
               </strong>
               <span
                   v-if="!comment.deleted && comment.blinded"
-                  class="rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+                  class="rounded-none bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
               >
                 블라인드
               </span>
-              <time
-                  :datetime="comment.createdAt"
-                  class="text-xs font-medium text-zinc-500"
-              >
-                {{ formatDate(comment.createdAt) }}
-              </time>
             </div>
 
             <p
                 v-if="comment.deleted"
-                class="m-0 text-sm font-medium text-zinc-500"
+                class="m-0 text-sm leading-6 text-zinc-500"
             >
               삭제된 댓글입니다.
             </p>
 
             <p
                 v-else-if="comment.blinded && comment.content === null"
-                class="m-0 text-sm text-zinc-500"
+                class="m-0 text-sm leading-6 text-zinc-500"
             >
               신고로 블라인드된 댓글입니다.
             </p>
@@ -563,20 +559,21 @@ onBeforeUnmount(() => {
               {{ comment.content }}
             </p>
 
-            <small
-                v-if="canOpenReplyForm(comment)"
-                class="font-medium text-zinc-500"
+            <time
+                :datetime="comment.createdAt"
+                class="whitespace-nowrap text-[10px] leading-6 text-zinc-500 sm:text-xs"
             >
-              댓글을 클릭하면 대댓글을 작성할 수 있습니다.
-            </small>
+              {{ formatDate(comment.createdAt) }}
+            </time>
           </div>
 
           <div
               v-if="!comment.deleted"
-              class="flex flex-wrap items-center justify-between gap-2"
+              class="flex flex-wrap items-center justify-end gap-2"
               @click.stop
           >
             <LikeButton
+                v-if="commentLikesEnabled && session?.memberId !== comment.authorId"
                 size="sm"
                 :count="comment.likeCount"
                 :liked="comment.likedByMe"
@@ -587,7 +584,7 @@ onBeforeUnmount(() => {
 
             <div
                 v-if="session"
-                class="ml-auto flex flex-wrap items-start gap-2"
+                class="flex flex-wrap items-start gap-2"
             >
               <ReportAction
                   v-if="!boardArchived && !postBlinded && !comment.blinded"
@@ -602,7 +599,7 @@ onBeforeUnmount(() => {
               <button
                   v-if="canEditComment(comment)"
                   type="button"
-                  class="h-8 rounded-md border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
+                  class="h-8 rounded-none border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-600 hover:bg-zinc-50 disabled:opacity-50"
                   :disabled="likingCommentIds.has(comment.id)"
                   @click="startCommentEdit(comment)"
               >
@@ -612,7 +609,7 @@ onBeforeUnmount(() => {
               <button
                   v-if="canDeleteComment(comment)"
                   type="button"
-                  class="h-8 rounded-md border border-red-200 bg-white px-3 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  class="h-8 rounded-none border border-red-200 bg-white px-3 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
                   :disabled="deletingCommentId !== null || likingCommentIds.has(comment.id)"
                   @click="removeComment(comment)"
               >
@@ -639,12 +636,12 @@ onBeforeUnmount(() => {
 
     <nav
         v-if="totalPages > 1"
-        class="flex items-center justify-center gap-3 border-t border-zinc-200 px-4 py-3"
+        class="flex items-center justify-center gap-3 border-t border-border py-4"
         aria-label="댓글 페이지"
     >
       <button
           type="button"
-          class="h-8 rounded border border-zinc-200 bg-white px-3 text-xs font-semibold disabled:opacity-40"
+          class="h-8 rounded-none border border-zinc-200 bg-white px-3 text-xs font-semibold disabled:opacity-40"
           :disabled="page <= 1 || loading"
           @click="changePage(page - 1)"
       >
@@ -657,7 +654,7 @@ onBeforeUnmount(() => {
 
       <button
           type="button"
-          class="h-8 rounded border border-zinc-200 bg-white px-3 text-xs font-semibold disabled:opacity-40"
+          class="h-8 rounded-none border border-zinc-200 bg-white px-3 text-xs font-semibold disabled:opacity-40"
           :disabled="page >= totalPages || loading"
           @click="changePage(page + 1)"
       >
@@ -674,14 +671,14 @@ onBeforeUnmount(() => {
 
     <p
         v-else-if="!boardArchived && !postBlinded && commentsEnabled && !locked && session === null"
-        class="m-0 border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium text-zinc-600"
+        class="m-0 border-t border-border py-5 text-sm text-zinc-500"
     >
       로그인하면 댓글을 작성할 수 있습니다.
     </p>
 
     <p
         v-else-if="!boardArchived && !postBlinded && commentsEnabled && !locked"
-        class="m-0 border-b border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium text-zinc-600"
+        class="m-0 border-t border-border py-5 text-sm text-zinc-500"
     >
       댓글 작성 권한이 없습니다.
     </p>

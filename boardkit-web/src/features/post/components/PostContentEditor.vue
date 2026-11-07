@@ -168,7 +168,7 @@ defineExpose({applyImages})
 </script>
 
 <template>
-  <section class="overflow-hidden rounded-xl border border-input bg-card shadow-xs" aria-label="본문 편집기">
+  <section class="overflow-hidden surface-panel" aria-label="본문 편집기">
     <div v-if="$slots.uploads" class="border-b border-input bg-zinc-50 px-3 py-3 sm:px-4">
       <slot name="uploads" />
     </div>

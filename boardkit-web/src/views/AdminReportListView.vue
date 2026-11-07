@@ -174,11 +174,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="grid gap-6">
-    <header class="flex flex-wrap items-center justify-between gap-3">
+  <div class="grid gap-8">
+    <header class="page-heading">
       <div>
         <p class="text-xs font-medium text-primary">관리자</p>
-        <h1 class="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
+        <h1 class="page-title">
           신고 처리
         </h1>
         <p class="mt-2 text-sm text-zinc-500">
@@ -188,14 +188,14 @@ onBeforeUnmount(() => {
 
       <RouterLink
           :to="{ name: 'admin-dashboard' }"
-          class="rounded-md border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+          class="rounded-none border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
       >
         관리자 메뉴
       </RouterLink>
     </header>
 
     <section
-        class="overflow-hidden rounded-xl border border-border bg-card shadow-xs"
+        class="overflow-hidden surface-panel"
         :aria-busy="loading"
     >
       <header class="flex flex-wrap items-end justify-between gap-4 border-b border-zinc-200 px-5 py-4">
@@ -227,7 +227,7 @@ onBeforeUnmount(() => {
       <p
           v-if="errorMessage"
           role="alert"
-          class="m-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          class="m-5 rounded-none border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
       >
         {{ errorMessage }}
       </p>
@@ -318,7 +318,7 @@ onBeforeUnmount(() => {
 
                 <td class="px-3 py-3 text-center">
                     <span
-                        class="inline-flex rounded-full px-2 py-1 text-xs font-medium"
+                        class="inline-flex rounded-none px-2 py-1 text-xs font-medium"
                         :class="statusClasses[report.status]"
                     >
                       {{ statusLabels[report.status] }}

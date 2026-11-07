@@ -35,7 +35,7 @@ const cards = computed(() => [
     <div
         v-for="card in cards"
         :key="card.key"
-        class="rounded-xl border border-border bg-card p-5 shadow-xs"
+        class="surface-panel p-5 "
     >
       <dt class="text-sm font-medium text-zinc-500">
         {{ card.label }}

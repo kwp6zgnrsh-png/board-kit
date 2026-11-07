@@ -161,11 +161,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="grid gap-6">
-    <header class="flex flex-wrap items-center justify-between gap-3">
+  <div class="grid gap-8">
+    <header class="page-heading">
       <div>
         <p class="text-xs font-medium text-primary">관리자</p>
-        <h1 class="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
+        <h1 class="page-title">
           게시판 활동 통계
         </h1>
         <p class="mt-2 text-sm text-zinc-500">
@@ -175,7 +175,7 @@ onBeforeUnmount(() => {
 
       <RouterLink
           :to="{ name: 'admin-dashboard' }"
-          class="rounded-md border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+          class="rounded-none border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
       >
         관리자 메뉴
       </RouterLink>
@@ -183,7 +183,7 @@ onBeforeUnmount(() => {
 
     <section
         aria-label="통계 조회 조건"
-        class="flex flex-wrap items-end gap-4 rounded-xl border border-border bg-card p-5 shadow-xs"
+        class="flex flex-wrap items-end gap-4 surface-panel p-5 "
     >
       <div class="w-full sm:w-56">
         <BaseSelect
@@ -221,7 +221,7 @@ onBeforeUnmount(() => {
     <section aria-label="통계 조회 결과" :aria-busy="loading">
       <div
           v-if="errorMessage"
-          class="rounded-lg border border-red-200 bg-red-50 p-5"
+          class="rounded-none border border-red-200 bg-red-50 p-5"
       >
         <p role="alert" class="text-sm text-red-700">
           {{ errorMessage }}
@@ -248,7 +248,7 @@ onBeforeUnmount(() => {
 
       <div v-else-if="result" class="grid gap-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <h2 class="text-lg font-semibold text-zinc-900">
+          <h2 class="text-lg font-medium text-zinc-900">
             {{ selectedBoardName }}
           </h2>
           <p class="text-sm text-zinc-500">

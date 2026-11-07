@@ -203,7 +203,7 @@ function editLink() {
               :value="editor.isActive('heading', { level: 2 }) ? 1 : editor.isActive('heading', { level: 3 }) ? 2 : 0"
               :disabled="disabled"
               aria-label="본문 또는 제목 선택"
-              class="h-8 w-24 cursor-pointer rounded-md border-0 bg-transparent px-2 text-sm text-zinc-700 outline-none hover:bg-zinc-200/70 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-40"
+              class="h-8 w-24 cursor-pointer rounded-none border-0 bg-transparent px-2 text-sm text-zinc-700 outline-none hover:bg-zinc-200/70 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-40"
               @change="changeBlockType"
           >
             <option value="0">본문</option>
@@ -221,7 +221,7 @@ function editLink() {
               :aria-label="button.title"
               :aria-pressed="isActive(button)"
               :disabled="!canRun(button)"
-              class="inline-flex size-8 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-30"
+              class="inline-flex size-8 items-center justify-center rounded-none focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-30"
               :class="isActive(button) ? 'bg-zinc-200/70 text-primary' : 'text-zinc-700 hover:bg-zinc-200/70'"
               @mousedown.prevent
               @click="run(button)"
@@ -239,7 +239,7 @@ function editLink() {
               :aria-label="button.title"
               :aria-pressed="button.activeName ? isActive(button) : undefined"
               :disabled="!canRun(button)"
-              class="inline-flex size-8 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-30"
+              class="inline-flex size-8 items-center justify-center rounded-none focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-30"
               :class="isActive(button) ? 'bg-zinc-200/70 text-primary' : 'text-zinc-700 hover:bg-zinc-200/70'"
               @mousedown.prevent
               @click="run(button)"
@@ -256,7 +256,7 @@ function editLink() {
               :title="button.title"
               :aria-label="button.title"
               :disabled="!canRun(button)"
-              class="inline-flex size-8 items-center justify-center rounded-md text-zinc-700 hover:bg-zinc-200/70 focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-30"
+              class="inline-flex size-8 items-center justify-center rounded-none text-zinc-700 hover:bg-zinc-200/70 focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-30"
               @mousedown.prevent
               @click="run(button)"
           >
@@ -268,7 +268,7 @@ function editLink() {
               aria-label="링크 추가·수정·제거"
               :aria-pressed="editor.isActive('link')"
               :disabled="disabled"
-              class="inline-flex size-8 items-center justify-center rounded-md focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-30"
+              class="inline-flex size-8 items-center justify-center rounded-none focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-30"
               :class="editor.isActive('link') ? 'bg-zinc-200/70 text-primary' : 'text-zinc-700 hover:bg-zinc-200/70'"
               @mousedown.prevent
               @click="editLink"
