@@ -1,0 +1,134 @@
+name: BoardKit CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend test and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root_password
+          MYSQL_DATABASE: boardkit_test
+          MYSQL_USER: boardkit_test
+          MYSQL_PASSWORD: ci_test_password
+          TZ: UTC
+        ports:
+          - "127.0.0.1:3306:3306"
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci_root_password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+
+    env:
+      TZ: UTC
+      JAVA_TOOL_OPTIONS: -Duser.timezone=UTC
+      SPRING_DATASOURCE_URL: "jdbc:mysql://127.0.0.1:3306/boardkit_test?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&sslMode=DISABLED"
+      SPRING_DATASOURCE_USERNAME: boardkit_test
+      SPRING_DATASOURCE_PASSWORD: ci_test_password
+      FILE_STORAGE_ROOT: ${{ runner.temp }}/boardkit-store
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with: 
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+          cache-dependency-path: |
+            boardKitApi/*.gradle
+            boardKitApi/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Generate test JWT key
+        run: |
+          printf 'JWT_SECRET=%s\n' \
+            "$(openssl rand -base64 64 | tr -d '\n')" >> "$GITHUB_ENV"
+
+      - name: Initialize test database
+        env:
+          MYSQL_CONTAINER_ID: ${{ job.services.mysql.id }}
+        run: |
+          docker exec -i "$MYSQL_CONTAINER_ID" \
+            mysql -uboardkit_test -pci_test_password boardkit_test \
+            < docs/schema.sql
+
+      - name: Test and build backend
+        working-directory: boardKitApi
+        run: |
+          chmod +x gradlew
+          ./gradlew test bootJar --no-daemon --stacktrace
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-test-reports
+          path: |
+            boardKitApi/build/reports/tests/test/
+            boardKitApi/build/test-results/test/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-jar
+          path: boardKitApi/build/libs/boardKitApi-0.0.1-SNAPSHOT.jar
+          if-no-files-found: error
+          retention-days: 7
+
+  frontend:
+    name: Frontend type check and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with: 
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: boardkit-web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: boardkit-web
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: boardkit-web
+        run: npm run build
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-dist
+          path: boardkit-web/dist/
+          if-no-files-found: error
+          retention-days: 7
