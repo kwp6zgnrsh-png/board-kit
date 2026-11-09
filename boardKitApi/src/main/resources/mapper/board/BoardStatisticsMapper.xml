@@ -15,41 +15,62 @@
     <select id="selectSummary"
             resultType="io.github.kwp6zgnrsh.boardkitapi.board.dto.response.BoardStatisticsSummaryResponse">
         SELECT
-        (
-            SELECT COUNT(*)
-            FROM post p
-                INNER JOIN board b ON b.id = p.board_id
-            WHERE
-                <include refid="boardScope"/>
-                AND p.deleted_at IS NULL
-        ) AS currentPostCount,
-        (
-            SELECT COUNT(*)
-            FROM comment c
-                INNER JOIN post p ON p.id = c.post_id
-                INNER JOIN board b ON b.id = p.board_id
-            WHERE
-                <include refid="boardScope"/>
-                AND c.deleted_at IS NULL
+            (
+                SELECT COUNT(*)
+                FROM post p
+                    INNER JOIN board b ON b.id = p.board_id
+                WHERE
+                    <include refid="boardScope"/>
+                    AND p.deleted_at IS NULL
+            ) AS currentPostCount,
+            (
+                <choose>
+                    <when test="boardId == null">
+                        SELECT
+                            (
+                                SELECT COUNT(*)
+                                FROM comment c
+                                WHERE c.deleted_at IS NULL
+                            )
+                            -
+                            (
+                                SELECT /*+ JOIN_ORDER(b, p, c) */ COUNT(*)
+                                FROM board b
+                                INNER JOIN post p ON p.board_id = b.id
+                                INNER JOIN comment c ON c.post_id = p.id
+                                WHERE b.status NOT IN ('ACTIVE', 'ARCHIVED')
+                                    AND c.deleted_at IS NULL
+                            )
+                    </when>
+                    <otherwise>
+                        SELECT /*+ JOIN_ORDER(b, p, c) */ COUNT(*)
+                        FROM board b
+                        INNER JOIN post p ON p.board_id = b.id
+                        INNER JOIN comment c ON c.post_id = p.id
+                        WHERE
+                        <include refid="boardScope"/>
+                        AND c.deleted_at IS NULL
+                    </otherwise>
+                </choose>
             ) AS currentCommentCount,
-        (
-            SELECT COUNT(*)
-            FROM post p
-                INNER JOIN board b ON b.id = p.board_id
-            WHERE
-                <include refid="boardScope"/>
-                AND p.created_at &gt;= #{todayStartUtc}
-                AND p.created_at &lt; #{tomorrowStartUtc}
+            (
+                SELECT COUNT(*)
+                FROM post p
+                    INNER JOIN board b ON b.id = p.board_id
+                WHERE
+                    <include refid="boardScope"/>
+                    AND p.created_at &gt;= #{todayStartUtc}
+                    AND p.created_at &lt; #{tomorrowStartUtc}
             ) AS todayPostCount,
-        (
-            SELECT COUNT(*)
-            FROM comment c
-                INNER JOIN post p ON p.id = c.post_id
-                INNER JOIN board b ON b.id = p.board_id
-            WHERE
-            <include refid="boardScope"/>
-                AND c.created_at &gt;= #{todayStartUtc}
-                AND c.created_at &lt; #{tomorrowStartUtc}
+            (
+                SELECT COUNT(*)
+                FROM comment c
+                    INNER JOIN post p ON p.id = c.post_id
+                    INNER JOIN board b ON b.id = p.board_id
+                WHERE
+                <include refid="boardScope"/>
+                    AND c.created_at &gt;= #{todayStartUtc}
+                    AND c.created_at &lt; #{tomorrowStartUtc}
             ) AS todayCommentCount
     </select>
 

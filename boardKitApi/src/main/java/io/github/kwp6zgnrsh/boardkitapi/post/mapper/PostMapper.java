@@ -29,13 +29,6 @@ public interface PostMapper {
 		@Param("adminAccess") boolean adminAccess
 	);
 
-	long countPostSummaries(
-		@Param("boardId") Long boardId,
-		@Param("keyword") String keyword,
-		@Param("categoryId") Long categoryId,
-		@Param("memberId") Long memberId,
-		@Param("adminAccess") boolean adminAccess
-	);
 	Optional<PostDetail> selectActivePostDetail(
 		@Param("boardId") Long boardId,
 		@Param("postId") Long postId

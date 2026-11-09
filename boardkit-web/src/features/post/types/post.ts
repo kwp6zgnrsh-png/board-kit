@@ -45,8 +45,8 @@ export interface PostPageResponse {
     posts: PostSummaryResponse[]
     page: number
     size: number
-    totalElements: number
-    totalPages: number
+    hasNext: boolean
+    availableThroughPage: number
 }
 
 export interface PostDetailResponse {

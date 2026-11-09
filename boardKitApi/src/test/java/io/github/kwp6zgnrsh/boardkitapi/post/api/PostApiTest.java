@@ -243,7 +243,7 @@ class PostApiTest {
 			List.of(post),
 			1,
 			10,
-			1L,
+			false,
 			1
 		);
 
@@ -269,8 +269,10 @@ class PostApiTest {
 			.andExpect(jsonPath("$.posts[0].thumbnailAvailable").value(true))
 			.andExpect(jsonPath("$.page").value(1))
 			.andExpect(jsonPath("$.size").value(10))
-			.andExpect(jsonPath("$.totalElements").value(1))
-			.andExpect(jsonPath("$.totalPages").value(1))
+			.andExpect(jsonPath("$.totalElements").doesNotHaveJsonPath())
+			.andExpect(jsonPath("$.totalPages").doesNotHaveJsonPath())
+			.andExpect(jsonPath("$.hasNext").value(false))
+			.andExpect(jsonPath("$.availableThroughPage").value(1))
 			.andExpect(jsonPath("$.posts[0].likeCount").value(7));
 
 		verify(postService).getPosts(
@@ -291,7 +293,7 @@ class PostApiTest {
 			List.of(),
 			2,
 			5,
-			0L,
+			false,
 			0
 		);
 

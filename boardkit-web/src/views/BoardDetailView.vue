@@ -186,23 +186,6 @@ async function loadPosts(
 
     if (currentRequest !== postsRequestSequence) return
 
-    const normalizedPage =
-        response.totalPages === 0
-            ? 1
-            : Math.min(page, response.totalPages)
-
-    if (page !== normalizedPage) {
-      await router.replace({
-        name: 'board-detail',
-        params: {boardSlug: slug},
-        query: {
-          ...route.query,
-          page: String(normalizedPage),
-        },
-      })
-      return
-    }
-
     postPage.value = response
   } catch (error) {
     if (currentRequest !== postsRequestSequence) return
@@ -309,8 +292,7 @@ watch(
 
 <template>
   <div class="grid min-w-0 gap-5">
-    <p v-if="boardLoading" class="rounded-none bg-zinc-50 px-5 py-14 text-center text-sm text-zinc-500">게시판을 불러오는
-      중입니다.</p>
+    <p v-if="boardLoading" class="rounded-none bg-zinc-50 px-5 py-14 text-center text-sm text-zinc-500">게시판을 불러오는 중입니다.</p>
     <p v-else-if="boardErrorMessage"
        class="rounded-none border border-red-200 bg-red-50 px-5 py-12 text-center text-sm text-red-700" role="alert">
       {{ boardErrorMessage }}</p>
@@ -327,10 +309,9 @@ watch(
         <div class="flex flex-wrap items-center justify-between gap-3">
           <p class="text-sm text-zinc-500">
             {{ hasActiveFilters ? '검색 결과' : '전체 글' }}
-            <span v-if="postPage" class="tabular-nums">{{ postPage.totalElements.toLocaleString() }}개</span>
           </p>
           <RouterLink v-if="canWrite" :to="{ name: 'post-create', params: { boardSlug: board.slug } }"
-                      class="inline-flex h-10 items-center justify-center gap-2 rounded-none border border-primary bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+                      class="inline-flex h-10 w-25 items-center justify-center gap-2 rounded-none border border-primary bg-primary px-4 text-sm font-medium text-white hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
             <CommunityIcon name="write" class="size-4"/>
             글쓰기
           </RouterLink>
@@ -354,7 +335,7 @@ watch(
           <label class="ml-auto">
             <span class="sr-only">게시글 정렬</span>
             <select v-model="selectedSort"
-                    class="h-9 rounded-none border border-zinc-200 bg-white px-3 text-xs text-zinc-600 outline-none focus:border-ring focus:ring-2 focus:ring-ring/20">
+                    class="h-10 w-25 rounded-none border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-600 outline-none focus:border-ring focus:ring-2 focus:ring-ring/20">
               <option value="LATEST">최신순</option>
               <option value="OLDEST">오래된순</option>
               <option value="VIEWS">조회순</option>
@@ -370,7 +351,7 @@ watch(
         <template v-else-if="postPage">
           <PostCardList v-if="board.displayType === 'CARD'" :board-slug="board.slug" :posts="postPage.posts"/>
           <PostList v-else :board-slug="board.slug" :posts="postPage.posts"/>
-          <BasePagination :page="postPage.page" :total-pages="postPage.totalPages" @change="changePage"/>
+          <BasePagination :page="postPage.page" :total-pages="null" :has-next="postPage.hasNext" :available-through-page="postPage.availableThroughPage" @change="changePage"/>
         </template>
 
         <form class="mx-auto flex w-full max-w-xl flex-wrap items-center justify-center gap-2 pt-2"

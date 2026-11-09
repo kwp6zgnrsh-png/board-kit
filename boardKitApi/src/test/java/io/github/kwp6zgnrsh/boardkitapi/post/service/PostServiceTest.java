@@ -185,33 +185,32 @@ class PostServiceTest {
 		verifyNoInteractions(postMapper, postConverter);
 	}
 
-	@Test
-	@DisplayName("공개 게시판의 두 번째 페이지를 조회한다")
-	void getSecondPageFromPublicBoard() {
-		BoardPolicy policy = readPolicy("PUBLIC");
+	@ParameterizedTest
+	@CsvSource({"1, 50, 50, 5, true", "1, 41, 50, 5, true", "1, 40, 50, 4, true", "2, 40, 40, 5, true",
+		"4, 30, 30, 6, true", "4, 10, 30, 4, false", "4, 0, 30, 0, false"})
+	@DisplayName("COUNT 없이 표시할 페이지 범위를 확인하고 현재 페이지 글만 반환한다")
+	void getPostsWithoutCounting(int page, int rowCount, int expectedLimit, int expectedAvailableThroughPage,
+		boolean expectedHasNext) {
+		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
 
-		prepareReadableBoard("free", policy, false);
+		int size = 10;
+		long offset = (long)(page - 1) * size;
+		List<PostSummaryResponse> queriedPosts = createPostSummaries(rowCount);
 
-		LocalDateTime createdAt = LocalDateTime.of(2026, 9, 21, 10, 0);
+		when(postMapper.selectPostSummaries(1L, null, null, PostSort.LATEST, expectedLimit, offset, null,
+			false)).thenReturn(queriedPosts);
 
-		List<PostSummaryResponse> posts = List.of(
-			new PostSummaryResponse(11L, "게시글 제목", 10L, "작성자", null, null, false, false, 3L, 2L, createdAt, null, false,
-				7L, false));
+		PostPageResponse response = postService.getPosts("free", page, size, defaultPostListRequest(), null, false,
+			false);
 
-		when(postMapper.countPostSummaries(1L, null, null, null, false)).thenReturn(21L);
+		List<PostSummaryResponse> expectedPosts = queriedPosts.subList(0, Math.min(size, rowCount));
 
-		when(postMapper.selectPostSummaries(1L, null, null, PostSort.LATEST, 10, 10L, null, false)).thenReturn(posts);
+		assertAll(() -> assertEquals(expectedPosts, response.posts()), () -> assertEquals(page, response.page()),
+			() -> assertEquals(size, response.size()), () -> assertEquals(expectedHasNext, response.hasNext()),
+			() -> assertEquals(expectedAvailableThroughPage, response.availableThroughPage()));
 
-		PostPageResponse response = postService.getPosts("free", 2, 10, defaultPostListRequest(), null, false, false);
-
-		assertAll(() -> assertEquals(posts, response.posts()), () -> assertEquals(2, response.page()),
-			() -> assertEquals(10, response.size()), () -> assertEquals(21L, response.totalElements()),
-			() -> assertEquals(3, response.totalPages()));
-
-		verify(postMapper).selectPostSummaries(1L, null, null, PostSort.LATEST, 10, 10L, null, false);
-
-		assertEquals(7L, response.posts().getFirst().likeCount());
-		verifyNoInteractions(postLikeMapper);
+		verify(postMapper).selectPostSummaries(1L, null, null, PostSort.LATEST, expectedLimit, offset, null, false);
+		verifyNoMoreInteractions(postMapper);
 	}
 
 	@Test
@@ -223,22 +222,6 @@ class PostServiceTest {
 			() -> postService.getPosts("admin", 1, 10, defaultPostListRequest(), 10L, true, false));
 
 		verifyNoInteractions(postMapper);
-	}
-
-	@Test
-	@DisplayName("마지막 페이지를 넘으면 빈 게시글 목록을 반환한다")
-	void returnEmptyPostsWhenPageExceedsLastPage() {
-		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
-
-		when(postMapper.countPostSummaries(1L, null, null, null, false)).thenReturn(11L);
-
-		PostPageResponse response = postService.getPosts("free", 3, 10, defaultPostListRequest(), null, false, false);
-
-		assertAll(() -> assertTrue(response.posts().isEmpty()), () -> assertEquals(3, response.page()),
-			() -> assertEquals(11L, response.totalElements()), () -> assertEquals(2, response.totalPages()));
-
-		verify(postMapper).countPostSummaries(1L, null, null, null, false);
-		verifyNoMoreInteractions(postMapper);
 	}
 
 	@Test
@@ -581,25 +564,49 @@ class PostServiceTest {
 	@Test
 	@DisplayName("검색어와 카테고리와 정렬 조건을 적용해 게시글 목록을 조회한다")
 	void getPostsWithSearchFilters() {
-		BoardPolicy policy = policy("MEMBER", "OFF", true, false);
-
-		prepareReadableBoard("free", policy, false);
-
+		prepareReadableBoard("free", policy("MEMBER", "OFF", true, false), false);
 		when(boardMapper.existsActiveCategory(1L, 2L)).thenReturn(true);
 
-		when(postMapper.countPostSummaries(1L, "50=%=_off==", 2L, 10L, false)).thenReturn(1L);
-
-		when(postMapper.selectPostSummaries(1L, "50=%=_off==", 2L, PostSort.VIEWS, 10, 0L, 10L, false)).thenReturn(List.of());
+		List<PostSummaryResponse> posts = createPostSummaries(1);
+		when(postMapper.selectPostSummaries(1L, "50=%=_off==", 2L, PostSort.VIEWS, 50, 0L, 10L, false)).thenReturn(
+			posts);
 
 		PostListRequest request = new PostListRequest("50%_off=", 2L, PostSort.VIEWS);
 
 		PostPageResponse response = postService.getPosts("free", 1, 10, request, 10L, true, false);
 
-		assertAll(() -> assertEquals(1L, response.totalElements()), () -> assertEquals(1, response.totalPages()));
+		assertAll(() -> assertEquals(posts, response.posts()), () -> assertFalse(response.hasNext()));
 
 		verify(boardMapper).existsActiveCategory(1L, 2L);
+		verify(postMapper).selectPostSummaries(1L, "50=%=_off==", 2L, PostSort.VIEWS, 50, 0L, 10L, false);
+		verifyNoMoreInteractions(postMapper);
+	}
 
-		verify(postMapper).selectPostSummaries(1L, "50=%=_off==", 2L, PostSort.VIEWS, 10, 0L, 10L, false);
+	@ParameterizedTest
+	@CsvSource({"LATEST, 1, 0, false", "LATEST, 1, 9, false", "LATEST, 1, 10, false", "LATEST, 1, 11, true",
+		"OLDEST, 2, 11, true", "VIEWS, 2, 1, false", "VIEWS, 3, 0, false"})
+	@DisplayName("검색은 COUNT 없이 페이지 범위를 조회하고 현재 페이지 글만 반환한다")
+	void searchPostsWithoutCounting(PostSort sort, int page, int rowCount, boolean expectedHasNext) {
+		prepareReadableBoard("free", readPolicy("PUBLIC"), false);
+
+		int size = 10;
+		long offset = (long)(page - 1) * size;
+		List<PostSummaryResponse> queriedPosts = createPostSummaries(rowCount);
+		PostListRequest request = new PostListRequest("MySQL", null, sort);
+		int limit = Math.max(3, 6 - page) * size;
+
+		when(postMapper.selectPostSummaries(1L, "MySQL", null, sort, limit, offset, null, false)).thenReturn(
+			queriedPosts);
+
+		PostPageResponse response = postService.getPosts("free", page, size, request, null, false, false);
+
+		List<PostSummaryResponse> expectedPosts = queriedPosts.subList(0, Math.min(size, rowCount));
+
+		assertAll(() -> assertEquals(expectedPosts, response.posts()), () -> assertEquals(page, response.page()),
+			() -> assertEquals(size, response.size()), () -> assertEquals(expectedHasNext, response.hasNext()));
+
+		verify(postMapper).selectPostSummaries(1L, "MySQL", null, sort, limit, offset, null, false);
+		verifyNoMoreInteractions(postMapper);
 	}
 
 	@Test
@@ -1237,5 +1244,15 @@ class PostServiceTest {
 		Board board = Board.builder().id(1L).slug(boardSlug).status("ACTIVE").build();
 		when(boardMapper.selectReadableBoardBySlug(boardSlug, adminAccess)).thenReturn(Optional.of(board));
 		when(boardMapper.selectPolicyByBoardId(1L)).thenReturn(Optional.of(policy));
+	}
+
+	private List<PostSummaryResponse> createPostSummaries(int count) {
+		LocalDateTime createdAt = LocalDateTime.of(2026, 9, 21, 10, 0);
+
+		return java.util.stream.IntStream.range(0, count)
+			.mapToObj(
+				index -> new PostSummaryResponse((long)index + 1, "게시글 제목", 10L, "작성자", null, null, false, false, 3L,
+					2L, createdAt, null, false, 7L, false))
+			.toList();
 	}
 }

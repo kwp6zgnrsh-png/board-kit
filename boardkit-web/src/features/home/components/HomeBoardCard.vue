@@ -61,6 +61,5 @@ function formatDate(value: string): string {
       </li>
     </ol>
     <p v-else class="px-4 py-12 text-center text-sm text-zinc-400">등록된 게시글이 없습니다.</p>
-  <footer class="flex justify-between border-t border-border px-5 py-3 font-mono text-[10px] text-zinc-500"><span>/ {{ preview.board.slug }}</span><span>{{ preview.postPage.totalElements.toLocaleString() }}개</span></footer>
   </article>
 </template>

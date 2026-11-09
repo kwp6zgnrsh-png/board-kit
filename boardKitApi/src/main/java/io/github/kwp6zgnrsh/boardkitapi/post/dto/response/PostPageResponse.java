@@ -6,7 +6,7 @@ public record PostPageResponse(
 	List<PostSummaryResponse> posts,
 	int page,
 	int size,
-	long totalElements,
-	int totalPages
+	boolean hasNext,
+	int availableThroughPage
 ) {
 }

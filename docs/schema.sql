@@ -1,5 +1,6 @@
 -- Community V2 schema draft, 2026-09-19
 -- Last synchronized with the agreed policies: 2026-10-19.
+-- Pagination, blind-management and activity indexes updated: 2026-11-09.
 -- Target: MySQL 8.0.16+ / InnoDB (CHECK constraints must be enforced).
 -- Apply once to an EMPTY database explicitly selected by the caller.
 -- This file does not create/drop a database or disable FK checks.
@@ -125,6 +126,10 @@ CREATE TABLE post (
     blind_report_base_count BIGINT UNSIGNED NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     KEY ix_post_board_list (board_id, deleted_at, is_pinned, created_at, id),
+    KEY ix_post_board_oldest (board_id, deleted_at, is_pinned DESC, created_at ASC, id ASC),
+    KEY ix_post_board_views (board_id, deleted_at, is_pinned DESC, view_count DESC, created_at DESC, id DESC),
+    KEY ix_post_blinded (deleted_at, blinded_at DESC, id DESC),
+    KEY ix_post_created_board (created_at, board_id),
     KEY ix_post_author_list (author_id, deleted_at, created_at, id),
     KEY ix_post_category (category_id),
     KEY ix_post_representative (representative_file_id),
@@ -179,6 +184,9 @@ CREATE TABLE comment (
     KEY ix_comment_post (post_id, created_at, id),
     KEY ix_comment_parent (parent_id, created_at, id),
     KEY ix_comment_author (author_id, deleted_at, created_at, id),
+    KEY ix_comment_blinded (deleted_at, blinded_at DESC, id DESC, post_id),
+    KEY ix_comment_created_post (created_at, post_id),
+    KEY ix_comment_post_deleted (post_id, deleted_at),
     CONSTRAINT fk_comment_post FOREIGN KEY (post_id) REFERENCES post (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
     CONSTRAINT fk_comment_author FOREIGN KEY (author_id) REFERENCES member (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
     CONSTRAINT fk_comment_parent FOREIGN KEY (parent_id) REFERENCES comment (id) ON DELETE RESTRICT ON UPDATE RESTRICT

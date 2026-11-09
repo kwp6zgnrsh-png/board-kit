@@ -289,7 +289,6 @@ class PostMapperIntegrationTest {
 			assertTrue(row.blinded());
 			assertNull(row.representativeFileId());
 			assertFalse(row.thumbnailAvailable());
-			assertEquals(1L, postMapper.countPostSummaries(boardId, null, null, viewerId, false));
 		}
 
 		var ownerRow = postMapper.selectPostSummaries(boardId, null, null, PostSort.LATEST, 10, 0L, memberId, false)
@@ -306,8 +305,8 @@ class PostMapperIntegrationTest {
 	}
 
 	@Test
-	@DisplayName("블라인드 원문의 제목과 본문 검색은 작성자와 관리자에게만 허용하고 검색 개수도 일치한다")
-	void excludeUnreadableBlindedPostsFromSearchAndCount() {
+	@DisplayName("블라인드 원문의 제목과 본문 검색은 작성자와 관리자에게만 허용한다")
+	void excludeUnreadableBlindedPostsFromSearch() {
 		Post blindedPost = insertPost();
 		Post normalPost = insertPost();
 		Long adminId = insertListViewer("ADMIN");
@@ -326,17 +325,14 @@ class PostMapperIntegrationTest {
 				false);
 
 			assertEquals(List.of(normalPost.getId()), publicRows.stream().map(row -> row.id()).toList());
-			assertEquals(1L, postMapper.countPostSummaries(boardId, keyword, null, null, false));
 
 			var ownerRows = postMapper.selectPostSummaries(boardId, keyword, null, PostSort.LATEST, 10, 0L, memberId,
 				false);
 			assertEquals(2, ownerRows.size());
-			assertEquals(2L, postMapper.countPostSummaries(boardId, keyword, null, memberId, false));
 
 			var adminRows = postMapper.selectPostSummaries(boardId, keyword, null, PostSort.LATEST, 10, 0L, adminId,
 				true);
 			assertEquals(2, adminRows.size());
-			assertEquals(2L, postMapper.countPostSummaries(boardId, keyword, null, adminId, true));
 		}
 	}
 

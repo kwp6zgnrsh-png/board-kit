@@ -173,17 +173,21 @@ public class PostService {
 		validateCategoryFilter(board.getId(), policy, request.categoryId());
 
 		String keyword = escapeLikeKeyword(request.keyword());
-		long totalElements = postMapper.countPostSummaries(board.getId(), keyword, request.categoryId(), memberId,
-			adminAccess);
 		long offset = (long)(page - 1) * size;
 
-		List<PostSummaryResponse> posts = totalElements == 0 || offset >= totalElements ? List.of() :
-			postMapper.selectPostSummaries(board.getId(), keyword, request.categoryId(), request.sort(), size, offset,
-				memberId, adminAccess);
+		int windowStart = Math.max(1, page - 2);
+		long windowEnd = Math.min(Integer.MAX_VALUE, (long)windowStart + 4);
+		int limit = Math.toIntExact((windowEnd - page + 1) * size);
 
-		long totalPages = totalElements / size + (totalElements % size == 0 ? 0 : 1);
+		List<PostSummaryResponse> posts = postMapper.selectPostSummaries(board.getId(), keyword, request.categoryId(),
+			request.sort(), limit, offset, memberId, adminAccess);
 
-		return new PostPageResponse(posts, page, size, totalElements, Math.toIntExact(totalPages));
+		boolean hasNext = posts.size() > size;
+		List<PostSummaryResponse> visiblePosts = List.copyOf(posts.subList(0, Math.min(size, posts.size())));
+
+		int availableThroughPage = posts.isEmpty() ? 0 : Math.toIntExact((long)page + (posts.size() - 1) / size);
+
+		return new PostPageResponse(visiblePosts, page, size, hasNext, availableThroughPage);
 	}
 
 	@Transactional
