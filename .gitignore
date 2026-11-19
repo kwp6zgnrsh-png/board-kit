@@ -25,6 +25,9 @@ application-local*.properties
 application-secrets*.yml
 application-secrets*.yaml
 application-secrets*.properties
+application-prod*.yml
+application-prod*.yaml
+application-prod*.properties
 *.pem
 *.key
 *.p12
