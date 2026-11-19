@@ -49,5 +49,13 @@ replay_pid*
 *.sql.zip
 *.dump
 
-# Local test refactoring notes
+# Local testing and performance files
 /docs/test-refactoring.md
+/docs/integration-test-guide.md
+/docs/seed-board7-posts.sql
+
+# Local portfolio images
+/docs/boardkit-architecture.png
+/docs/boardkit-architecture.svg
+/docs/boardkit-tech-stack.png
+/docs/boardkit-tech-stack.svg
