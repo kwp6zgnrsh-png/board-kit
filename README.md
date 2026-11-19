@@ -61,7 +61,7 @@ Spring Boot는 같은 서버의 MySQL과 로컬 파일 저장소를 사용합니
 
 [DB 설계](https://github.com/kwp6zgnrsh-png/board-kit/blob/main/docs/schema.md) · [초기 스키마](https://github.com/kwp6zgnrsh-png/board-kit/blob/main/docs/schema.sql) · [ERD 원본](https://github.com/kwp6zgnrsh-png/board-kit/blob/main/docs/erd.mmd)
 
-## 내가 해결한 문제
+## 해결한 문제
 
 ### 1. 게시글 목록의 정렬과 페이지네이션 개선
 
